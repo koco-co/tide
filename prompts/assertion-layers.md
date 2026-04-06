@@ -1,55 +1,55 @@
-# Assertion Layers (L1-L5)
+# 断言层（Assertion Layers）L1-L5
 
-> Referenced by: `agents/scenario-analyzer.md`, `agents/case-writer.md`
-> Purpose: Generation rules for each assertion layer. Apply in order L1 → L2 → L3 → L4 → L5 within each test.
+> 引用方：`agents/scenario-analyzer.md`、`agents/case-writer.md`
+> 用途：每个断言层的生成规则。在每个测试中按 L1 → L2 → L3 → L4 → L5 的顺序应用。
 
 ---
 
-## Layer-to-Test-Type Matrix
+## 断言层与测试类型矩阵
 
-This matrix is the primary contract. Agents MUST follow it without exception.
+此矩阵是主要规范，Agent 必须严格遵守，不得例外。
 
 ```
               L1      L2      L3      L4      L5
-interface/    MUST    MUST    MUST    OPT     OPT
-scenariotest/ MUST    MUST    MUST    MUST    MUST
-unittest/     —       —       MUST    MUST    OPT
+interface/    必须    必须    必须    可选    可选
+scenariotest/ 必须    必须    必须    必须    必须
+unittest/     —       —       必须    必须    可选
 ```
 
-Legend:
-- `MUST` — Always generate these assertions for this test type
-- `OPT`  — Generate when source code provides sufficient signal
-- `—`    — Not applicable for this test type
+图例：
+- `必须` — 该测试类型必须始终生成这些断言
+- `可选` — 当源码提供足够信号时生成
+- `—`    — 该测试类型不适用
 
 ---
 
-## L1 — Protocol Layer
+## L1 — 协议层（Protocol Layer）
 
-**What it validates**: HTTP-level correctness — status code, response time, Content-Type.
+**验证内容**：HTTP 层面的正确性——状态码、响应时间、Content-Type。
 
-**Generated from**: HAR response metadata (`response.status`, `response.time_ms`, `response.headers`).
+**生成来源**：HAR 响应元数据（`response.status`、`response.time_ms`、`response.headers`）。
 
-### Generation Rules
+### 生成规则
 
-| Assertion | Source | Formula |
-|-----------|--------|---------|
-| `status_code` | `response.status` from HAR | Use exact value from HAR |
-| `max_time_ms` | `response.time_ms` from HAR | `max(har_time_ms × 3, 1000)` — minimum 1000ms |
-| `content_type` | Response `Content-Type` header | Exact value from HAR, typically `"application/json"` |
+| 断言 | 来源 | 公式 |
+|------|------|------|
+| `status_code` | HAR 的 `response.status` | 使用 HAR 中的精确值 |
+| `max_time_ms` | HAR 的 `response.time_ms` | `max(har_time_ms × 3, 1000)` — 最小 1000ms |
+| `content_type` | 响应 `Content-Type` 请求头 | 使用 HAR 中的精确值，通常为 `"application/json"` |
 
-### Code Pattern
+### 代码模式
 
 ```python
-# Use the reusable helper in core/assertions.py
+# 使用 core/assertions.py 中的可复用辅助函数
 assert_protocol(
     response,
-    expected_status=200,          # from HAR response.status
+    expected_status=200,          # 来自 HAR response.status
     max_time_ms=1000,             # max(har_time_ms × 3, 1000)
     expected_content_type="application/json",
 )
 ```
 
-`assert_protocol` implementation (already in `core/assertions.py`):
+`assert_protocol` 实现（已在 `core/assertions.py` 中）：
 ```python
 def assert_protocol(
     response: httpx.Response,
@@ -63,55 +63,55 @@ def assert_protocol(
     assert expected_content_type in response.headers.get("content-type", "")
 ```
 
-### Special Cases
+### 特殊情况
 
-- For error scenario tests (expected status 400, 404, etc.): set `expected_status` to the expected error status.
-- For scenarios that expect any non-200 business error returned as HTTP 200: still assert `expected_status=200`, then check business code in L3.
+- 错误场景测试（期望状态码为 400、404 等）：将 `expected_status` 设为对应的错误状态码。
+- 期望 HTTP 200 返回业务错误的场景：仍断言 `expected_status=200`，然后在 L3 中检查业务码。
 
 ---
 
-## L2 — Structure Layer
+## L2 — 结构层（Structure Layer）
 
-**What it validates**: JSON response body structure — field presence, types, required vs. optional.
+**验证内容**：JSON 响应体结构——字段是否存在、类型是否正确、必填与可选字段。
 
-**Generated from**: HAR response body (infer types) + source DTO/VO class (confirm required fields and types).
+**生成来源**：HAR 响应体（推断类型）+ 源码 DTO/VO 类（确认必填字段和类型）。
 
-### Generation Rules
+### 生成规则
 
-1. **Create a Pydantic model for the response body.**
+1. **为响应体创建 Pydantic 模型。**
 
-   Infer field types from the HAR response body JSON:
+   从 HAR 响应体 JSON 推断字段类型：
 
-   | JSON value | Pydantic type |
-   |-----------|---------------|
+   | JSON 值 | Pydantic 类型 |
+   |--------|--------------|
    | `"string"` | `str` |
    | `123` | `int` |
    | `1.23` | `float` |
    | `true/false` | `bool` |
-   | `null` + present sometimes | `T \| None = None` |
-   | `[]` (empty list) | `list[SubModel]` or `list[Any]` |
-   | `{}` (object) | nested `BaseModel` subclass |
+   | `null` + 有时存在 | `T \| None = None` |
+   | `[]`（空列表） | `list[SubModel]` 或 `list[Any]` |
+   | `{}`（对象） | 嵌套 `BaseModel` 子类 |
 
-2. **Cross-reference source DTO/VO.**
+2. **与源码 DTO/VO 交叉验证。**
 
-   If source code is available, find the response DTO/VO class. Use annotations to refine the model:
+   若有源码，找到响应 DTO/VO 类，利用注解精化模型：
 
-   | Source annotation | Pydantic equivalent |
-   |-------------------|---------------------|
-   | `@NotNull` | Required field (no default) |
-   | No `@NotNull` | Optional: `field: Type \| None = None` |
-   | `@NotBlank String` | `str` (required) |
+   | 源码注解 | Pydantic 等价写法 |
+   |---------|-----------------|
+   | `@NotNull` | 必填字段（无默认值） |
+   | 无 `@NotNull` | 可选：`field: Type \| None = None` |
+   | `@NotBlank String` | `str`（必填） |
 
-3. **Nested objects → nested Pydantic models.**
+3. **嵌套对象 → 嵌套 Pydantic 模型。**
 
-   Do not use `dict` for nested objects — always create a named `BaseModel` subclass.
+   嵌套对象不能使用 `dict`，必须创建命名的 `BaseModel` 子类。
 
    ```python
-   # WRONG
+   # 错误写法
    class QueryResponse(BaseModel):
-       data: dict  # too loose
+       data: dict  # 过于宽松
 
-   # CORRECT
+   # 正确写法
    class DataItem(BaseModel):
        type: int
        count: int
@@ -123,9 +123,9 @@ def assert_protocol(
        success: bool
    ```
 
-4. **Lists of homogeneous objects → `list[SubModel]`.**
+4. **同类型对象列表 → `list[SubModel]`。**
 
-   If the response `data` field is a paginated result, create a model for the page wrapper:
+   若响应 `data` 字段是分页结果，为分页包装创建专用模型：
 
    ```python
    class PageData(BaseModel):
@@ -141,10 +141,10 @@ def assert_protocol(
        success: bool
    ```
 
-### Code Pattern
+### 代码模式
 
 ```python
-# Define model above the test class
+# 在测试类上方定义模型
 class AssetStatisticsItem(BaseModel):
     type: int
     count: int
@@ -155,249 +155,249 @@ class AssetStatisticsResponse(BaseModel):
     data: list[AssetStatisticsItem]
     success: bool
 
-# In the test method:
+# 在测试方法中：
 body = AssetStatisticsResponse.model_validate(response.json())
-# model_validate() raises ValidationError on structure mismatch — that IS the L2 assertion
+# model_validate() 在结构不匹配时会抛出 ValidationError — 这本身就是 L2 断言
 ```
 
-**Do not add redundant `assert` statements for field existence** — `model_validate()` already verifies structure.
+**不要添加多余的字段存在性 `assert` 语句** — `model_validate()` 已经验证了结构。
 
 ---
 
-## L3 — Data Layer
+## L3 — 数据层（Data Layer）
 
-**What it validates**: Value correctness — enums, ranges, formats, business codes, pagination invariants.
+**验证内容**：值的正确性——枚举值、范围、格式、业务码、分页不变量。
 
-**Generated from**: Source Enum/constant classes, `@Min`/`@Max` annotations, field naming conventions, pagination parameters.
+**生成来源**：源码枚举/常量类、`@Min`/`@Max` 注解、字段命名约定、分页参数。
 
-### Generation Rules by Data Type
+### 各数据类型的生成规则
 
-#### 3.1 Enum Values
+#### 3.1 枚举值
 
-Source: Java `Enum` class or constant interface.
+来源：Java `Enum` 类或常量接口。
 
 ```java
-// Source: MetaTypeEnum.java
+// 来源：MetaTypeEnum.java
 public enum MetaTypeEnum {
     TABLE(1), VIEW(4), FOLDER(5), DATASOURCE(6), SCHEMA(7), DATABASE(10);
     private final int value;
 }
 ```
 
-Generated assertion:
+生成的断言：
 ```python
-VALID_META_TYPES = {1, 4, 5, 6, 7, 10}  # From MetaTypeEnum — define as module constant
+VALID_META_TYPES = {1, 4, 5, 6, 7, 10}  # 来自 MetaTypeEnum — 定义为模块级常量
 for item in body.data:
-    assert item.type in VALID_META_TYPES, f"Invalid meta type: {item.type}"
+    assert item.type in VALID_META_TYPES, f"无效的 meta 类型：{item.type}"
 ```
 
-#### 3.2 Numeric Ranges
+#### 3.2 数值范围
 
-Source: `@Min(N)`, `@Max(N)`, DB column constraints, or business rules in source.
+来源：`@Min(N)`、`@Max(N)`、DB 列约束或源码中的业务规则。
 
 ```python
-# From @Min(0) on count field
-assert item.count >= 0, f"Count cannot be negative: {item.count}"
+# 来自 count 字段的 @Min(0)
+assert item.count >= 0, f"count 不能为负数：{item.count}"
 
-# From pageSize validation in source (1 <= pageSize <= 100)
+# 来自源码中的 pageSize 校验（1 <= pageSize <= 100）
 assert 1 <= body.data.pageSize <= 100
 assert body.data.totalCount >= 0
 ```
 
-#### 3.3 Business Response Code
+#### 3.3 业务响应码
 
-If the API uses a business `code` field (e.g., `code: 1` for success, `code: 0` for failure):
+若 API 使用业务 `code` 字段（如 `code: 1` 表示成功，`code: 0` 表示失败）：
 
 ```python
-# Assert success code on happy-path tests
-BUSINESS_SUCCESS_CODES = {1}  # From source constants — adjust per project
-assert body.code in BUSINESS_SUCCESS_CODES, f"Business error: code={body.code}, message={body.message}"
+# 在正常路径测试中断言成功码
+BUSINESS_SUCCESS_CODES = {1}  # 来自源码常量 — 根据项目调整
+assert body.code in BUSINESS_SUCCESS_CODES, f"业务错误：code={body.code}, message={body.message}"
 ```
 
-For error scenario tests: assert `body.code != 1` or specific error code.
+错误场景测试：断言 `body.code != 1` 或具体的错误码。
 
-#### 3.4 Format Validation
+#### 3.4 格式校验
 
-Infer from field naming conventions:
+从字段命名约定推断：
 
-| Field name pattern | Validation |
-|-------------------|------------|
-| `phone`, `mobile`, `phoneNo` | `re.match(r"^1[3-9]\d{9}$", value)` |
+| 字段名模式 | 校验方式 |
+|----------|---------|
+| `phone`、`mobile`、`phoneNo` | `re.match(r"^1[3-9]\d{9}$", value)` |
 | `email` | `re.match(r"[^@]+@[^@]+\.[^@]+", value)` |
-| `createTime`, `updateTime` | `datetime.fromisoformat(value)` or timestamp integer |
-| `gmtCreate`, `gmtModified` | timestamp integer `> 0` |
+| `createTime`、`updateTime` | `datetime.fromisoformat(value)` 或整数时间戳 |
+| `gmtCreate`、`gmtModified` | 整数时间戳 `> 0` |
 
-Only generate format assertions when the field is **non-null in the HAR response body**.
+仅在字段在 **HAR 响应体中非空时**才生成格式断言。
 
-#### 3.5 Pagination Invariants
+#### 3.5 分页不变量
 
-Apply to any endpoint returning paginated data:
+适用于返回分页数据的任何接口：
 
 ```python
 assert body.data.totalCount >= 0
 assert len(body.data.data) <= body.data.pageSize if hasattr(body.data, "pageSize") else True
-# Consistency check: if totalCount == 0, data list should be empty
+# 一致性检查：若 totalCount == 0，数据列表应为空
 if body.data.totalCount == 0:
     assert len(body.data.data) == 0
 ```
 
 ---
 
-## L4 — Business Layer
+## L4 — 业务层（Business Layer）
 
-**What it validates**: Business rule consistency, state machine correctness, CRUD data integrity, DB state (when configured).
+**验证内容**：业务规则一致性、状态机正确性、CRUD 数据完整性、DB 状态（配置时）。
 
-**Generated from**: Source business logic, state machine enums, Service layer conditional branches, DAO/Mapper SQL.
+**生成来源**：源码业务逻辑、状态机枚举、Service 层条件分支、DAO/Mapper SQL。
 
-### 4.1 State Machine Assertions
+### 4.1 状态机断言
 
-Source: Status enum + transition guards in Service layer.
+来源：状态枚举 + Service 层中的转换守卫。
 
 ```python
-# After creating a task: verify initial status
+# 创建任务后：验证初始状态
 task = next(t for t in body.data.data if t["id"] == created_task_id)
-assert task["status"] == 0, "New task should have status DRAFT (0)"  # From SyncTaskStatusEnum
+assert task["status"] == 0, "新任务应处于 DRAFT 状态（0）"  # 来自 SyncTaskStatusEnum
 
-# After starting: verify status changed
+# 启动后：验证状态变更
 start_resp = client.post("/dmetadata/v1/syncTask/start", json={"id": task_id})
 assert start_resp.json()["code"] == 1
 page_resp = client.post("/dmetadata/v1/syncTask/pageTask", json={"currentPage": 1, "pageSize": 10})
 task = next(t for t in page_resp.json()["data"]["data"] if t["id"] == task_id)
-assert task["status"] == 1, "Started task should have status RUNNING (1)"
+assert task["status"] == 1, "已启动的任务应处于 RUNNING 状态（1）"
 ```
 
-### 4.2 CRUD Data Integrity Assertions
+### 4.2 CRUD 数据完整性断言
 
-For CRUD closure tests, verify via API after each write operation:
+CRUD 闭环测试中，在每次写操作后通过 API 验证：
 
 ```python
-# add → verify created
+# add → 验证已创建
 add_resp = client.post("/dmetadata/v1/syncTask/add", json={...})
 task_id = add_resp.json()["data"]
 
 page_resp = client.post("/dmetadata/v1/syncTask/pageTask", json={"currentPage": 1, "pageSize": 100})
 tasks = page_resp.json()["data"]["data"]
 created_task = next((t for t in tasks if t["id"] == task_id), None)
-assert created_task is not None, "Created task should appear in list"
+assert created_task is not None, "创建的任务应出现在列表中"
 assert created_task["taskName"] == expected_name
 
-# update → verify changed
+# update → 验证已更新
 update_resp = client.post("/dmetadata/v1/syncTask/update", json={"id": task_id, "taskName": "new_name"})
 assert update_resp.json()["code"] == 1
-# Re-query and verify
+# 重新查询并验证
 ...
 
-# delete → verify absent
+# delete → 验证已不存在
 delete_resp = client.post("/dmetadata/v1/syncTask/delete", json={"id": task_id})
 assert delete_resp.json()["code"] == 1
-# Re-query: task_id should not appear
+# 重新查询：task_id 应不再出现
 ...
 ```
 
-### 4.3 DB Assertions (Optional — when `db` fixture is not None)
+### 4.3 DB 断言（可选 — 当 `db` fixture 非 None 时）
 
-Only generate DB assertions for **write operations** (add, update, delete).
+仅对**写操作**（add、update、delete）生成 DB 断言。
 
-**Detection**: Check if DAO/Mapper SQL reveals the table name and key fields.
+**检测**：查看 DAO/Mapper SQL 是否揭示了表名和关键字段。
 
 ```python
-# After add: verify record exists in DB
+# add 后：验证 DB 中存在记录
 if db:
     record = db.query_one("SELECT * FROM sync_task WHERE id = %s", (task_id,))
-    assert record is not None, "Record should exist in DB after add"
-    assert record["is_deleted"] == 0, "New record should not be soft-deleted"
+    assert record is not None, "add 后 DB 中应存在记录"
+    assert record["is_deleted"] == 0, "新记录不应被软删除"
     assert record["task_name"] == expected_name
 
-# After delete: verify soft-deleted
+# delete 后：验证软删除
 if db:
     record = db.query_one("SELECT * FROM sync_task WHERE id = %s", (task_id,))
-    # Soft delete: record exists with is_deleted = 1
+    # 软删除：记录存在但 is_deleted = 1
     assert record is not None
-    assert record["is_deleted"] == 1, "Deleted record should be soft-deleted"
+    assert record["is_deleted"] == 1, "删除的记录应被软删除"
 ```
 
-**DB assertion rules**:
-- `add` → verify record exists, field values match
-- `update` → verify changed fields updated, verify untouched fields unchanged
-- `delete` → if soft delete pattern detected (`is_deleted` field), verify `is_deleted=1`; if hard delete, verify record absent
-- Wrap ALL DB assertions in `if db:` guard — DB is optional
+**DB 断言规则**：
+- `add` → 验证记录存在，字段值匹配
+- `update` → 验证变更字段已更新，未修改字段保持不变
+- `delete` → 若检测到软删除模式（`is_deleted` 字段），验证 `is_deleted=1`；若硬删除，验证记录不存在
+- 所有 DB 断言必须包裹在 `if db:` 守卫中 — DB 是可选的
 
-### 4.4 Idempotency Assertions
+### 4.4 幂等性断言
 
-Generate for endpoints that should be idempotent (e.g., `PUT` operations, status transitions):
+对应该幂等的接口生成（如 `PUT` 操作、状态转换）：
 
 ```python
-# Run the same update twice — second call should succeed or be a no-op
+# 执行相同更新两次 — 第二次调用应成功或为无操作
 second_resp = client.post("/dmetadata/v1/syncTask/update", json={"id": task_id, "taskName": "same_name"})
-assert second_resp.json()["code"] == 1, "Idempotent update should succeed on repeat"
+assert second_resp.json()["code"] == 1, "幂等更新重复执行应成功"
 ```
 
 ---
 
-## L5 — AI-Inferred Layer
+## L5 — AI 推断层（AI-Inferred Layer）
 
-**What it validates**: Implicit rules not expressed in annotations or obvious business logic — security boundaries, hidden limits, undocumented dependencies, implicit state constraints.
+**验证内容**：注解或明显业务逻辑中未表达的隐式规则——安全边界、隐藏限制、未文档化的依赖关系、隐式状态约束。
 
-**Generated from**: Deep source code analysis — reading implementation details, comments, edge case handling.
+**生成来源**：深度源码分析——阅读实现细节、注释、边缘情况处理。
 
-### Mandatory Requirements for Every L5 Assertion
+### 每条 L5 断言的强制要求
 
-Every L5 assertion MUST include a comment with:
-1. Source file path and line number
-2. Inference rationale (what you read that suggested this rule)
-3. Confidence level: `HIGH` or `SPECULATIVE`
+每条 L5 断言必须包含如下注释：
+1. 源文件路径和行号
+2. 推断依据（你读到了什么，促使你得出此规则）
+3. 置信度：`HIGH`（高置信度）或 `SPECULATIVE`（推测性）
 
 ```python
 def test_preview_data_implicit_permission(self, client: APIClient) -> None:
     """
-    L5 AI-inferred: DataTableService.previewData() calls judgeOpenDataPreviewByParam()
-    before returning data. Non-existent or unauthorized tableId should return error code.
-    Source: .repos/group/dt-center-assets/src/.../DataTableService.java:234
-    Confidence: HIGH
+    L5 AI 推断：DataTableService.previewData() 在返回数据前调用了 judgeOpenDataPreviewByParam()。
+    不存在或未授权的 tableId 应返回错误码。
+    来源：.repos/group/dt-center-assets/src/.../DataTableService.java:234
+    置信度：HIGH
     """
     resp = client.post("/dassets/v1/dataTable/previewData", json={"tableId": 999999999})
     assert resp.json()["code"] != 1, (
-        "L5[HIGH]: Non-existent tableId should trigger permission/existence check"
+        "L5[HIGH]：不存在的 tableId 应触发权限/存在性检查"
     )
 ```
 
-### L5 Inference Types
+### L5 推断类型
 
-Generate L5 assertions for these patterns when found in source code:
+在源码中发现以下模式时生成 L5 断言：
 
-| Type | Signal in source | Example assertion |
-|------|-----------------|-------------------|
-| **Implicit permission** | `judgeXxx()` or `checkXxx()` called before main logic | Non-admin user gets error |
-| **Hidden quantity limit** | `if (count >= MAX_XXX)` in Service | Cannot create more than N items |
-| **Implicit dependency** | Service checks existence of related entity before operating | Operation fails if parent deleted |
-| **Implicit state constraint** | Status checked without explicit annotation | Cannot update a published record |
-| **Security boundary** | Sensitive data filtered in Service before returning | Response never contains passwords/tokens |
+| 类型 | 源码信号 | 示例断言 |
+|------|---------|---------|
+| **隐式权限** | 主逻辑前调用了 `judgeXxx()` 或 `checkXxx()` | 非管理员用户收到错误 |
+| **隐藏数量限制** | Service 中有 `if (count >= MAX_XXX)` | 无法创建超过 N 条记录 |
+| **隐式依赖** | Service 在操作前检查关联实体是否存在 | 父记录被删除后操作失败 |
+| **隐式状态约束** | 无显式注解的状态检查 | 已发布记录不能更新 |
+| **安全边界** | Service 在返回前过滤敏感数据 | 响应中永远不包含密码/令牌 |
 
-### Confidence Levels
+### 置信度级别
 
-- `HIGH`: The source code contains an explicit check that directly implies the rule. The inference is unambiguous.
-- `SPECULATIVE`: The rule is inferred from patterns, naming conventions, or partial evidence. Mark clearly.
+- `HIGH`：源码中有明确的检查，直接说明了该规则，推断无歧义。
+- `SPECULATIVE`：规则从模式、命名约定或部分证据推断。需清楚标注。
 
 ```python
-# HIGH confidence: explicit check found
-# Source: UserService.java:89 — `if (!currentUser.getId().equals(resource.getOwnerId())) throw new ForbiddenException()`
-assert resp.json()["code"] != 1  # L5[HIGH]: non-owner cannot modify
+# HIGH 置信度：找到了明确的检查
+# 来源：UserService.java:89 — `if (!currentUser.getId().equals(resource.getOwnerId())) throw new ForbiddenException()`
+assert resp.json()["code"] != 1  # L5[HIGH]：非所有者不能修改
 
-# SPECULATIVE: inferred from naming pattern only
-# Source: DataMapService.java — method named "checkDataMapAccess" called before query, body not read
-assert resp.json()["code"] != 1  # L5[SPECULATIVE]: likely access check based on method name
+# SPECULATIVE：仅从命名模式推断
+# 来源：DataMapService.java — 查询前调用了名为 "checkDataMapAccess" 的方法，但未阅读方法体
+assert resp.json()["code"] != 1  # L5[SPECULATIVE]：根据方法名推断可能存在访问检查
 ```
 
-**Do not generate SPECULATIVE assertions in `interface/` tests** — only HIGH confidence for interface tests. All confidence levels are allowed in `scenariotest/`.
+**不要在 `interface/` 测试中生成 SPECULATIVE 断言** — 接口测试只允许 HIGH 置信度断言。`scenariotest/` 中允许所有置信度级别。
 
 ---
 
-## Summary: What to Generate Per Layer
+## 汇总：各层需生成的内容
 
-| Layer | Input | Output |
-|-------|-------|--------|
-| L1 | HAR `response.status`, `time_ms`, `Content-Type` header | `assert_protocol(response, ...)` call |
-| L2 | HAR response body JSON + source DTO/VO | Pydantic `BaseModel` + `model_validate(response.json())` |
-| L3 | Source enums, `@Min`/`@Max`, field names, pagination | `assert value in (...)`, range checks, format regex |
-| L4 | Source business logic, state machine, DAO SQL | Multi-step API assertions, optional `if db:` DB checks |
-| L5 | Deep source code reading, method names, comments | Commented assertions with `source:line` + confidence |
+| 层级 | 输入 | 输出 |
+|------|------|------|
+| L1 | HAR `response.status`、`time_ms`、`Content-Type` 请求头 | `assert_protocol(response, ...)` 调用 |
+| L2 | HAR 响应体 JSON + 源码 DTO/VO | Pydantic `BaseModel` + `model_validate(response.json())` |
+| L3 | 源码枚举、`@Min`/`@Max`、字段名、分页 | `assert value in (...)`、范围检查、格式正则 |
+| L4 | 源码业务逻辑、状态机、DAO SQL | 多步 API 断言，可选 `if db:` DB 检查 |
+| L5 | 深度源码阅读、方法名、注释 | 含 `来源:行号` + 置信度注释的断言 |

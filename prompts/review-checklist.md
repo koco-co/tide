@@ -1,268 +1,268 @@
-# Case Review Checklist
+# 用例审查清单
 
-> Referenced by: `agents/case-reviewer.md`
-> Purpose: Review criteria and auto-correction thresholds for the `case-reviewer` agent.
-
----
-
-## How to Use This Checklist
-
-1. Read every generated test file in the assigned scope.
-2. For each check below, record: `PASS`, `FAIL`, or `N/A`.
-3. Count total `FAIL` items and calculate the deviation rate.
-4. Apply the correction action based on the deviation threshold (§6).
-5. Output a structured `review-report.json` after review.
+> 引用方：`agents/case-reviewer.md`
+> 用途：`case-reviewer` Agent 的审查标准和自动修正阈值。
 
 ---
 
-## 1. Assertion Completeness
+## 使用说明
 
-Verify that each test file has the correct assertion layers per the Layer-to-Test-Type Matrix.
+1. 阅读指定范围内的每个生成测试文件。
+2. 对下方每项检查记录：`通过`、`失败` 或 `不适用`。
+3. 统计 `失败` 总数并计算偏差率。
+4. 根据偏差阈值（第 6 节）执行对应的修正动作。
+5. 审查完成后输出结构化的 `review-report.json`。
+
+---
+
+## 1. 断言完整性
+
+根据断言层与测试类型矩阵，验证每个测试文件是否包含正确的断言层。
 
 ```
               L1      L2      L3      L4      L5
-interface/    MUST    MUST    MUST    OPT     OPT
-scenariotest/ MUST    MUST    MUST    MUST    MUST
-unittest/     —       —       MUST    MUST    OPT
+interface/    必须    必须    必须    可选    可选
+scenariotest/ 必须    必须    必须    必须    必须
+unittest/     —       —       必须    必须    可选
 ```
 
-### 1.1 L1 Protocol Assertions — MUST for interface/ and scenariotest/
+### 1.1 L1 协议断言 — interface/ 和 scenariotest/ 必须包含
 
-| Check | What to verify |
-|-------|---------------|
-| `assert_protocol()` called | Every test method in interface/ and scenariotest/ calls `assert_protocol()` from `core/assertions.py` |
-| `expected_status` matches HAR | The `expected_status` argument matches the HAR `response.status` for that endpoint |
-| `max_time_ms` is reasonable | Value is `max(har_time_ms × 3, 1000)` — not hardcoded to an arbitrary value |
-| Content-Type present | `expected_content_type` is set and matches the HAR response Content-Type |
+| 检查项 | 验证内容 |
+|-------|---------|
+| 已调用 `assert_protocol()` | `interface/` 和 `scenariotest/` 中的每个测试方法都从 `core/assertions.py` 调用了 `assert_protocol()` |
+| `expected_status` 与 HAR 一致 | `expected_status` 参数与该接口 HAR 中的 `response.status` 一致 |
+| `max_time_ms` 合理 | 值为 `max(har_time_ms × 3, 1000)`，而非随意硬编码的值 |
+| 包含 Content-Type | `expected_content_type` 已设置且与 HAR 响应 Content-Type 一致 |
 
-### 1.2 L2 Structure Assertions — MUST for interface/ and scenariotest/
+### 1.2 L2 结构断言 — interface/ 和 scenariotest/ 必须包含
 
-| Check | What to verify |
-|-------|---------------|
-| Pydantic model exists | A `BaseModel` subclass is defined for each response type |
-| `model_validate()` called | Every test uses `model_validate(resp.json())`, not manual field checks |
-| Nested objects modeled | No `dict` types for nested JSON objects — should be `BaseModel` subclasses |
-| Optional fields correct | Fields that can be `null` in HAR are `Type \| None = None`, not required |
+| 检查项 | 验证内容 |
+|-------|---------|
+| Pydantic 模型已定义 | 每种响应类型都定义了 `BaseModel` 子类 |
+| 已调用 `model_validate()` | 每个测试使用 `model_validate(resp.json())`，而非手动字段检查 |
+| 嵌套对象已建模 | 嵌套 JSON 对象不使用 `dict` 类型——应为 `BaseModel` 子类 |
+| 可选字段正确 | HAR 中可为 `null` 的字段标注为 `Type \| None = None`，而非必填字段 |
 
-### 1.3 L3 Data Assertions — MUST for all test types that have L3
+### 1.3 L3 数据断言 — 所有包含 L3 的测试类型必须包含
 
-| Check | What to verify |
-|-------|---------------|
-| Enum validations present | If source has Enum/constants, there are `assert value in (...)` checks |
-| Business code checked | `assert body.code == BUSINESS_SUCCESS_CODE` on success scenarios |
-| Range checks present | `@Min`/`@Max` fields have range assertions |
-| Pagination invariants | Paginated responses have `totalCount >= 0`, list length consistency checks |
-| Named constants used | Enum values use module-level constants, not inline integers |
+| 检查项 | 验证内容 |
+|-------|---------|
+| 枚举校验已存在 | 若源码有枚举/常量，存在 `assert value in (...)` 检查 |
+| 已检查业务码 | 成功场景中有 `assert body.code == BUSINESS_SUCCESS_CODE` |
+| 范围检查已存在 | `@Min`/`@Max` 字段有对应的范围断言 |
+| 分页不变量已检查 | 分页响应有 `totalCount >= 0`、列表长度一致性检查 |
+| 使用了命名常量 | 枚举值使用模块级常量，而非内联整数 |
 
-### 1.4 L4 Business Assertions — MUST for scenariotest/
+### 1.4 L4 业务断言 — scenariotest/ 必须包含
 
-| Check | What to verify |
-|-------|---------------|
-| CRUD steps verify data | After `add`: re-query and verify item appears. After `update`: re-query and verify changed. After `delete`: re-query and verify absent |
-| State transitions verified | Status field is checked at each step of a state machine flow |
-| DB assertions guarded | All `if db:` DB assertion blocks exist where planned — and are properly guarded |
-| No DB writes | `DBHelper` is only called for `query_one`, `query_all`, `count` — never `execute` or `insert` |
+| 检查项 | 验证内容 |
+|-------|---------|
+| CRUD 步骤验证数据 | `add` 后重新查询并验证条目存在；`update` 后验证已变更；`delete` 后验证已消失 |
+| 状态转换已验证 | 在状态机流程的每个步骤中检查了状态字段 |
+| DB 断言已守卫 | 规划的 `if db:` DB 断言块存在且有正确守卫 |
+| 无 DB 写入 | `DBHelper` 只调用了 `query_one`、`query_all`、`count`——绝无 `execute` 或 `insert` |
 
-### 1.5 L5 AI-Inferred Assertions — MUST for scenariotest/, HIGH confidence only for interface/
+### 1.5 L5 AI 推断断言 — scenariotest/ 必须包含，interface/ 仅允许 HIGH 置信度
 
-| Check | What to verify |
-|-------|---------------|
-| Source comment present | Every L5 assertion has `# L5[CONFIDENCE]: source_file:line — rationale` above it |
-| Confidence labeled | `HIGH` or `SPECULATIVE` is explicitly stated in the comment |
-| SPECULATIVE excluded from interface/ | No `SPECULATIVE` confidence assertions in `tests/interface/` files |
-| Rationale is specific | The comment names a specific method, condition, or code pattern — not vague |
-
----
-
-## 2. Scenario Completeness
-
-Verify that the generated scenarios cover the required categories from `scenarios.json`.
-
-### 2.1 CRUD Closure Completeness
-
-For each CRUD group identified in `scenarios.json`:
-
-| Check | What to verify |
-|-------|---------------|
-| All 4 CRUD operations tested | create + read + update + delete steps all present in the CRUD test |
-| Verification steps present | After each write, the test re-queries to verify the change |
-| Cleanup in fixture | Created data is cleaned up via `yield` fixture, even on test failure |
-| Correct test type | CRUD closure tests are in `tests/scenariotest/`, not `tests/interface/` |
-
-### 2.2 Exception Path Coverage
-
-Every endpoint MUST have AT LEAST these exception scenarios:
-
-| Required exception scenario | What to check |
-|-----------------------------|---------------|
-| Resource not found | A test with a non-existent ID (e.g., `id=999999999`) |
-| Permission denied (when source has auth checks) | A test with invalid/missing authentication |
-
-Additional exception scenarios from `scenarios.json` must also be present.
-
-### 2.3 Boundary Value Coverage
-
-For endpoints with numeric parameters:
-
-| Check | What to verify |
-|-------|---------------|
-| Zero/negative values tested | `pageSize=0`, negative IDs, etc. |
-| Maximum values tested | Large `pageSize`, large IDs |
-| Boundary at constraint edge | Values at exactly `@Min` and `@Max` |
-
-### 2.4 Parameter Validation Coverage
-
-For endpoints with `@Valid`/`@NotNull` fields:
-
-| Check | What to verify |
-|-------|---------------|
-| Missing required field test | At least one test removes a required field |
-| Empty string test | At least one test sends `""` for a `@NotBlank` field |
+| 检查项 | 验证内容 |
+|-------|---------|
+| 来源注释已存在 | 每条 L5 断言上方有 `# L5[置信度]: 源文件:行号 — 推断依据` |
+| 置信度已标注 | 注释中明确写了 `HIGH` 或 `SPECULATIVE` |
+| SPECULATIVE 未出现在 interface/ 中 | `tests/interface/` 文件中没有 `SPECULATIVE` 置信度的断言 |
+| 推断依据具体 | 注释指明了具体的方法名、条件或代码模式——而非模糊描述 |
 
 ---
 
-## 3. Source Code Cross-Check
+## 2. 场景完整性
 
-After reviewing generated tests, do a quick source code scan to catch missed scenarios.
+验证生成的场景是否覆盖了 `scenarios.json` 中规定的必需类别。
 
-### 3.1 Controller Method Coverage
+### 2.1 CRUD 闭环完整性
+
+对 `scenarios.json` 中识别的每个 CRUD 组：
+
+| 检查项 | 验证内容 |
+|-------|---------|
+| 包含全部 4 种 CRUD 操作 | CRUD 测试中都有 create + read + update + delete 步骤 |
+| 包含验证步骤 | 每次写操作后，测试重新查询以验证变更 |
+| Fixture 中有清理逻辑 | 通过 `yield` fixture 清理创建的数据，即使测试失败也执行 |
+| 测试类型正确 | CRUD 闭环测试位于 `tests/scenariotest/` 而非 `tests/interface/` |
+
+### 2.2 异常路径覆盖
+
+每个接口**至少**必须包含以下异常场景：
+
+| 必须包含的异常场景 | 检查内容 |
+|----------------|---------|
+| 资源不存在 | 存在使用不存在 ID 的测试（如 `id=999999999`） |
+| 权限拒绝（当源码有认证检查时） | 存在使用无效/缺失认证的测试 |
+
+`scenarios.json` 中的其他异常场景也必须存在。
+
+### 2.3 边界值覆盖
+
+对有数值参数的接口：
+
+| 检查项 | 验证内容 |
+|-------|---------|
+| 零值/负值已测试 | `pageSize=0`、负 ID 等 |
+| 最大值已测试 | 大 `pageSize`、大 ID |
+| 约束边界值已测试 | 正好等于 `@Min` 和 `@Max` 的值 |
+
+### 2.4 参数校验覆盖
+
+对有 `@Valid`/`@NotNull` 字段的接口：
+
+| 检查项 | 验证内容 |
+|-------|---------|
+| 缺少必填字段的测试 | 至少有一个测试删除了必填字段 |
+| 空字符串测试 | 至少有一个测试为 `@NotBlank` 字段传入 `""` |
+
+---
+
+## 3. 源码交叉验证
+
+审查完生成的测试后，快速扫描源码以发现遗漏的场景。
+
+### 3.1 Controller 方法覆盖率
 
 ```bash
-# Find all @XxxMapping methods in the Controller
+# 找到 Controller 中所有 @XxxMapping 方法
 grep -n "@PostMapping\|@GetMapping\|@PutMapping\|@DeleteMapping" \
   .repos/group/repo/src/main/java/.../controller/DataMapController.java
 ```
 
-Check: Is every Controller method referenced by at least one test? If a method has no corresponding test, flag it.
+检查：每个 Controller 方法是否至少有一个测试对应？若某方法没有对应测试，标记为缺口。
 
-### 3.2 Exception Handler Coverage
+### 3.2 异常处理器覆盖率
 
 ```bash
-# Find all exception throws in the Service
+# 找到 Service 中所有异常抛出
 grep -n "throw new\|return Result.fail\|return R.error" \
   .repos/group/repo/src/main/java/.../service/DataMapService.java
 ```
 
-Check: For each distinct exception/error return in the Service, is there a test that triggers it?
+检查：Service 中每种不同的异常/错误返回，是否都有测试能触发它？
 
-### 3.3 Conditional Branch Coverage
+### 3.3 条件分支覆盖率
 
 ```bash
-# Find if/else branches in the Service
+# 找到 Service 中的 if/else 分支
 grep -n "if (" .repos/group/repo/src/main/java/.../service/DataMapService.java | head -20
 ```
 
-Check: Are there major business branches (not trivial null checks) that have no corresponding test scenario? Flag these as gaps.
+检查：是否存在重要业务分支（非简单空值检查）没有对应测试场景？将这些标记为缺口。
 
 ---
 
-## 4. Code Quality Checks
+## 4. 代码质量检查
 
-### 4.1 No Hardcoded Values
+### 4.1 无硬编码值
 
-| Check | What to look for |
-|-------|-----------------|
-| No inline magic numbers | No raw integers like `1`, `4`, `5` in assertions without named constants |
-| No inline URLs | No hardcoded base URLs in test methods — should use `client` fixture |
-| No inline credentials | No cookies, tokens, or passwords in test code |
+| 检查项 | 查找内容 |
+|-------|---------|
+| 无内联魔法数字 | 断言中无未用命名常量的原始整数（如 `1`、`4`、`5`） |
+| 无内联 URL | 测试方法中无硬编码的 base URL——应使用 `client` fixture |
+| 无内联凭据 | 测试代码中无 Cookie、令牌或密码 |
 
-Exception: Non-existent IDs (`999999999`) are allowed with a comment.
+例外：用于"不存在"场景的 ID（`999999999`）允许使用，但需加注释。
 
-### 4.2 No Mutation
+### 4.2 无可变操作
 
-| Check | What to look for |
-|-------|-----------------|
-| No fixture mutation | Test methods never modify fixture objects directly |
-| Frozen dataclasses used | Any custom value objects use `@dataclass(frozen=True)` |
-| No shared mutable state | No module-level mutable variables modified across tests |
+| 检查项 | 查找内容 |
+|-------|---------|
+| 无 fixture 修改 | 测试方法不直接修改 fixture 对象 |
+| 使用了冻结数据类 | 自定义值对象使用了 `@dataclass(frozen=True)` |
+| 无共享可变状态 | 无模块级可变变量在测试间被修改 |
 
-### 4.3 Proper Cleanup
+### 4.3 清理正确性
 
-| Check | What to look for |
-|-------|-----------------|
-| API fixtures use `yield` | Every fixture that creates data via API has cleanup code after `yield` |
-| Cleanup uses API | Cleanup uses `client.delete/post` — not direct DB operations |
-| `scope` is appropriate | Read-only fixtures use `scope="module"`, write fixtures use `scope="function"` |
+| 检查项 | 查找内容 |
+|-------|---------|
+| API fixture 使用 `yield` | 每个通过 API 创建数据的 fixture 在 `yield` 后有清理代码 |
+| 清理使用 API | 清理通过 `client.delete/post` 完成——而非直接 DB 操作 |
+| `scope` 合理 | 只读 fixture 使用 `scope="module"`，写 fixture 使用 `scope="function"` |
 
-### 4.4 Size Limits
+### 4.4 规模限制
 
-| Check | Limit | How to verify |
-|-------|-------|---------------|
-| File length | < 400 lines | `wc -l` on each generated file |
-| Test method length | < 50 lines | Count lines in each `def test_` method |
-| Nesting depth | ≤ 4 levels | Check for deeply nested `for`/`if` blocks |
+| 检查项 | 限制 | 验证方式 |
+|-------|------|---------|
+| 文件长度 | < 400 行 | 对每个生成文件执行 `wc -l` |
+| 测试方法长度 | < 50 行 | 统计每个 `def test_` 方法的行数 |
+| 嵌套深度 | ≤ 4 层 | 检查是否有深层嵌套的 `for`/`if` 块 |
 
-Files exceeding 400 lines must be split by endpoint group or scenario category.
+超过 400 行的文件必须按接口组或场景类别拆分。
 
-### 4.5 Type Annotations
+### 4.5 类型注解
 
-| Check | What to look for |
-|-------|-----------------|
-| All test methods annotated | `def test_xxx(self, client: APIClient) -> None:` |
-| All fixtures annotated | `def fixture_xxx(...) -> Generator[T, None, None]:` |
-| No bare `dict` or `list` | Use `dict[str, Any]` or `list[SubModel]` |
+| 检查项 | 查找内容 |
+|-------|---------|
+| 所有测试方法已注解 | `def test_xxx(self, client: APIClient) -> None:` |
+| 所有 fixture 已注解 | `def fixture_xxx(...) -> Generator[T, None, None]:` |
+| 无裸 `dict` 或 `list` | 使用 `dict[str, Any]` 或 `list[SubModel]` |
 
 ---
 
-## 5. Runnability Checks
+## 5. 可运行性检查
 
-### 5.1 Import Completeness
+### 5.1 导入完整性
 
-| Check | What to verify |
-|-------|---------------|
-| All used symbols imported | No `NameError` would occur — all names are imported or defined |
-| No circular imports | Internal imports don't create cycles |
-| `allure` imported | `import allure` present if allure decorators used |
-| `pytest` imported | `import pytest` present if fixtures or marks used |
+| 检查项 | 验证内容 |
+|-------|---------|
+| 所有使用的符号已导入 | 不会出现 `NameError`——所有名称都已导入或定义 |
+| 无循环导入 | 内部导入不构成循环依赖 |
+| 已导入 `allure` | 使用了 allure 装饰器时 `import allure` 存在 |
+| 已导入 `pytest` | 使用了 fixture 或标记时 `import pytest` 存在 |
 
-### 5.2 Fixture Availability
+### 5.2 Fixture 可用性
 
-| Check | What to verify |
-|-------|---------------|
-| `client` fixture used correctly | `client: APIClient` parameter available from `tests/conftest.py` |
-| `db` fixture used correctly | `db: DBHelper \| None` parameter available from `tests/conftest.py` |
-| Module-local fixtures defined | Any fixture used in the file is either defined in the file, its `conftest.py`, or `tests/conftest.py` |
-| No fixture name collisions | No fixture with same name redefined at multiple levels |
+| 检查项 | 验证内容 |
+|-------|---------|
+| `client` fixture 使用正确 | `client: APIClient` 参数可从 `tests/conftest.py` 获取 |
+| `db` fixture 使用正确 | `db: DBHelper \| None` 参数可从 `tests/conftest.py` 获取 |
+| 模块本地 fixture 已定义 | 文件中使用的 fixture 要么在本文件中定义，要么在对应的 `conftest.py` 或 `tests/conftest.py` 中定义 |
+| 无 fixture 名称冲突 | 没有在多个层级重复定义同名 fixture |
 
-### 5.3 Syntax and Collection
+### 5.3 语法与收集
 
-Run the following check as part of runnability verification:
+作为可运行性验证的一部分执行以下检查：
 
 ```bash
 uv run pytest --collect-only tests/
 ```
 
-Expected: All test files collected without errors. Any `SyntaxError`, `ImportError`, or `FixtureLookupError` is a **blocking issue** — fix before marking review complete.
+期望结果：所有测试文件无错误地被收集。任何 `SyntaxError`、`ImportError` 或 `FixtureLookupError` 都是**阻塞问题**——在标记审查完成前必须修复。
 
 ---
 
-## 6. Deviation Thresholds and Correction Actions
+## 6. 偏差阈值与修正动作
 
-Calculate the deviation rate after completing all checks:
+完成所有检查后计算偏差率：
 
 ```
-deviation_rate = (number of FAIL items) / (total applicable checks) × 100%
+偏差率 = （失败项数量）/（适用检查总数）× 100%
 ```
 
-| Deviation Rate | Action |
-|----------------|--------|
-| **< 15%** | **Silent fix** — correct issues directly using `Edit` tool, no user notification required |
-| **15% – 40%** | **Fix and flag** — correct all issues, then add a `flag_items` section to `review-report.json` listing what was changed and why |
-| **> 40%** | **Block and escalate** — do NOT auto-fix, write a detailed `review-report.json` describing all issues, notify user via AskUserQuestion, request guidance before proceeding |
+| 偏差率 | 处理动作 |
+|--------|---------|
+| **< 15%** | **静默修复** — 使用 `Edit` 工具直接修正问题，无需通知用户 |
+| **15% – 40%** | **修复并标记** — 修正所有问题，然后在 `review-report.json` 中添加 `flag_items` 部分，列出变更内容和原因 |
+| **> 40%** | **阻塞并升级** — 不得自动修复，写详细的 `review-report.json` 描述所有问题，通过 AskUserQuestion 通知用户，在继续前请求指导 |
 
-### When to use AskUserQuestion
+### 何时使用 AskUserQuestion
 
-Use `AskUserQuestion` for:
-- Deviation > 40% (always)
-- Ambiguous source code that could be interpreted multiple ways for L4/L5 assertions
-- Missing source code that prevents scenario generation for a planned test
-- Test execution failures that cannot be fixed after 2 auto-fix rounds
+以下情况使用 `AskUserQuestion`：
+- 偏差率 > 40%（始终）
+- 对 L4/L5 断言的解读存在歧义的源码
+- 缺少源码导致无法为规划中的测试生成场景
+- 经过 2 次自动修复后测试仍无法运行
 
 ---
 
-## 7. Review Report Output
+## 7. 审查报告输出
 
-After completing the review, write `.autoflow/review-report.json`:
+审查完成后，写入 `.autoflow/review-report.json`：
 
 ```json
 {
@@ -276,10 +276,10 @@ After completing the review, write `.autoflow/review-report.json`:
   "issues_found": [
     {
       "file": "tests/interface/dassets_datamap/test_datamap.py",
-      "check": "L1 Protocol Assertions",
+      "check": "L1 协议断言",
       "line": 45,
       "severity": "MEDIUM",
-      "description": "max_time_ms hardcoded to 5000 instead of calculated from HAR time (45ms × 3 = 135ms, min 1000ms)",
+      "description": "max_time_ms 硬编码为 5000，而非从 HAR 时间计算（45ms × 3 = 135ms，最小 1000ms）",
       "fixed": true
     }
   ],
@@ -288,8 +288,8 @@ After completing the review, write `.autoflow/review-report.json`:
 }
 ```
 
-Severity levels for issues:
-- `CRITICAL`: Assertion is completely missing (MUST layer not implemented)
-- `HIGH`: Assertion logic is wrong (wrong expected value, wrong method)
-- `MEDIUM`: Assertion is suboptimal (hardcoded, missing constants, not immutable)
-- `LOW`: Style issue (naming, missing annotation)
+问题严重程度级别：
+- `CRITICAL`：断言完全缺失（必须的断言层未实现）
+- `HIGH`：断言逻辑错误（期望值错误、方法错误）
+- `MEDIUM`：断言不够优化（硬编码、缺少常量、未使用不可变模式）
+- `LOW`：风格问题（命名、缺少注解）
