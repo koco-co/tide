@@ -22,7 +22,8 @@
 
 ```bash
 # 1. 安装插件（任选一种方式，详见下方"安装"章节）
-claude plugins add github:koco-co/sisyphus-autoflow
+claude plugins marketplace add github:koco-co/sisyphus-autoflow
+claude plugins install sisyphus-autoflow
 
 # 2. 进入你的测试项目目录（新项目或已有项目均可）
 cd /path/to/your-test-project
@@ -158,18 +159,38 @@ graph LR
 ### 方式一：Claude Code Plugin 安装（推荐）
 
 ```bash
-# 从 GitHub 安装插件
-claude plugins add github:koco-co/sisyphus-autoflow
+# 步骤 1: 添加仓库为 marketplace
+claude plugins marketplace add github:koco-co/sisyphus-autoflow
+
+# 步骤 2: 从 marketplace 安装插件
+claude plugins install sisyphus-autoflow
+
+# 验证安装
+claude plugins list
 ```
 
-安装完成后，`/using-autoflow` 和 `/autoflow` 命令即可在 Claude Code 中使用。插件文件会被下载到 `~/.claude/plugins/` 目录中。
+安装完成后，`/using-autoflow` 和 `/autoflow` 命令即可在 Claude Code 中使用。
 
-### 方式二：从 GitHub 手动下载
-
-适用于不想使用 `claude plugins add` 或需要自定义修改的场景。
+**更新插件：**
 
 ```bash
-# 克隆到 Claude Code 的 plugins 目录
+claude plugins update sisyphus-autoflow
+```
+
+**卸载插件：**
+
+```bash
+claude plugins uninstall sisyphus-autoflow
+```
+
+### 方式二：从 GitHub 手动下载到项目中
+
+适用于不想注册 marketplace，或需要自定义修改插件代码的场景。
+
+**全局安装（所有项目可用）：**
+
+```bash
+# 克隆到 Claude Code 全局 plugins 目录
 git clone https://github.com/koco-co/sisyphus-autoflow.git ~/.claude/plugins/sisyphus-autoflow
 
 # 安装插件的 Python 依赖
@@ -177,28 +198,50 @@ cd ~/.claude/plugins/sisyphus-autoflow
 uv sync
 ```
 
-安装后重启 Claude Code，`/using-autoflow` 和 `/autoflow` 命令即可使用。
-
-### 方式三：直接集成到项目中（不使用 Plugin 机制）
-
-如果你不想以 Plugin 形式安装，可以将本仓库直接克隆到项目中使用：
+**项目级安装（仅当前项目可用）：**
 
 ```bash
 cd /path/to/your-test-project
 
-# 将插件作为子目录克隆到项目中
-git clone https://github.com/koco-co/sisyphus-autoflow.git .autoflow-plugin
-
-# 手动复制 skills 和 agents 到 Claude Code 项目配置目录
-mkdir -p .claude/skills .claude/agents
-cp -r .autoflow-plugin/skills/* .claude/skills/
-cp -r .autoflow-plugin/agents/* .claude/agents/
+# 克隆到项目的 .claude/plugins 目录
+mkdir -p .claude/plugins
+git clone https://github.com/koco-co/sisyphus-autoflow.git .claude/plugins/sisyphus-autoflow
 
 # 安装插件的 Python 依赖
-cd .autoflow-plugin && uv sync && cd ..
+cd .claude/plugins/sisyphus-autoflow && uv sync && cd ../../..
+
+# 将 .claude/plugins/ 加入 .gitignore（可选，避免提交到项目仓库）
+echo ".claude/plugins/" >> .gitignore
 ```
 
-> 注意：使用此方式时，SKILL.md 中的 `${CLAUDE_SKILL_DIR}` 路径需要手动调整为 `.autoflow-plugin/` 的实际路径。
+安装后重启 Claude Code（或新开对话），`/using-autoflow` 和 `/autoflow` 命令即可使用。
+
+### 方式三：手动复制到项目配置目录
+
+如果你不想以 Plugin 形式安装，可以将 skills 和 agents 直接复制到项目的 `.claude/` 目录：
+
+```bash
+cd /path/to/your-test-project
+
+# 克隆仓库到临时目录
+git clone https://github.com/koco-co/sisyphus-autoflow.git /tmp/sisyphus-autoflow
+
+# 复制 skills、agents、prompts、scripts 到项目中
+mkdir -p .claude/skills .claude/agents
+cp -r /tmp/sisyphus-autoflow/skills/* .claude/skills/
+cp -r /tmp/sisyphus-autoflow/agents/* .claude/agents/
+cp -r /tmp/sisyphus-autoflow/prompts .claude/prompts
+cp -r /tmp/sisyphus-autoflow/scripts .claude/scripts
+cp -r /tmp/sisyphus-autoflow/templates .claude/templates
+
+# 安装 Python 依赖到项目中
+uv add pydantic jinja2 pyyaml httpx
+
+# 清理临时目录
+rm -rf /tmp/sisyphus-autoflow
+```
+
+> 注意：此方式需要手动调整 SKILL.md 中的 `${CLAUDE_SKILL_DIR}` 路径，使其指向 `.claude/` 下的实际位置。后续更新需要重新手动复制。
 
 ---
 

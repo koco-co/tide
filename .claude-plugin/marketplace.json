@@ -1,0 +1,22 @@
+{
+  "name": "sisyphus-autoflow",
+  "owner": {
+    "name": "koco-co",
+    "email": "koco-co@users.noreply.github.com"
+  },
+  "metadata": {
+    "description": "HAR 驱动、源码感知的 API 接口自动化测试插件",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "sisyphus-autoflow",
+      "description": "从 HAR 文件与后端源码生成带有 L1-L5 分层断言的 pytest 测试套件",
+      "version": "1.0.0",
+      "source": "./",
+      "homepage": "https://github.com/koco-co/sisyphus-autoflow",
+      "category": "testing",
+      "tags": ["api-testing", "har", "pytest", "automation", "ai"]
+    }
+  ]
+}
