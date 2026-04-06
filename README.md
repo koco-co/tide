@@ -22,7 +22,7 @@
 
 ```bash
 # 1. 安装插件（任选一种方式，详见下方"安装"章节）
-claude plugins marketplace add github:koco-co/sisyphus-autoflow
+claude plugins marketplace add koco-co/sisyphus-autoflow
 claude plugins install sisyphus-autoflow
 
 # 2. 进入你的测试项目目录（新项目或已有项目均可）
@@ -160,7 +160,7 @@ graph LR
 
 ```bash
 # 步骤 1: 添加仓库为 marketplace
-claude plugins marketplace add github:koco-co/sisyphus-autoflow
+claude plugins marketplace add koco-co/sisyphus-autoflow
 
 # 步骤 2: 从 marketplace 安装插件
 claude plugins install sisyphus-autoflow
