@@ -1,0 +1,36 @@
+[project]
+name = "sisyphus-autoflow"
+version = "0.1.0"
+description = "HAR-driven, source-aware API test automation plugin for Claude Code"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "pydantic>=2.10",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "httpx>=0.28",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "pyright>=1.1",
+    "pre-commit>=4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=scripts --cov-report=term-missing --strict-markers"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
