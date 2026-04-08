@@ -1,104 +1,115 @@
-<mxfile host="cli-anything-drawio" modified="2026-04-08" agent="sisyphus-autoflow" version="24.0.0">
-  <diagram id="workflow" name="AutoFlow Pipeline">
-    <mxGraphModel dx="700" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="1400" math="0" shadow="0">
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="cli-anything" agent="cli-anything-drawio/1.0.0" version="24.0.0">
+  <diagram id="diagram_1775649054787335" name="Page-1">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1280" pageHeight="720" math="0" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <!-- ===== 入口 ===== -->
-        <mxCell id="entry" value="&lt;b style='font-size:15px'&gt;/autoflow&lt;/b&gt;  &lt;font color='#558b2f'&gt;HAR 抓包文件&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcedc8;strokeColor=#689f38;fontSize=12;strokeWidth=2;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="150" y="20" width="400" height="50" as="geometry"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_1775649063406055" value="AutoFlow 工作流总览" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=24;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="340.0" y="20.0" width="300.0" height="40.0" as="geometry" />
         </mxCell>
-
-        <!-- ===== 预检 ===== -->
-        <mxCell id="precheck" value="&lt;b&gt;预检阶段&lt;/b&gt;　HAR 校验 · 认证头扫描 · 配置加载 · 恢复检查" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#bdbdbd;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="150" y="100" width="400" height="40" as="geometry"/>
+        <mxCell id="v_1775649183869290" value="第零步：环境检测 + 智能分类" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="80.0" width="380.0" height="50.0" as="geometry" />
         </mxCell>
-
-        <!-- ===== Wave 1 ===== -->
-        <mxCell id="w1bg" value="" style="rounded=1;fillColor=#e8f5e9;strokeColor=#a5d6a7;strokeWidth=2;opacity=40;" vertex="1" parent="1">
-          <mxGeometry x="60" y="180" width="580" height="170" as="geometry"/>
+        <mxCell id="v_1775649184012856" value="项目类型？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="400.0" y="160.0" width="180.0" height="80.0" as="geometry" />
         </mxCell>
-        <mxCell id="w1label" value="&lt;b style='font-size:14px;color:#2e7d32'&gt;Wave 1&lt;/b&gt;　&lt;font color='#4caf50'&gt;解析与准备&lt;/font&gt;　&lt;font color='#81c784' style='font-size:10px'&gt;⚡ 并行&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="80" y="185" width="300" height="30" as="geometry"/>
+        <mxCell id="v_1775649184121452" value="分支 A：已有自动化项目" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80.0" y="280.0" width="280.0" height="40.0" as="geometry" />
         </mxCell>
-        <mxCell id="w1a" value="&lt;b&gt;har-parser&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:10px'&gt;haiku · HAR 过滤去重&lt;br&gt;服务分组 · 仓库匹配&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#4caf50;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="80" y="225" width="250" height="55" as="geometry"/>
+        <mxCell id="v_1775649184265481" value="project-scanner Agent（opus · 7 维度扫描）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="80.0" y="340.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
-        <mxCell id="w1b" value="&lt;b&gt;repo-syncer&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:10px'&gt;haiku · Git 仓库同步&lt;br&gt;Controller 路由索引&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#4caf50;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="370" y="225" width="250" height="55" as="geometry"/>
+        <mxCell id="v_1775649184373916" value="交互式逐项确认（7 个 AskUserQuestion）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="80.0" y="410.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
-        <mxCell id="w1out" value="&lt;font color='#2e7d32'&gt;✓ parsed.json　✓ repo-status.json&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f8e9;strokeColor=#aed581;fontSize=10;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="80" y="300" width="540" height="30" as="geometry"/>
+        <mxCell id="v_1775649184482566" value="分支 B：新项目 / 非自动化" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620.0" y="280.0" width="280.0" height="40.0" as="geometry" />
         </mxCell>
-
-        <!-- ===== Wave 2 ===== -->
-        <mxCell id="w2bg" value="" style="rounded=1;fillColor=#fff3e0;strokeColor=#ffcc80;strokeWidth=2;opacity=40;" vertex="1" parent="1">
-          <mxGeometry x="60" y="390" width="580" height="200" as="geometry"/>
+        <mxCell id="v_1775649184625375" value="行业画像收集（5 个问题）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="620.0" y="340.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
-        <mxCell id="w2label" value="&lt;b style='font-size:14px;color:#e65100'&gt;Wave 2&lt;/b&gt;　&lt;font color='#ff9800'&gt;场景分析&lt;/font&gt;　&lt;font color='#ffb74d' style='font-size:10px'&gt;交互式&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="80" y="395" width="300" height="30" as="geometry"/>
+        <mxCell id="v_1775649184734659" value="industry-researcher Agent（sonnet · WebSearch）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="620.0" y="410.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
-        <mxCell id="w2a" value="&lt;b&gt;scenario-analyzer&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:10px'&gt;opus · 源码追踪 Controller → Service → DAO&lt;br&gt;推断 8 种场景类别 · 规划 L1-L5 断言层级&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#f57c00;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="80" y="435" width="350" height="60" as="geometry"/>
+        <mxCell id="v_1775649184843189" value="2-3 方案推荐 + 试运行" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="620.0" y="480.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
-        <mxCell id="w2confirm" value="&lt;b&gt;👤&lt;/b&gt;&lt;br&gt;&lt;b&gt;用户确认&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f9a825;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="470" y="430" width="110" height="70" as="geometry"/>
+        <mxCell id="v_1775649184954980" value="第三步：源码仓库配置" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="570.0" width="380.0" height="40.0" as="geometry" />
         </mxCell>
-        <mxCell id="w2out" value="&lt;font color='#e65100'&gt;✓ scenarios.json　✓ generation-plan.json&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#ffcc80;fontSize=10;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="80" y="520" width="540" height="30" as="geometry"/>
+        <mxCell id="v_1775649185064201" value="第四步：连接配置（按鉴权分级）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="630.0" width="380.0" height="40.0" as="geometry" />
         </mxCell>
-
-        <!-- ===== Wave 3 ===== -->
-        <mxCell id="w3bg" value="" style="rounded=1;fillColor=#e3f2fd;strokeColor=#90caf9;strokeWidth=2;opacity=40;" vertex="1" parent="1">
-          <mxGeometry x="60" y="630" width="580" height="170" as="geometry"/>
+        <mxCell id="v_1775649185175819" value="第五步：脚手架 + CLAUDE.md + 配置验证" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="690.0" width="380.0" height="40.0" as="geometry" />
         </mxCell>
-        <mxCell id="w3label" value="&lt;b style='font-size:14px;color:#1565c0'&gt;Wave 3&lt;/b&gt;　&lt;font color='#1976d2'&gt;代码生成&lt;/font&gt;　&lt;font color='#64b5f6' style='font-size:10px'&gt;⚡ 并行扇出&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="80" y="635" width="300" height="30" as="geometry"/>
+        <mxCell id="v_1775649185288404" value="/autoflow &lt;har-path&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="350.0" y="770.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
-        <mxCell id="w3a" value="&lt;b&gt;case-writer #1&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:9px'&gt;sonnet · 模块 A&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="80" y="675" width="155" height="45" as="geometry"/>
+        <mxCell id="v_1775649185474778" value="Wave 1：解析与准备（并行）har-parser + repo-syncer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="80.0" y="850.0" width="200.0" height="60.0" as="geometry" />
         </mxCell>
-        <mxCell id="w3b" value="&lt;b&gt;case-writer #2&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:9px'&gt;sonnet · 模块 B&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="260" y="675" width="155" height="45" as="geometry"/>
+        <mxCell id="v_1775649185586976" value="Wave 2：场景分析 scenario-analyzer + 行业场景" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="850.0" width="200.0" height="60.0" as="geometry" />
         </mxCell>
-        <mxCell id="w3c" value="&lt;b&gt;case-writer #N&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:9px'&gt;sonnet · 模块 ...&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="440" y="675" width="155" height="45" as="geometry"/>
+        <mxCell id="v_1775649185700355" value="Wave 3：代码生成 case-writer ×N + 行业断言" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="520.0" y="850.0" width="200.0" height="60.0" as="geometry" />
         </mxCell>
-        <mxCell id="w3out" value="&lt;font color='#1565c0'&gt;✓ py_compile 验证　✓ import 检查　✓ tests/*.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#7986cb;fontSize=10;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="80" y="740" width="540" height="30" as="geometry"/>
+        <mxCell id="v_1775649185814336" value="Wave 4：评审与交付 case-reviewer + 行业合规" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="740.0" y="850.0" width="200.0" height="60.0" as="geometry" />
         </mxCell>
-
-        <!-- ===== Wave 4 ===== -->
-        <mxCell id="w4bg" value="" style="rounded=1;fillColor=#fce4ec;strokeColor=#f48fb1;strokeWidth=2;opacity=40;" vertex="1" parent="1">
-          <mxGeometry x="60" y="840" width="580" height="200" as="geometry"/>
+        <mxCell id="e_1775649185927943" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649183869290" target="v_1775649184012856">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="w4label" value="&lt;b style='font-size:14px;color:#b71c1c'&gt;Wave 4&lt;/b&gt;　&lt;font color='#e53935'&gt;评审与交付&lt;/font&gt;　&lt;font color='#ef9a9a' style='font-size:10px'&gt;交互式&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="80" y="845" width="300" height="30" as="geometry"/>
+        <mxCell id="e_1775649185964437" value="existing_auto" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184012856" target="v_1775649184121452">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="w4a" value="&lt;b&gt;case-reviewer&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:10px'&gt;opus · 5 维评审（断言 · 场景 · 源码 · 质量 · 可运行性）&lt;br&gt;自动修复 ≤2 轮 · 偏差率门控&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#e53935;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="80" y="885" width="350" height="60" as="geometry"/>
+        <mxCell id="e_1775649186002241" value="new" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184012856" target="v_1775649184482566">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="w4b" value="&lt;b&gt;pytest&lt;/b&gt;&lt;br&gt;&lt;font color='#666' style='font-size:10px'&gt;执行 + allure&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#e53935;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="470" y="885" width="120" height="60" as="geometry"/>
+        <mxCell id="e_1775649186039485" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184121452" target="v_1775649184265481">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="w4out" value="&lt;font color='#b71c1c'&gt;✓ review-report.json　✓ execution-report.json　✓ 验收报告&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#f48fb1;fontSize=10;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="80" y="965" width="540" height="30" as="geometry"/>
+        <mxCell id="e_1775649186077963" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184265481" target="v_1775649184373916">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- ===== 最终输出 ===== -->
-        <mxCell id="output" value="&lt;b style='font-size:15px'&gt;pytest 测试套件&lt;/b&gt;　&lt;font color='#558b2f'&gt;interface + scenariotest · L1-L5 分层断言 · allure 报告&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcedc8;strokeColor=#689f38;fontSize=12;strokeWidth=2;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="100" y="1060" width="500" height="50" as="geometry"/>
+        <mxCell id="e_1775649186116686" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184482566" target="v_1775649184625375">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- ===== 连接箭头 ===== -->
-        <mxCell id="e1" style="rounded=1;strokeColor=#9e9e9e;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="entry" target="precheck"/>
-        <mxCell id="e2" style="rounded=1;strokeColor=#388e3c;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="precheck" target="w1label"/>
-        <mxCell id="e3" style="rounded=1;strokeColor=#f57c00;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="w1out" target="w2label"/>
-        <mxCell id="e4" style="rounded=1;strokeColor=#1976d2;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="w2out" target="w3label"/>
-        <mxCell id="e5" style="rounded=1;strokeColor=#e53935;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="w3out" target="w4label"/>
-        <mxCell id="e6" style="rounded=1;strokeColor=#689f38;strokeWidth=3;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="w4out" target="output"/>
-
+        <mxCell id="e_1775649186155864" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184625375" target="v_1775649184734659">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186195463" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184734659" target="v_1775649184843189">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186234357" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184373916" target="v_1775649184954980">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186272038" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184843189" target="v_1775649184954980">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186310207" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649184954980" target="v_1775649185064201">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186348275" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649185064201" target="v_1775649185175819">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186386389" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649185175819" target="v_1775649185288404">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186424051" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649185288404" target="v_1775649185474778">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186461942" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649185474778" target="v_1775649185586976">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186499969" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649185586976" target="v_1775649185700355">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_1775649186538037" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="v_1775649185700355" target="v_1775649185814336">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
