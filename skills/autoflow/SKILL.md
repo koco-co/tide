@@ -49,6 +49,11 @@ AutoFlow 需要已初始化的项目。
 
 读取 `autoflow-config.yaml`（若存在），提取以下配置：
 - `test_types` — 用户选择的测试类型列表（如 `["interface", "scenario"]`），默认为全部类型
+- `industry` — 行业画像（若存在），提取 `domain`、`compliance`、`special_needs`
+- `solution.industry_specific` — 行业特定测试策略列表
+- `project.code_style` — 已有项目的代码风格配置（若 `project.type == "existing"`）
+
+若 `industry` 段存在，设置 `industry_mode = true`，后续波次传递行业上下文给下游 Agent。
 
 **3. 无源码降级检测**
 
@@ -277,6 +282,13 @@ Agent(
 
     仅生成以下测试类型：<test_types>
 
+    若 industry_mode = true：
+    同时读取：${CLAUDE_SKILL_DIR}/../../prompts/industry-assertions.md
+    行业：<industry.domain>
+    合规要求：<industry.compliance>
+    行业特定策略：<solution.industry_specific>
+    在生成场景时，为写入类接口追加行业特定场景类别。
+
     生成 .autoflow/scenarios.json：
     {
       services: [
@@ -390,6 +402,13 @@ Agent(
       - 基于 Fixture 的认证与客户端初始化（使用检测到的认证方式）
       - 按 scenarios.json 中指定的层级编写断言
       - 低置信度断言添加 @pytest.mark.low_confidence 标记
+
+    若 industry_mode = true：
+    同时读取：${CLAUDE_SKILL_DIR}/../../prompts/industry-assertions.md
+    行业：<industry.domain>
+    在生成测试代码时，在标准 L1-L5 断言之后追加行业特定断言。
+    行业断言标注格式：# Industry[<行业>]: <说明>
+
       - 添加类型注解和文档字符串，不硬编码凭证
   "
 )
