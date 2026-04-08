@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Sisyphus--AutoFlow-1.1-7C3AED?style=for-the-badge&logoColor=white">
-  <img alt="Sisyphus-AutoFlow" src="https://img.shields.io/badge/Sisyphus--AutoFlow-1.1-7C3AED?style=for-the-badge&logoColor=white">
+  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Sisyphus--AutoFlow-1.2-7C3AED?style=for-the-badge&logoColor=white">
+  <img alt="Sisyphus-AutoFlow" src="https://img.shields.io/badge/Sisyphus--AutoFlow-1.2-7C3AED?style=for-the-badge&logoColor=white">
 </picture>
 
 # <img src="https://em-content.zobj.net/source/apple/391/test-tube_1f9ea.png" width="32" /> Sisyphus-AutoFlow
@@ -25,7 +25,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=flat-square&logo=anthropic&logoColor=white)](https://claude.ai/code)
 [![pytest](https://img.shields.io/badge/pytest-Framework-0A9EDC?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](./pyproject.toml)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg?style=flat-square)](./pyproject.toml)
 
 <br />
 
@@ -64,6 +64,9 @@
 | **L1-L5 断言** | 从 HTTP 状态码（L1）到 AI 推断的隐式业务规则（L5），5 层断言递进覆盖 |
 | **5 Agent 协同** | har-parser · repo-syncer · scenario-analyzer · case-writer · case-reviewer |
 | **4 波并行编排** | 解析 → 分析 → 生成 → 评审，波次内并行、波次间串行，充分利用 AI 能力 |
+| **智能项目分类** | 自动检测已有自动化项目 vs 新项目，阈值保守、不误判覆盖 |
+| **行业感知** | 收集行业画像 → AI 调研 → 2-3 方案推荐，行业断言全流程贯穿 |
+| **方案推荐** | 基于行业/团队/鉴权复杂度，推荐完整技术方案（框架+CI+报告+Mock+数据管理） |
 | **旧项目无侵入** | 自动检测已有项目的测试目录、API 封装、断言风格，沿用原有规范 |
 | **交互式确认** | 每个关键节点提供确认清单，支持 `--quick` 跳过和断点恢复 |
 | **验证透明** | 每波次结束明确输出验证摘要（py_compile / import 检查 / 断言覆盖率） |
@@ -211,13 +214,29 @@ cd /path/to/your-test-project
 
 交互式向导会引导完成：
 
+交互式向导会根据项目类型自动选择路径：
+
+**已有自动化项目（自动检测）：**
+
 | 步骤 | 说明 |
 |------|------|
-| 环境检测 | Python 3.12+ · uv/pip · Git · 插件依赖 |
-| 项目扫描 | 已有项目自动检测测试目录、API 封装模式、断言风格 |
-| 测试类型选择 | 多选：interface / scenariotest / unittest |
+| 环境检测 + 智能分类 | 自动判定为已有项目 |
+| 深度扫描 (project-scanner) | opus Agent 通读项目代码，输出 7 维度分析 |
+| 交互式确认 | 架构、代码风格、鉴权、工具链、Allure、数据管理、行业 — 逐项确认 |
 | 仓库配置 | 输入后端仓库 URL，自动 clone + URL 前缀映射 |
-| 连接配置 | Base URL · 认证方式 · 数据库（可选）· 通知（可选） |
+| 连接配置 | Base URL · 认证（可复用旧项目逻辑）· 数据库 · 通知 |
+| 配置验证 | 自动 smoke test：URL 可达 + 认证有效 + DB 连接 |
+
+**新项目 / 非自动化项目：**
+
+| 步骤 | 说明 |
+|------|------|
+| 环境检测 + 智能分类 | 自动判定为新项目 |
+| 行业画像收集 | 行业、系统类型、团队规模、特殊需求、鉴权复杂度 |
+| AI 调研 (industry-researcher) | sonnet Agent 网络搜索行业最佳实践 |
+| 方案推荐 | 展示 2-3 个完整技术方案，用户选择 |
+| 方案试运行 | 生成最小示例测试文件，确认风格后全量生成 |
+| 仓库配置 + 连接配置 + 配置验证 | 同上 |
 
 生成配置文件：`repo-profiles.yaml` · `autoflow-config.yaml` · `CLAUDE.md`
 
@@ -275,18 +294,19 @@ cd /path/to/existing-test-project
 # 在 Claude Code 中：/using-autoflow
 ```
 
-**向导会自动检测并适配已有项目**：
+**向导会自动检测项目类型，派 Agent 深度扫描 7 个维度：**
 
-| 检测项 | 行为 |
-|--------|------|
-| 测试目录（`testcases/` / `tests/`） | 沿用已有目录，不创建新目录 |
-| API 封装（Enum / 常量 / inline） | 生成代码遵循已有模式 |
-| Request 工具类（BaseRequests / httpx） | 继承已有基类 |
-| 断言风格（`resp['code'] == 1`） | 使用项目已有的断言模式 |
-| 认证方式（Cookie / Token） | 提供「复用旧项目逻辑」选项 |
-| `.env` 文件 | 不修改，AutoFlow 配置写入 `.autoflow/config.yaml` |
+| 维度 | 检测内容 |
+|------|---------|
+| 项目架构 | 测试入口目录、子目录结构、conftest 层级 |
+| 代码风格 | API 封装模式、Request 工具类、断言风格 |
+| 鉴权方式 | 认证类位置、Cookie/Token/OAuth2 |
+| 依赖工具链 | Python 版本、包管理器、HTTP 客户端 |
+| Allure 模式 | 装饰器层级、step 使用率 |
+| 数据管理 | 数据来源、parametrize、清理策略 |
+| 行业上下文 | AI 推断行业/领域、合规要求 |
 
-**原则：项目已有规范 > 插件默认规范，不覆盖、不破坏。**
+每个维度逐项确认后写入配置。**原则：项目已有规范 > 行业规则 > 插件默认规范。**
 
 ### 场景 C：纯脚本模式（不使用 Claude Code）
 
@@ -337,6 +357,29 @@ project:
     auth_method: reuse    # cookie | token | password | none | reuse
     allure_enabled: true
   package_manager: pip    # uv | pip | poetry
+
+# 行业信息（由 /using-autoflow 自动生成）
+industry:
+  domain: "金融/银行"
+  system_type: "微服务架构"
+  team_size: "3-5人"
+  auth_complexity: complex
+  special_needs: ["multi_env"]
+  compliance: ["等保三级", "数据脱敏"]
+
+solution:
+  name: "金融级 API 自动化方案"
+  fit_score: 92
+  stack:
+    framework: pytest
+    http_client: httpx
+    report: allure
+    mock: wiremock
+    ci: github_actions
+    data_management: factory_boy
+  industry_specific:
+    - "金融交易幂等性断言"
+    - "敏感数据字段脱敏验证"
 ```
 
 ### 环境变量（.env）
@@ -364,13 +407,16 @@ sisyphus-autoflow/
 │   ├── repo-syncer.md               #   仓库同步（haiku）
 │   ├── scenario-analyzer.md         #   场景分析（opus）
 │   ├── case-writer.md               #   代码生成（sonnet）
-│   └── case-reviewer.md             #   评审修复（opus）
+│   ├── case-reviewer.md             #   评审修复（opus）
+│   ├── project-scanner.md           #   项目深度扫描（opus）
+│   └── industry-researcher.md       #   行业调研（sonnet）             #   评审修复（opus）
 ├── prompts/                         # Agent 规范文档
 │   ├── assertion-layers.md          #   L1-L5 断言规范
 │   ├── code-style-python.md         #   Python 测试代码风格
 │   ├── har-parse-rules.md           #   HAR 解析过滤规则
 │   ├── review-checklist.md          #   评审清单与质量标准
-│   └── scenario-enrich.md           #   8 种场景类别生成策略
+│   ├── scenario-enrich.md           #   8 种场景类别生成策略
+│   └── industry-assertions.md       #   行业特定断言规范           #   8 种场景类别生成策略
 ├── scripts/                         # Python 工具库
 │   ├── har_parser.py                #   HAR 解析与去重
 │   ├── scaffold.py                  #   脚手架生成（new/existing 模式）
@@ -410,8 +456,9 @@ make fmt        # 代码格式化
 | 版本 | 主要特性 |
 |------|---------|
 | **v1.0** | HAR 解析 · 4 波编排 · L1-L5 断言 · DB 验证 · 检查点恢复 · 外部通知 |
-| **v1.1**（当前） | 旧项目适配 · 验证透明度 · 验收命令优化 · 路径修复 · 测试类型选择 |
-| v1.2 | 多语言后端支持（TypeScript · Go · Python 后端） |
+| **v1.1** | 旧项目适配 · 验证透明度 · 验收命令优化 · 路径修复 · 测试类型选择 |
+| **v1.2**（当前） | 智能项目分类 · 7 维度深度扫描 · 行业画像与 AI 调研 · 方案推荐 · 配置验证 · 全流程行业感知 |
+| v1.3 | 多语言后端支持（TypeScript · Go · Python 后端） |
 | v1.3 | OpenAPI / Swagger spec 作为补充输入源 |
 | v2.0 | UI 自动化集成（Playwright）· 性能测试 |
 
