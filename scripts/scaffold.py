@@ -1,5 +1,5 @@
 """脚手架生成器 — 从 Jinja2 模板创建新的项目目录结构。"""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -148,6 +148,7 @@ class ScaffoldConfig:
     project_name: str
     base_url: str
     db_configured: bool = False
+    config_vars: dict = field(default_factory=dict)
 
 
 def _write_if_not_exists(path: Path, content: str) -> bool:
@@ -185,6 +186,15 @@ def append_to_existing_project(config: ScaffoldConfig) -> list[str]:
     else:
         gitignore_path.write_text(_GITIGNORE)
         created.append(".gitignore")
+
+    # 3. autoflow-config.yaml（若有配置变量）
+    if config.config_vars:
+        config_env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), keep_trailing_newline=True)
+        autoflow_config_template = TEMPLATES_DIR / "autoflow-config.yaml.j2"
+        if autoflow_config_template.exists():
+            config_content = config_env.get_template("autoflow-config.yaml.j2").render(**config.config_vars)
+            if _write_if_not_exists(root / "autoflow-config.yaml", config_content):
+                created.append("autoflow-config.yaml")
 
     return created
 
@@ -263,6 +273,14 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
     # 9. Makefile
     if _write_if_not_exists(root / "Makefile", _MAKEFILE):
         created.append("Makefile")
+
+    # 10. autoflow-config.yaml（若有配置变量）
+    if config.config_vars:
+        autoflow_config_template = TEMPLATES_DIR / "autoflow-config.yaml.j2"
+        if autoflow_config_template.exists():
+            config_content = env.get_template("autoflow-config.yaml.j2").render(**config.config_vars)
+            if _write_if_not_exists(root / "autoflow-config.yaml", config_content):
+                created.append("autoflow-config.yaml")
 
     return created
 
