@@ -18,6 +18,12 @@
 
 **以上规则优先于本文档中的默认规范。** 当已有项目风格与 AutoFlow 默认风格冲突时，以已有项目风格为准。
 
+### 行业特定代码规则
+
+当 `autoflow-config.yaml` 中存在 `industry.domain` 字段时，还需遵循 `prompts/industry-assertions.md` 中对应行业的断言规范。
+
+优先级：已有项目风格 > 行业特定规则 > AutoFlow 默认规范。
+
 ---
 
 ## 1. 文件结构
