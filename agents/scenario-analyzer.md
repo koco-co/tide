@@ -137,6 +137,15 @@ model: opus
 
 每个 worker 条目代表一次独立的 case-writer agent 调用。
 
+## 输出校验
+
+写入 .autoflow/scenarios.json 后，必须自行验证：
+1. generation_plan 中每个条目的 endpoint_ids 数组非空
+2. 所有 endpoint_ids 都能在 services[].endpoints[].id 中找到
+3. 每个 endpoint 至少有一个 har_direct 类型的场景
+
+若校验失败，修复后重新写入。
+
 ## 输出报告
 
 ```

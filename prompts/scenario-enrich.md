@@ -325,6 +325,19 @@ expected: status 200, response.code != 1（或 status 404）
 
 ---
 
+## 输出校验规则
+
+generation_plan 必须满足以下约束：
+
+1. **endpoint_ids 非空**：每个 worker 条目的 endpoint_ids 数组至少包含一个 ID
+2. **ID 引用有效**：所有 endpoint_ids 必须能在 services[].endpoints[].id 中找到
+3. **完全覆盖**：services 中每个 endpoint 至少被分配给一个 worker
+4. **HAR 场景完整**：每个 endpoint 至少有一个 `har_direct` 类型的基础场景
+
+若校验失败，必须修复后再写出 scenarios.json。
+
+---
+
 ## 3. CRUD 闭环检测算法
 
 使用此算法查找 CRUD 闭环组：

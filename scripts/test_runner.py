@@ -20,9 +20,19 @@ def build_pytest_command(
     collect_only: bool = False,
     allure_dir: Path | None = None,
     extra_args: list[str] | None = None,
+    runner: str = "uv",  # "uv" | "pip" | "poetry" | "direct"
 ) -> list[str]:
     """构建用于子进程执行的 pytest 命令列表。"""
-    cmd = ["uv", "run", "pytest", str(test_path), "-v"]
+    if runner == "uv":
+        cmd = ["uv", "run", "pytest"]
+    elif runner == "poetry":
+        cmd = ["poetry", "run", "pytest"]
+    elif runner == "direct":
+        cmd = ["python", "-m", "pytest"]
+    else:  # pip or fallback
+        cmd = ["pytest"]
+
+    cmd.extend([str(test_path), "-v"])
 
     if collect_only:
         cmd.append("--collect-only")
@@ -60,9 +70,10 @@ def run_tests(
     collect_only: bool = False,
     allure_dir: Path | None = None,
     timeout: int = 300,
+    runner: str = "uv",  # "uv" | "pip" | "poetry" | "direct"
 ) -> TestResult:
     """执行 pytest 并返回解析后的 TestResult。"""
-    cmd = build_pytest_command(test_path, collect_only=collect_only, allure_dir=allure_dir)
+    cmd = build_pytest_command(test_path, collect_only=collect_only, allure_dir=allure_dir, runner=runner)
 
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)

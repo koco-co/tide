@@ -161,6 +161,34 @@ def _write_if_not_exists(path: Path, content: str) -> bool:
     return True
 
 
+def append_to_existing_project(config: ScaffoldConfig) -> list[str]:
+    """为已有项目追加 AutoFlow 必需文件，不覆盖现有结构。"""
+    root = config.project_root
+    created: list[str] = []
+
+    # 1. 只创建 .autoflow 目录
+    for d in [".autoflow", ".repos", ".trash"]:
+        (root / d).mkdir(parents=True, exist_ok=True)
+
+    # 2. 追加 .gitignore 条目（不覆盖）
+    gitignore_path = root / ".gitignore"
+    autoflow_entries = [".autoflow/", ".repos/", ".trash/"]
+    if gitignore_path.exists():
+        existing = gitignore_path.read_text()
+        new_entries = [e for e in autoflow_entries if e not in existing]
+        if new_entries:
+            with open(gitignore_path, "a") as f:
+                f.write("\n# AutoFlow\n")
+                for entry in new_entries:
+                    f.write(entry + "\n")
+            created.append(".gitignore (appended)")
+    else:
+        gitignore_path.write_text(_GITIGNORE)
+        created.append(".gitignore")
+
+    return created
+
+
 def generate_project(config: ScaffoldConfig) -> list[str]:
     """从模板生成脚手架项目。
 
@@ -237,3 +265,27 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
         created.append("Makefile")
 
     return created
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--stack", default="recommended")
+    parser.add_argument("--base-url", default="http://localhost")
+    parser.add_argument("--mode", choices=["new", "existing"], default="new")
+    parser.add_argument("--project-root", default=".")
+    args = parser.parse_args()
+
+    config = ScaffoldConfig(
+        project_root=Path(args.project_root),
+        project_name=Path(args.project_root).name,
+        base_url=args.base_url,
+    )
+
+    if args.mode == "existing":
+        created = append_to_existing_project(config)
+    else:
+        created = generate_project(config)
+
+    for f in created:
+        print(f"  created: {f}")

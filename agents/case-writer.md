@@ -21,6 +21,36 @@ model: sonnet
 - `prompts/code-style-python.md` — 强制性代码风格与结构规范
 - `tests/conftest.py` — 可用的 fixture（不得重新定义，直接使用）
 
+## 已有项目适配
+
+如果任务 prompt 中指定了 `autoflow-config.yaml` 路径，必须先读取它。
+
+根据 `code_style` 配置适配代码模式：
+
+### API 封装模式
+- `api_pattern: enum` — 使用 Enum 类定义 API 路径（如 `class XxxApi(Enum):`）
+- `api_pattern: constant` — 使用常量定义（如 `API_CREATE_USER = "/api/v1/users"`）
+- `api_pattern: inline` — 直接在测试中写 URL 字符串
+
+### Request 封装模式
+- `request_class: BaseRequests` — 继承项目已有的 BaseRequests 类
+- `request_class: httpx` — 使用 httpx.Client（AutoFlow 默认）
+- `request_class: requests` — 使用 requests.Session
+
+### 断言风格
+- 遵循 `assertion_style` 中记录的项目断言模式
+- 例如：`resp['code'] == 1` vs `response.status_code == 200`
+
+### 认证方式
+- `auth_method: reuse` — 复用项目已有的认证逻辑（如 BaseCookies）
+- 其他方式：按配置处理
+
+### 目录规则
+- 使用 `test_dir` 指定的目录（如 testcases/ 而非 tests/）
+- 遵循项目已有的子目录结构
+
+若 autoflow-config.yaml 不存在，使用默认的 httpx + pydantic 模式。
+
 ## 文件结构
 
 每个生成的测试文件必须严格遵循以下结构：
@@ -52,6 +82,10 @@ class Test<模块><功能>:
     def test_<功能>_<场景>(self, client, db):
         ...
 ```
+
+若已有项目使用 allure.step() 模式而非 fixture 模式，遵循已有模式：
+- 使用 `with allure.step("步骤描述"):` 包裹每个操作
+- 使用 `@allure.epic / @allure.feature / @allure.story` 装饰器层级
 
 ## 命名规范
 

@@ -9,7 +9,8 @@ model: opus
 
 ## 输入
 
-- `tests/interface/` 下的所有文件 — 待审查的生成测试文件
+- `.autoflow/scenarios.json` 中 `generation_plan` 列出的所有 `output_file` — 待审查的生成测试文件
+- 包括 interface、scenariotest、unittest 所有类型的测试文件
 - `.autoflow/scenarios.json` — 预期场景与断言计划
 - 源代码仓库（路径来自 `.autoflow/repo-status.json`） — 业务逻辑的基准事实
 - `prompts/review-checklist.md` — 强制性审查标准与评分细则
@@ -92,10 +93,11 @@ model: opus
 
 ```bash
 # 步骤一：预执行以捕获导入错误和 fixture 问题
-uv run pytest --collect-only tests/interface/
+# 改为动态读取生成文件列表
+uv run pytest <generation_plan 中所有 output_file 的父目录> --collect-only
 
 # 步骤二：收集成功后执行完整测试
-uv run pytest tests/interface/ -x -v --tb=short
+uv run pytest <generation_plan 中所有 output_file 的父目录> -x -v --tb=short
 ```
 
 捕获 stdout、stderr、退出码以及各测试的执行结果。
@@ -172,7 +174,13 @@ uv run pytest tests/interface/ -x -v --tb=short
       "failure_message": null
     }
   ],
-  "remaining_failures": []
+  "remaining_failures": [],
+  "verification_steps": [
+    { "step": "py_compile", "files": 19, "passed": 19, "failed": 0 },
+    { "step": "import_check", "files": 19, "passed": 17, "failed": 2 },
+    { "step": "allure_annotation", "files": 19, "passed": 19, "failed": 0 },
+    { "step": "fixture_availability", "files": 19, "passed": 19, "failed": 0 }
+  ]
 }
 ```
 

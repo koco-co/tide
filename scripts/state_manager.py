@@ -181,3 +181,48 @@ def archive_session(project_root: Path) -> Path | None:
         shutil.move(str(item), str(history_dir / item.name))
 
     return history_dir
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="AutoFlow state manager")
+    sub = parser.add_subparsers(dest="command")
+
+    init_p = sub.add_parser("init")
+    init_p.add_argument("--har", required=True)
+    init_p.add_argument("--project-root", default=".")
+
+    advance_p = sub.add_parser("advance_wave")
+    advance_p.add_argument("--wave", type=int, required=True)
+    advance_p.add_argument("--project-root", default=".")
+
+    archive_p = sub.add_parser("archive")
+    archive_p.add_argument("--project-root", default=".")
+
+    args = parser.parse_args()
+    root = Path(args.project_root)
+
+    if args.command == "init":
+        try:
+            state = init_session(root, args.har)
+            print(f"Session initialized: {state.session_id}")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "advance_wave":
+        try:
+            state = advance_wave(root, args.wave)
+            print(f"Advanced to wave {args.wave}")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "archive":
+        result = archive_session(root)
+        if result:
+            print(f"Archived to {result}")
+        else:
+            print("No active session to archive")
+    else:
+        parser.print_help()
