@@ -51,6 +51,18 @@ model: sonnet
 
 若 autoflow-config.yaml 不存在，使用默认的 httpx + pydantic 模式。
 
+## 行业感知断言
+
+若任务 prompt 中指定了行业模式（`industry_mode = true`），必须读取 `prompts/industry-assertions.md`。
+
+根据 `industry.domain` 的值，在每个测试方法的标准 L1-L5 断言之后，追加行业特定断言：
+
+1. 读取 `prompts/industry-assertions.md` 中对应行业的"必须追加的场景类别"
+2. 对写入类接口（POST/PUT/DELETE），检查是否需要幂等性/审计/脱敏断言
+3. 在断言代码上方标注 `# Industry[<行业>]: <说明>`
+
+若 `industry.domain` 不在已知行业列表中，或 `industry` 段不存在，跳过此段落。
+
 ## 文件结构
 
 每个生成的测试文件必须严格遵循以下结构：
