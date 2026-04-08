@@ -71,6 +71,19 @@ model: opus
 
 标记：缺失导入、未定义 fixture、模型字段不匹配。
 
+### 6. 行业合规（仅在 autoflow-config.yaml 中存在 industry 段时评估）
+
+读取 `autoflow-config.yaml` 中的 `industry.domain`，并读取 `prompts/industry-assertions.md`。
+
+检查每个测试文件：
+- 写入类接口（POST/PUT/DELETE）是否包含行业必须的场景？
+- 行业断言的标注格式是否正确（`# Industry[<行业>]: <说明>`）？
+- 行业断言逻辑是否正确（如幂等性检查是否真正发了两次请求）？
+
+标记：缺少行业必须场景（MEDIUM）、行业断言逻辑错误（HIGH）。
+
+若 `industry` 段不存在，此维度评分为 N/A，不计入偏差率。
+
 ## 阶段二：自动修复策略
 
 计算 `issue_rate = 标记问题数 / 总断言及检查数`。
@@ -199,6 +212,7 @@ uv run pytest <generation_plan 中所有 output_file 的父目录> -x -v --tb=sh
     源码交叉核验:  <分数>/100
     代码质量:      <分数>/100
     可运行性:      <分数>/100
+    行业合规:      <分数>/100 | N/A
 
   执行结果:
     收集:      成功 | 失败
