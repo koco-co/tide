@@ -46,6 +46,8 @@ model: opus
 
 ## 阶段二：场景生成
 
+若任务 prompt 中包含 `industry_mode = true`，同时读取 `prompts/industry-assertions.md`，为写入类接口追加上表中的 `industry_*` 类型场景。行业场景仅在对应行业匹配时生成。
+
 以 `prompts/scenario-enrich.md` 为策略指南，为每个端点生成场景。需考虑的场景类型：
 
 | 类型 | 说明 |
@@ -58,6 +60,10 @@ model: opus
 | `state_transition` | 合法与非法的状态机流转 |
 | `linkage` | 相关资源之间的交互 |
 | `exception` | 触发源码中已知的异常路径 |
+| `industry_idempotency` | 写入类接口（行业模式 + 金融/电商）| 幂等性检查 — 重复提交应被拒绝 |
+| `industry_audit` | 写入类接口（行业模式 + 金融）| 审计日志 — 操作应产生审计记录 |
+| `industry_masking` | 响应含敏感字段（行业模式 + 金融/医疗）| 数据脱敏 — 敏感字段应部分隐藏 |
+| `industry_isolation` | 多租户接口（行业模式 + SaaS）| 租户隔离 — 跨租户访问应被拒绝 |
 
 每个场景需记录：
 - `scenario_id`：唯一标识符（例如：`user-service_POST_users_crud_closure`）
