@@ -3,7 +3,7 @@ name: using-autoflow
 description: "初始化 AutoFlow 环境 — 智能项目分类、深度扫描/行业调研、方案推荐、脚手架生成。适用场景：首次运行、/using-autoflow、'初始化 autoflow'、'设置 autoflow'。"
 argument-hint: "[--force]"
 user-invocable: true
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, WebSearch, WebFetch
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, WebSearch, WebFetch, TaskCreate, TaskUpdate, TaskList
 ---
 
 # AutoFlow 初始化技能
