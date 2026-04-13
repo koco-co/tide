@@ -173,3 +173,16 @@ model: opus
 - 若某仓库的 `local_path` 不存在，跳过该仓库的所有端点并记录警告。
 - 若单个端点的源码追踪失败（文件未找到、方法未定位），将 `source_evidence` 置为 `[]`，仍基于 HAR 数据生成 `har_direct` 场景。
 - 禁止修改源代码仓库，仅允许只读分析。
+
+### 多语言源码支持
+
+当前主要支持 Java（Spring Boot）。对其他语言的源码分析策略：
+
+| 语言 | Controller 层 | Service 层 | 数据访问层 | 注解/装饰器 |
+|------|-------------|-----------|-----------|------------|
+| Java (Spring) | `@RestController`, `@RequestMapping` | `@Service`, `@Transactional` | `@Mapper`, JPA Repository | `@Valid`, `@Min`, `@Max` |
+| Python (FastAPI) | `@app.get/post`, `APIRouter` | 服务类/函数 | SQLAlchemy Model | Pydantic `Field()`, `Query()` |
+| TypeScript (NestJS) | `@Controller`, `@Get/@Post` | `@Injectable` | TypeORM Repository | `class-validator` 装饰器 |
+| Go (Gin/Echo) | `router.GET/POST` | 服务 struct 方法 | GORM Model | struct tag `validate:` |
+
+**策略**：先检测 `repo-profiles.yaml` 中指定的仓库语言（通过文件扩展名统计），再应用对应的解析规则。若无法识别语言，回退到通用的「路径 → 函数名」映射。

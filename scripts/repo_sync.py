@@ -43,7 +43,16 @@ def load_profiles(profiles_path: Path) -> list[dict]:
     with profiles_path.open() as f:
         config = yaml.safe_load(f)
 
-    return config.get("profiles", [])
+    if config is None:
+        return []
+
+    profiles = config.get("profiles", [])
+    if not isinstance(profiles, list):
+        import sys
+        print(f"[repo-sync] Warning: profiles is not a list in {profiles_path}", file=sys.stderr)
+        return []
+
+    return profiles
 
 
 def sync_repo(repo_path: Path, repo_url: str = "", branch: str = "main") -> RepoStatus:
@@ -98,7 +107,19 @@ def sync_repo(repo_path: Path, repo_url: str = "", branch: str = "main") -> Repo
         return RepoStatus(name=name, success=True, head_commit=head_commit)
 
     except subprocess.CalledProcessError as exc:
-        return RepoStatus(name=name, success=False, error=str(exc.stderr))
+        error_msg = str(exc.stderr).strip()
+        if "did not match" in error_msg or "pathspec" in error_msg:
+            try:
+                branches = subprocess.run(
+                    ["git", "branch", "-a"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                )
+                error_msg += f"\nAvailable branches:\n{branches.stdout}"
+            except Exception:
+                pass
+        return RepoStatus(name=name, success=False, error=error_msg)
 
 
 def sync_all(profiles_path: Path, project_root: Path) -> list[RepoStatus]:

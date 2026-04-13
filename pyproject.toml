@@ -23,6 +23,11 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=scripts --cov-report=term-missing --strict-markers"
+markers = [
+    "interface: interface/API tests",
+    "scenario: scenario tests",
+    "unit: unit tests",
+]
 
 [tool.ruff]
 line-length = 120

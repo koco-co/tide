@@ -1,8 +1,11 @@
 """脚手架生成器 — 从 Jinja2 模板创建新的项目目录结构。"""
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+
+from scripts.common import AUTOFLOW_DIR, REPOS_DIR, TRASH_DIR
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
@@ -168,7 +171,7 @@ def append_to_existing_project(config: ScaffoldConfig) -> list[str]:
     created: list[str] = []
 
     # 1. 只创建 .autoflow 目录
-    for d in [".autoflow", ".repos", ".trash"]:
+    for d in [AUTOFLOW_DIR, REPOS_DIR, TRASH_DIR]:
         (root / d).mkdir(parents=True, exist_ok=True)
 
     # 2. 追加 .gitignore 条目（不覆盖）
@@ -195,6 +198,8 @@ def append_to_existing_project(config: ScaffoldConfig) -> list[str]:
             config_content = config_env.get_template("autoflow-config.yaml.j2").render(**config.config_vars)
             if _write_if_not_exists(root / "autoflow-config.yaml", config_content):
                 created.append("autoflow-config.yaml")
+        else:
+            warnings.warn(f"Template not found: {autoflow_config_template}", stacklevel=2)
 
     return created
 
@@ -213,9 +218,9 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
         "tests/scenariotest",
         "tests/unittest",
         "core/models",
-        ".autoflow",
-        ".repos",
-        ".trash",
+        AUTOFLOW_DIR,
+        REPOS_DIR,
+        TRASH_DIR,
     ]
     for d in dirs:
         (root / d).mkdir(parents=True, exist_ok=True)
@@ -239,8 +244,11 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
     # 3. 原样复制 .env.example
     env_example_src = TEMPLATES_DIR / ".env.example"
     env_example_dst = root / ".env.example"
-    if _write_if_not_exists(env_example_dst, env_example_src.read_text()):
-        created.append(".env.example")
+    if env_example_src.exists():
+        if _write_if_not_exists(env_example_dst, env_example_src.read_text()):
+            created.append(".env.example")
+    else:
+        warnings.warn(f"Template not found: {env_example_src}", stacklevel=2)
 
     # 4. 静态 __init__.py 文件
     init_files = [
@@ -281,6 +289,8 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
             config_content = env.get_template("autoflow-config.yaml.j2").render(**config.config_vars)
             if _write_if_not_exists(root / "autoflow-config.yaml", config_content):
                 created.append("autoflow-config.yaml")
+        else:
+            warnings.warn(f"Template not found: {autoflow_config_template}", stacklevel=2)
 
     return created
 
@@ -300,10 +310,7 @@ if __name__ == "__main__":
         base_url=args.base_url,
     )
 
-    if args.mode == "existing":
-        created = append_to_existing_project(config)
-    else:
-        created = generate_project(config)
+    created = append_to_existing_project(config) if args.mode == "existing" else generate_project(config)
 
     for f in created:
         print(f"  created: {f}")

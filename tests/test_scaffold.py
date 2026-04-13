@@ -1,7 +1,7 @@
 """Tests for scaffold generator — TDD (write first, implement second)."""
 from pathlib import Path
 
-from scripts.scaffold import ScaffoldConfig, generate_project
+from scripts.scaffold import ScaffoldConfig, append_to_existing_project, generate_project
 
 
 class TestGenerateProject:
@@ -93,3 +93,46 @@ class TestGenerateProject:
         content = (tmp_path / "Makefile").read_text()
         assert "test-all" in content
         assert "test-interface" in content
+
+
+class TestGenerateProjectContent:
+    def _make_config(self, tmp_path: Path, **kwargs) -> ScaffoldConfig:
+        defaults = {
+            "project_root": tmp_path,
+            "project_name": "test-api",
+            "base_url": "http://localhost:8080",
+            "db_configured": False,
+        }
+        defaults.update(kwargs)
+        return ScaffoldConfig(**defaults)
+
+    def test_conftest_contains_api_client_fixture(self, tmp_path: Path) -> None:
+        """conftest.py 应包含 api_client fixture。"""
+        config = self._make_config(tmp_path)
+        generate_project(config)
+        content = (tmp_path / "tests" / "conftest.py").read_text()
+        assert "api_client" in content or "APIClient" in content
+
+    def test_conftest_contains_base_url(self, tmp_path: Path) -> None:
+        """conftest.py 应包含配置的 base_url。"""
+        config = self._make_config(tmp_path, base_url="http://10.0.0.1:9090")
+        generate_project(config)
+        content = (tmp_path / "tests" / "conftest.py").read_text()
+        assert "10.0.0.1:9090" in content
+
+    def test_client_py_is_immutable(self, tmp_path: Path) -> None:
+        """client.py 应使用 frozen=True 的 dataclass。"""
+        config = self._make_config(tmp_path)
+        generate_project(config)
+        content = (tmp_path / "core" / "client.py").read_text()
+        assert "frozen=True" in content
+
+    def test_gitignore_appends_without_overwrite(self, tmp_path: Path) -> None:
+        """已存在的 .gitignore 应追加而非覆盖。"""
+        existing = "*.pyc\n__pycache__/\n"
+        (tmp_path / ".gitignore").write_text(existing)
+        config = self._make_config(tmp_path)
+        append_to_existing_project(config)
+        content = (tmp_path / ".gitignore").read_text()
+        assert "*.pyc" in content  # 原有内容保留
+        assert ".autoflow/" in content  # 新内容追加

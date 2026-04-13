@@ -104,6 +104,41 @@ class TestSendNotification:
 
         assert result is False
 
+    def test_sends_feishu(self) -> None:
+        """成功发送飞书通知时应返回 True。"""
+        payload = make_payload()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        with patch("scripts.notifier.httpx.post", return_value=mock_response) as mock_post:
+            result = send_notification("feishu", "https://example.com/webhook", payload)
+
+        assert result is True
+        mock_post.assert_called_once()
+
+    def test_sends_slack(self) -> None:
+        """成功发送 Slack 通知时应返回 True。"""
+        payload = make_payload()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        with patch("scripts.notifier.httpx.post", return_value=mock_response) as mock_post:
+            result = send_notification("slack", "https://example.com/webhook", payload)
+
+        assert result is True
+        mock_post.assert_called_once()
+
+    def test_empty_title_still_sends(self) -> None:
+        """空标题应正常发送不报错。"""
+        payload = make_payload(title="", body="test body")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        with patch("scripts.notifier.httpx.post", return_value=mock_response):
+            result = send_notification("dingtalk", "https://example.com/webhook", payload)
+
+        assert result is True
+
     def test_unknown_channel_raises_value_error(self) -> None:
         """未知渠道应抛出包含 'Unknown channel' 的 ValueError。"""
         payload = make_payload()

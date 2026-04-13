@@ -68,6 +68,25 @@ class TestAdvanceWave:
         with pytest.raises(ValueError, match="out of order"):
             advance_wave(tmp_path, 3)
 
+    def test_cannot_skip_waves(self, tmp_path: Path) -> None:
+        """不能跳过波次，wave 2 在 wave 1 完成前应拒绝。"""
+        init_session(tmp_path, "test.har")
+        with pytest.raises(ValueError, match="out of order"):
+            advance_wave(tmp_path, 2)
+
+    def test_sequential_wave_progression(self, tmp_path: Path) -> None:
+        """按顺序推进全部 4 个波次。"""
+        init_session(tmp_path, "test.har")
+        for wave in range(1, 5):
+            state = advance_wave(tmp_path, wave)
+            assert state.current_wave == wave
+            assert state.waves[str(wave)].status == WaveStatus.COMPLETED
+
+    def test_advance_without_session_raises(self, tmp_path: Path) -> None:
+        """无活跃会话时 advance_wave 应抛出 ValueError。"""
+        with pytest.raises(ValueError, match="No active session"):
+            advance_wave(tmp_path, 1)
+
 
 # ---------------------------------------------------------------------------
 # TestResumeSession
@@ -113,3 +132,16 @@ class TestArchiveSession:
         assert (history_dir / "state.json").exists()
         # state.json 不应再存在于原始位置
         assert not (tmp_path / ".autoflow" / "state.json").exists()
+
+    def test_archive_returns_none_without_session(self, tmp_path: Path) -> None:
+        """无活跃会话时 archive 应返回 None。"""
+        result = archive_session(tmp_path)
+        assert result is None
+
+    def test_archive_preserves_history_dir(self, tmp_path: Path) -> None:
+        """归档不应移动 history/ 目录本身。"""
+        init_session(tmp_path, "test.har")
+        advance_wave(tmp_path, 1)
+        archive_session(tmp_path)
+        # history 目录应仍然存在
+        assert (tmp_path / ".autoflow" / "history").is_dir()

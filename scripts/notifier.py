@@ -1,12 +1,13 @@
 """DingTalk、飞书和 Slack 的 Webhook 通知器。"""
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 import httpx
 
-logger = logging.getLogger(__name__)
+from scripts.common import setup_logger
+
+logger = setup_logger(__name__)
 
 MAX_BODY_LENGTH = 4500
 _TRUNCATION_SUFFIX = "... (truncated)"

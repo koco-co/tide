@@ -1,7 +1,13 @@
-.PHONY: test lint typecheck ci release fmt
+.PHONY: test test-unit test-quick lint typecheck ci release fmt
 
 test:
 	uv run pytest tests/ -v --cov=scripts --cov-report=term-missing
+
+test-unit:
+	uv run pytest tests/ -v -m unit --cov=scripts --cov-report=term-missing
+
+test-quick:
+	uv run pytest tests/ -v --no-cov
 
 lint:
 	uv run ruff check scripts/ tests/

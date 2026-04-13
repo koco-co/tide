@@ -142,6 +142,18 @@ class HarEntry(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class RepoProfile(BaseModel):
+    name: str
+    url: str = ""
+    branch: str = "main"
+    path: str = ""
+    url_prefixes: list[str] = []
+
+
+class RepoProfilesConfig(BaseModel):
+    profiles: list[RepoProfile] = []
+
+
 class ParsedEndpoint(BaseModel):
     id: str
     method: str
@@ -311,8 +323,13 @@ def parse_har(
     if profiles_path is not None:
         try:
             profiles_data = yaml.safe_load(profiles_path.read_text())
-            profiles = profiles_data.get("profiles", [])
-        except Exception:
+            if profiles_data is None:
+                profiles_data = {}
+            validated = RepoProfilesConfig.model_validate(profiles_data)
+            profiles = [p.model_dump() for p in validated.profiles]
+        except Exception as exc:
+            import sys
+            print(f"[har-parser] Warning: failed to parse profiles: {exc}", file=sys.stderr)
             profiles = []
 
     # --- 过滤与去重 ---

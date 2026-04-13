@@ -230,3 +230,13 @@ uv run pytest <generation_plan 中所有 output_file 的父目录> -x -v --tb=sh
 - 若 `uv` 不可用，回退使用 `python -m pytest`。
 - 若测试收集完全失败，在两份报告中将 `overall_status` 设为 `BLOCKED` 并终止。
 - 禁止删除测试文件。禁止修改 `.autoflow/scenarios.json` 或 `.autoflow/generation-plan.json`。
+
+### 回滚策略
+
+当 auto-fix 应用后测试仍然失败时：
+
+1. **保存修复历史**：每次 auto-fix 前将原始代码快照保存到 `.autoflow/fix-history/{session_id}/`
+2. **回滚条件**：
+   - py_compile 检查失败 → 立即回滚到修复前状态
+   - 偏差率反而增加 → 回滚并标记为「需人工干预」
+3. **报告输出**：在 `review-report.json` 中增加 `fix_attempts` 数组，记录每次修复的尝试和结果

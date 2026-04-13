@@ -88,6 +88,30 @@ class TestHarModels:
         assert resp.status == 200
         assert resp.body == {"code": 1, "success": True}
 
+    def test_har_request_body_plain_text(self) -> None:
+        """非 JSON 的 postData.text 应返回 body=None。"""
+        raw = _make_entry(req_body="plain text, not json")
+        req = HarRequest(**raw["request"])
+        assert req.body is None
+
+    def test_har_response_time_zero(self) -> None:
+        """time_ms=0 的条目应正常解析。"""
+        raw = _make_entry(time_ms=0.0)
+        entry = HarEntry(**raw)
+        assert entry.time == 0.0
+
+    def test_har_request_path_extraction(self) -> None:
+        """path 属性应正确提取 URL 路径部分。"""
+        raw = _make_entry(url="http://example.com/api/v1/users?page=1")
+        req = HarRequest(**raw["request"])
+        assert req.path == "/api/v1/users"
+
+    def test_har_request_content_type(self) -> None:
+        """content_type 属性应返回小写值。"""
+        raw = _make_entry()
+        req = HarRequest(**raw["request"])
+        assert req.content_type == "application/json"
+
     def test_har_response_base64_encoded(self) -> None:
         """透明处理 base64 编码的响应内容。"""
         payload = {"data": "binary-like"}
@@ -157,6 +181,33 @@ class TestFilterEntries:
 
 
 class TestDedupEntries:
+    def test_dedup_preserves_different_status_codes(self) -> None:
+        """不同状态码的条目不应被合并。"""
+        entries = [
+            HarEntry(**_make_entry(resp_status=200)),
+            HarEntry(**_make_entry(resp_status=400)),
+        ]
+        result = dedup_entries(entries)
+        assert len(result) == 2
+
+    def test_dedup_preserves_different_bodies(self) -> None:
+        """相同路径但不同请求体的条目不应被合并。"""
+        entries = [
+            HarEntry(**_make_entry(req_body='{"page":1}')),
+            HarEntry(**_make_entry(req_body='{"page":2}')),
+        ]
+        result = dedup_entries(entries)
+        assert len(result) == 2
+
+    def test_dedup_merges_identical_entries(self) -> None:
+        """完全相同的条目应合并为一条。"""
+        entries = [
+            HarEntry(**_make_entry()),
+            HarEntry(**_make_entry()),
+        ]
+        result = dedup_entries(entries)
+        assert len(result) == 1
+
     def test_merges_same_method_path(self, sample_dirty_har_path: Path) -> None:
         """相同 (method, path, status, body_hash) 的重复条目应合并为一条。"""
         entries_raw = _load_har_entries(sample_dirty_har_path)
@@ -264,6 +315,19 @@ class TestParseHar:
 
         with pytest.raises(ValueError, match="Invalid HAR"):
             parse_har(bad_file, None)
+
+    def test_parse_har_without_profiles(self, sample_har_path: Path) -> None:
+        """profiles_path=None 时应正常解析，matched_repo 为 None。"""
+        result = parse_har(sample_har_path, None)
+        assert isinstance(result, ParsedResult)
+        assert all(ep.matched_repo is None for ep in result.endpoints)
+
+    def test_parse_har_missing_log_key(self, tmp_path: Path) -> None:
+        """缺少 log 键的 JSON 应抛出 ValueError。"""
+        bad_har = tmp_path / "bad.har"
+        bad_har.write_text(json.dumps({"version": "1.2"}))
+        with pytest.raises(ValueError, match="Invalid HAR"):
+            parse_har(bad_har, None)
 
     def test_raises_on_empty_entries(self, tmp_path: Path) -> None:
         """条目为空的有效 HAR 应抛出 ValueError('No entries')。"""

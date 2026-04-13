@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from scripts.common import AUTOFLOW_DIR
+
 # ---------------------------------------------------------------------------
 # 枚举与模型定义
 # ---------------------------------------------------------------------------
@@ -50,7 +52,7 @@ def _now_iso() -> str:
 
 
 def _state_dir(project_root: Path) -> Path:
-    return project_root / ".autoflow"
+    return project_root / AUTOFLOW_DIR
 
 
 def _state_file(project_root: Path) -> Path:

@@ -401,3 +401,26 @@ assert resp.json()["code"] != 1  # L5[SPECULATIVE]：根据方法名推断可能
 | L3 | 源码枚举、`@Min`/`@Max`、字段名、分页 | `assert value in (...)`、范围检查、格式正则 |
 | L4 | 源码业务逻辑、状态机、DAO SQL | 多步 API 断言，可选 `if db:` DB 检查 |
 | L5 | 深度源码阅读、方法名、注释 | 含 `来源:行号` + 置信度注释的断言 |
+
+---
+
+## 补充规则
+
+### L1 响应时间处理
+
+- 当 HAR `response.time_ms` 为 0（连接已建立但无响应计时）时，使用 `max_time_ms = 1000` 作为默认上限
+- `max_time_ms` 的计算公式：`max(har_time_ms × 3, 1000)`
+- 生成的断言应使用 `assert_protocol()` 而非手动比较
+
+### L3 枚举缺失处理
+
+- 当 HAR 响应中的枚举值不在源码定义的枚举范围内时：
+  - 若置信度 HIGH：标记为「可能的未文档化枚举值」，生成 `assert value in known_values` 但添加注释
+  - 若置信度 LOW：跳过该枚举断言，在 review-report 中标记为待确认
+
+### 认证逻辑复用
+
+- 当 `autoflow-config.yaml` 指定 `auth_method: reuse` 时：
+  - 优先查找项目中已有的 `conftest.py` 认证 fixture
+  - 若未找到，生成标准 `@pytest.fixture` 认证逻辑并输出警告
+  - 绝不硬编码 token 或密码
