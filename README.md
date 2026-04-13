@@ -64,6 +64,10 @@
 | **L1-L5 断言** | 从 HTTP 状态码（L1）到 AI 推断的隐式业务规则（L5），5 层断言递进覆盖 |
 | **5 Agent 协同** | har-parser · repo-syncer · scenario-analyzer · case-writer · case-reviewer |
 | **4 波并行编排** | 解析 → 分析 → 生成 → 评审，波次内并行、波次间串行，充分利用 AI 能力 |
+| **安全校验** | HAR 输入 Pydantic 校验、repo-profiles YAML schema 验证、分支容错 |
+| **Hook 系统** | 9 个 Hook 点（wave1-4 before/after + output:notify），YAML 配置注入自定义处理 |
+| **偏好学习** | 跨会话偏好持久化（断言风格、fixture 作用域等），自动修正生成风格 |
+| **格式检查** | AST 级 Python 代码检查（FC01-FC10），CLI 集成，覆盖 docstring/print/行长等 |
 | **智能项目分类** | 自动检测已有自动化项目 vs 新项目，阈值保守、不误判覆盖 |
 | **行业感知** | 收集行业画像 → AI 调研 → 2-3 方案推荐，行业断言全流程贯穿 |
 | **方案推荐** | 基于行业/团队/鉴权复杂度，推荐完整技术方案（框架+CI+报告+Mock+数据管理） |
@@ -450,12 +454,16 @@ sisyphus-autoflow/
 │   ├── scenario-enrich.md           #   8 种场景类别生成策略
 │   └── industry-assertions.md       #   行业特定断言规范           #   8 种场景类别生成策略
 ├── scripts/                         # Python 工具库
-│   ├── har_parser.py                #   HAR 解析与去重
+│   ├── common.py                    #   共享常量、JSON/日志工具
+│   ├── har_parser.py                #   HAR 解析与去重（Pydantic 校验）
 │   ├── scaffold.py                  #   脚手架生成（new/existing 模式）
 │   ├── state_manager.py             #   波次检查点管理
 │   ├── test_runner.py               #   pytest 执行包装（uv/pip/poetry）
-│   ├── repo_sync.py                 #   Git 同步
-│   └── notifier.py                  #   钉钉/飞书/Slack 通知
+│   ├── repo_sync.py                 #   Git 同步（含分支容错）
+│   ├── notifier.py                  #   钉钉/飞书/Slack 通知
+│   ├── hooks.py                     #   Hook 注册表与 YAML 加载
+│   ├── preferences.py               #   偏好学习（跨会话持久化）
+│   └── format_checker.py            #   AST 格式检查（FC01-FC10）
 ├── templates/                       # Jinja2 模板
 ├── references/                      # 参考文档
 ├── assets/                          # 流程图资源
@@ -490,8 +498,9 @@ make fmt        # 代码格式化
 | **v1.0** | HAR 解析 · 4 波编排 · L1-L5 断言 · DB 验证 · 检查点恢复 · 外部通知 |
 | **v1.1** | 旧项目适配 · 验证透明度 · 验收命令优化 · 路径修复 · 测试类型选择 |
 | **v1.2**（当前） | 智能项目分类 · 7 维度深度扫描 · 行业画像与 AI 调研 · 方案推荐 · 配置验证 · 全流程行业感知 |
-| v1.3 | 多语言后端支持（TypeScript · Go · Python 后端） |
-| v1.3 | OpenAPI / Swagger spec 作为补充输入源 |
+| **v1.3**（当前） | 共享模块提取 · Hook 系统 · 偏好学习 · 格式检查器 · Pydantic 校验 · 测试覆盖 78% |
+| v1.4 | 多语言后端支持（TypeScript · Go · Python 后端） |
+| v1.4 | OpenAPI / Swagger spec 作为补充输入源 |
 | v2.0 | UI 自动化集成（Playwright）· 性能测试 |
 
 ---
