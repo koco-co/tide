@@ -13,6 +13,34 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 
 ---
 
+## 任务初始化
+
+在流程开始时，批量创建 6 个任务以可视化全流程进度：
+
+```
+TaskCreate(subject="预检与参数校验", activeForm="校验 HAR 文件与项目配置",
+  description="子步骤：环境检查 → HAR 校验 → 认证头扫描 → 参数摘要输出")
+
+TaskCreate(subject="[1/4] 解析与准备", activeForm="解析 HAR 文件",
+  description="子步骤：启动 har-parser Agent → 启动 repo-syncer Agent（若有源码）→ 验证 parsed.json 完整性 → 输出验证摘要 → 检查点保存")
+
+TaskCreate(subject="[2/4] 场景分析", activeForm="分析测试场景",
+  description="子步骤：启动 scenario-analyzer Agent → 生成 scenarios.json → 展示确认清单（--quick 跳过）→ 验证摘要 → 检查点保存")
+
+TaskCreate(subject="[3/4] 代码生成", activeForm="生成测试代码",
+  description="子步骤：按模块并行启动 case-writer Agent ×N → py_compile 验证 → AST 检查 → 失败文件自动修复 → 验证摘要 → 检查点保存")
+
+TaskCreate(subject="[4/4] 评审与交付", activeForm="评审测试代码",
+  description="子步骤：启动 case-reviewer Agent → 5 维评审 → 自动修复 → 执行测试 → 生成执行报告")
+
+TaskCreate(subject="验收报告与归档", activeForm="生成验收报告",
+  description="子步骤：汇总评审+执行报告 → 展示验收清单 → 发送通知（若配置）→ 归档会话")
+```
+
+将每个 TaskCreate 返回的 ID 依次记为 `<task_1_id>` 到 `<task_6_id>`，后续阶段引用这些 ID 进行状态更新。
+
+---
+
 ## 预检阶段
 
 设置路径变量：
