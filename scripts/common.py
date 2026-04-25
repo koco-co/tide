@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 TIDE_DIR = ".tide"
 REPOS_DIR = ".tide/repos"
-TRASH_DIR = ".trash"
+TRASH_DIR = ".tide/trash"
 
 
 def ensure_tide_dirs(project_root: Path) -> Path:
