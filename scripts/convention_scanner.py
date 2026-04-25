@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import ast
 import json
-import re
 from pathlib import Path
 
 
@@ -137,7 +136,6 @@ def scan_project(project_root: Path) -> dict:
 
 if __name__ == "__main__":
     import argparse
-    import sys
 
     parser = argparse.ArgumentParser(description="AutoFlow convention scanner")
     parser.add_argument("--project-root", default=".")
