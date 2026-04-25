@@ -30,7 +30,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 4. **环境检查**：`test -f repo-profiles.yaml`，若缺失则打印带修复命令的错误信息并终止
 5. **读取配置**：读取 `repo-profiles.yaml` 和 `tide-config.yaml`，提取 repos、test_dir、test_types、industry 等
 6. **无源码降级**：repos 为空时设置 `no_source_mode=true`
-7. **惯例指纹加载**：
+7. **惯例指纹加载 + 按需 Prompt 组装**：
    test -f .tide/convention-fingerprint.yaml && echo "FINGERPRINT_EXISTS" || echo "NO_FINGERPRINT"
    若 fingerprint 存在：
    - 读取 .tide/convention-fingerprint.yaml
@@ -38,13 +38,50 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
    - 设置 fingerprint_mode=true
    若不存在：
    - 设置 fingerprint_mode=false，使用通用默认模板
-8. **恢复检查**：若 `state.json` 存在且未设置 `--resume`，询问继续/重来/查看摘要
-9. **HAR 校验**：`uv run python3 -c "from scripts.har_parser import validate_har; from pathlib import Path; r = validate_har(Path('${har_path}')); print(r)"`
-9. **认证头扫描**：`uv run python3 -c "from scripts.har_parser import scan_auth_headers; from pathlib import Path; print(scan_auth_headers(Path('${har_path}')))"`
-10. **隐私提示**：输出 HAR 数据发送至 AI 模型的提示，请用户确认后继续
-11. **参数摘要**：打印 HAR 路径/记录数/认证方式/测试目录/源码模式/模式
 
-Task 1 完成。
+   按需 Prompt 组装（fingerprint_mode=true 时）：
+   根据 convention-fingerprint.yaml 的内容，从 prompts/code-style-python/ 中选择要加载的模块：
+   - 始终加载：00-core.md
+   - 若 api.type == "enum" → +10-api-enum.md
+   - 若 api.type == "class" → +10-api-class.md
+   - 若 api.type 为 inline 或不存在 → +10-api-inline.md
+   - 若 http_client.client_pattern == "custom_class" → +20-client-custom.md
+   - 若 http_client.library == "httpx" → +20-client-httpx.md
+   - 若 http_client.library == "requests" → +20-client-requests.md
+   - 若 assertion.style == "code_success" → +30-assert-code-success.md
+   - 若 assertion.style 为 status_only 或不存在 → +30-assert-status-only.md
+   - 若 test_style.file_suffix == "*_test.py" → +40-test-structure-dtstack.md
+   - 以上都不匹配 → +40-test-structure-standard.md
+   读取 selected 模块内容作为"项目规范"约束注入 Agent 上下文。
+   设置 prompt_loaded_modules=[模块名列表] 供调试。
+8. **恢复检查**：若 `state.json` 存在且未设置 `--resume`，询问继续/重来/查看摘要
+9. **HAR 校验 + 认证头扫描 + 隐私提示**：
+   HAR 校验：`uv run python3 -c "from scripts.har_parser import validate_har; from pathlib import Path; r = validate_har(Path('${har_path}')); print(r)"`
+   认证头扫描：`uv run python3 -c "from scripts.har_parser import scan_auth_headers; from pathlib import Path; print(scan_auth_headers(Path('${har_path}')))"`
+   隐私提示：输出 HAR 数据发送至 AI 模型的提示，请用户确认后继续
+10. **参数摘要**：打印 HAR 路径/记录数/认证方式/测试目录/源码模式/模式
+
+11. **成本预估**（fingerprint_mode=true 时展示）：
+    端点数：har-parser 输出中 endpoint 的数量
+    复杂度分级：
+    - 端点数 ≤ 10 → 复杂度"低"，系数 3000
+    - 端点数 11-30 → 复杂度"中"，系数 8000
+    - 端点数 > 30 → 复杂度"高"，系数 15000
+    公式：预估 tokens = 端点数 × 系数 × 2（wave2+wave4 共用 opus）
+    展示格式：
+    ```
+    ╔══════════════════════════════════════╗
+    ║ Tide 成本预估                        ║
+    ║──────────────────────────────────────║
+    ║ 端点数: <N>                          ║
+    ║ 场景复杂度: <低/中/高>                 ║
+    ║ 预估 tokens: ~<X>                    ║
+    ║ 预估成本: ~$<Y>                      ║
+    ╚══════════════════════════════════════╝
+    ```
+    询问用户是否继续。用户拒绝则终止流程。接受则继续 Wave 1。
+
+12. Task 1 完成。
 
 ---
 
