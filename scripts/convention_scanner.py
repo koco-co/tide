@@ -63,6 +63,24 @@ def detect_api_pattern(project_root: Path) -> dict:
                             "modules": [],
                         }
 
+    # 检查 constant 模式：XXX_API = "/api/path"
+    for filepath in api_files:
+        try:
+            tree = ast.parse(filepath.read_text(), filename=str(filepath))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if (isinstance(target, ast.Name)
+                            and target.id.isupper()
+                            and isinstance(node.value, ast.Constant)
+                            and isinstance(node.value.value, str)):
+                        return {
+                            "type": "constant",
+                            "modules": [],
+                        }
+
     return {"type": "inline", "modules": []}
 
 
