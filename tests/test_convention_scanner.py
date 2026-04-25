@@ -6,6 +6,7 @@ from scripts.convention_scanner import (
     detect_assertion_style,
     detect_env_management,
     detect_http_client,
+    detect_test_runner,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -172,3 +173,44 @@ class TestDetectEnvManagement:
         """没有多环境配置时返回 detected=False。"""
         result = detect_env_management(tmp_path)
         assert result["detected"] is False
+
+
+class TestDetectTestRunner:
+    def test_detect_custom_runner_with_module_entries(self, tmp_path: Path) -> None:
+        runner = tmp_path / "run_demo.py"
+        runner.write_text('''
+class Run:
+    def run_batch_scenariotest(self):
+        runner.run_with_option(rerun=1, test_path="...", workers=8)
+    def run_stream_scenariotest(self):
+        pass
+''')
+        result = detect_test_runner(tmp_path)
+        assert result["type"] == "custom"
+        assert result["entry"] == "run_demo.py"
+        assert "batch" in result["module_entries"]
+
+    def test_detect_pytest_direct_when_no_runner(self, tmp_path: Path) -> None:
+        result = detect_test_runner(tmp_path)
+        assert result["type"] == "pytest_direct"
+        assert result["entry"] is None
+
+    def test_detect_parallel_and_reruns_options(self, tmp_path: Path) -> None:
+        runner = tmp_path / "run.py"
+        runner.write_text('''
+if __name__ == "__main__":
+    pytest.main(["-n", "4", "--reruns=2", "--alluredir=allure-results"])
+''')
+        result = detect_test_runner(tmp_path)
+        assert result["type"] == "custom"
+        assert result["entry"] == "run.py"
+        assert result["options"]["parallel"] is True
+        assert result["options"]["reruns"] == 2
+        assert "allure" in result["options"]["report"]
+
+    def test_detect_runner_txt_name(self, tmp_path: Path) -> None:
+        runner = tmp_path / "runner.py"
+        runner.write_text("print('runner')\n")
+        result = detect_test_runner(tmp_path)
+        assert result["type"] == "custom"
+        assert result["entry"] == "runner.py"

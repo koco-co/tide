@@ -553,6 +553,50 @@ def detect_env_management(project_root: Path) -> dict[str, Any]:
     }
 
 
+def detect_test_runner(project_root: Path) -> dict[str, Any]:
+    """检测自定义测试运行器（run_demo.py、Makefile 等）。"""
+    runner_files = ["run_demo.py", "run.py", "runner.py", "run_tests.py"]
+    detected_runner = None
+    for rf in runner_files:
+        path = project_root / rf
+        if path.exists():
+            detected_runner = rf
+            break
+
+    if not detected_runner:
+        return {"type": "pytest_direct", "entry": None}
+
+    text = (project_root / detected_runner).read_text(errors="ignore")
+    options: dict[str, Any] = {"parallel": False, "reruns": 0}
+
+    if re.search(r'-n["\s]', text) or "xdist" in text:
+        options["parallel"] = True
+        m = re.search(r"workers=(\d+)", text)
+        if m:
+            options["workers"] = int(m.group(1))
+    if "--reruns" in text:
+        m = re.search(r"reruns[=:](\d+)", text, re.IGNORECASE)
+        if m:
+            options["reruns"] = int(m.group(1))
+    if "alluredir" in text or "allure_report_dir" in text:
+        options.setdefault("report", []).append("allure")
+    if "json-report" in text or "create_json_report" in text:
+        options.setdefault("report", []).append("json")
+
+    module_entries: dict[str, str] = {}
+    for line in text.splitlines():
+        m = re.match(r'\s+def run_(\w+)_scenariotest\(self\)', line)
+        if m:
+            module_entries[m.group(1)] = f"python {detected_runner} --module {m.group(1)}"
+
+    return {
+        "type": "custom",
+        "entry": detected_runner,
+        "options": options,
+        "module_entries": module_entries if module_entries else None,
+    }
+
+
 def scan_project(project_root: Path) -> dict[str, Any]:
     """执行所有检测并返回完整的惯例指纹。"""
     test_dir_candidates = [
