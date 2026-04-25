@@ -1,4 +1,4 @@
-"""sisyphus-autoflow 会话的波次检查点状态管理器。"""
+"""tide 会话的波次检查点状态管理器。"""
 
 import shutil
 from datetime import UTC, datetime
@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from scripts.common import AUTOFLOW_DIR
+from scripts.common import TIDE_DIR
 
 # ---------------------------------------------------------------------------
 # 枚举与模型定义
@@ -52,7 +52,7 @@ def _now_iso() -> str:
 
 
 def _state_dir(project_root: Path) -> Path:
-    return project_root / AUTOFLOW_DIR
+    return project_root / TIDE_DIR
 
 
 def _state_file(project_root: Path) -> Path:
@@ -81,7 +81,7 @@ def _write_state(project_root: Path, state: SessionState) -> None:
 
 
 def init_session(project_root: Path, har_filename: str) -> SessionState:
-    """创建包含 4 个待执行波次的新 autoflow 会话。
+    """创建包含 4 个待执行波次的新 tide 会话。
 
     Raises:
         ValueError: 若 project_root 中已存在会话。
@@ -120,7 +120,7 @@ def advance_wave(
     """将会话推进到下一个波次，并将当前波次标记为已完成。
 
     Args:
-        project_root: 包含 .autoflow/ 的根目录。
+        project_root: 包含 .tide/ 的根目录。
         wave: 要完成的波次编号（必须等于 current_wave + 1）。
         data: 可选的结果数据，用于与波次一同存储。
 
@@ -164,7 +164,7 @@ def resume_session(project_root: Path) -> SessionState | None:
 
 
 def archive_session(project_root: Path) -> Path | None:
-    """将所有 .autoflow 文件（history/ 除外）移动到 .autoflow/history/{session_id}/。
+    """将所有 .tide 文件（history/ 除外）移动到 .tide/history/{session_id}/。
 
     Returns:
         历史目录路径，若无活跃会话则返回 None。
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(description="AutoFlow state manager")
+    parser = argparse.ArgumentParser(description="Tide state manager")
     sub = parser.add_subparsers(dest="command")
 
     init_p = sub.add_parser("init")

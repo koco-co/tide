@@ -1,12 +1,12 @@
 ---
-name: autoflow
-description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/autoflow <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
+name: tide
+description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/tide <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
 argument-hint: "<har-file-path> [--quick] [--resume] [--wave N]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList
 ---
 
-# AutoFlow：HAR 转 Pytest 测试生成
+# Tide：HAR 转 Pytest 测试生成
 
 ## 任务初始化
 
@@ -28,12 +28,12 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 2. 设置 `PLUGIN_DIR="${CLAUDE_SKILL_DIR}/../.."`
 3. 解析 `$ARGUMENTS`：`har_path`（必填）、`--quick`、`--resume`、`--wave N`
 4. **环境检查**：`test -f repo-profiles.yaml`，若缺失则打印带修复命令的错误信息并终止
-5. **读取配置**：读取 `repo-profiles.yaml` 和 `autoflow-config.yaml`，提取 repos、test_dir、test_types、industry 等
+5. **读取配置**：读取 `repo-profiles.yaml` 和 `tide-config.yaml`，提取 repos、test_dir、test_types、industry 等
 6. **无源码降级**：repos 为空时设置 `no_source_mode=true`
 7. **惯例指纹加载**：
-   test -f .autoflow/convention-fingerprint.yaml && echo "FINGERPRINT_EXISTS" || echo "NO_FINGERPRINT"
+   test -f .tide/convention-fingerprint.yaml && echo "FINGERPRINT_EXISTS" || echo "NO_FINGERPRINT"
    若 fingerprint 存在：
-   - 读取 .autoflow/convention-fingerprint.yaml
+   - 读取 .tide/convention-fingerprint.yaml
    - 将 fingerprint 内容注入后续 wave 的 case-writer prompt 的"项目规范"约束段
    - 设置 fingerprint_mode=true
    若不存在：
@@ -54,10 +54,10 @@ Task 2 → in_progress
 
 1. `uv run python3 ${CLAUDE_SKILL_DIR}/../../scripts/state_manager.py init --har "${har_path}"`
 2. **并行**启动 har-parser 和 repo-syncer Agent，prompt 分别见 `agents/har-parser.md` 和 `agents/repo-syncer.md`（仅在 `no_source_mode=false` 时启动后者）
-3. 读取验证输出（.autoflow/parsed.json / .autoflow/repo-status.json）
+3. 读取验证输出（.tide/parsed.json / .tide/repo-status.json）
 4. 输出验证摘要，检查点保存
 
-**[Hook]** 若 autoflow-config.yaml 中有 hook 配置，执行 `uv run python3 scripts/hooks.py run wave1:parse:after`
+**[Hook]** 若 tide-config.yaml 中有 hook 配置，执行 `uv run python3 scripts/hooks.py run wave1:parse:after`
 
 Task 2 完成。
 
@@ -69,7 +69,7 @@ Task 3 → in_progress
 
 1. 读取 `agents/scenario-analyzer.md`，传入上下文：no_source_mode、test_types、industry_mode
 2. 启动 scenario-analyzer Agent（opus）
-3. 读取 .autoflow/scenarios.json
+3. 读取 .tide/scenarios.json
 4. 若非 `--quick`，展示确认清单供用户确认
 
 **[Hook]** 若配置了 hook，执行 `uv run python3 scripts/hooks.py run wave2:analyze:after`
@@ -82,7 +82,7 @@ Task 3 → in_progress
 
 Task 4 → in_progress
 
-1. 读取 .autoflow/scenarios.json → generation_plan
+1. 读取 .tide/scenarios.json → generation_plan
 2. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入 detected_auth_type
 3. 全部完成后，对每个生成文件执行 py_compile + AST 检查
 

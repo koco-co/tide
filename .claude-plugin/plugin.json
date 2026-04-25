@@ -1,13 +1,13 @@
 {
-  "name": "sisyphus-autoflow",
+  "name": "tide",
   "description": "HAR 驱动、源码感知的 API 接口自动化测试插件。从 HAR 文件与后端源码生成带有 L1-L5 分层断言的 pytest 测试套件。",
   "version": "1.3.0",
   "author": {
     "name": "koco-co",
     "email": "koco-co@users.noreply.github.com"
   },
-  "homepage": "https://github.com/koco-co/sisyphus-autoflow",
-  "repository": "https://github.com/koco-co/sisyphus-autoflow",
+  "homepage": "https://github.com/koco-co/tide",
+  "repository": "https://github.com/koco-co/tide",
   "license": "MIT",
   "keywords": ["api-testing", "har", "pytest", "automation", "ai", "接口自动化"]
 }

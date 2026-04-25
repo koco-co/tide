@@ -1,14 +1,14 @@
 ---
-name: using-autoflow
-description: "初始化 AutoFlow 环境 — 智能项目分类、深度扫描/行业调研、方案推荐、脚手架生成。触发方式：首次运行、/using-autoflow、'初始化 autoflow'。"
+name: using-tide
+description: "初始化 Tide 环境 — 智能项目分类、深度扫描/行业调研、方案推荐、脚手架生成。触发方式：首次运行、/using-tide、'初始化 tide'。"
 argument-hint: "[--force]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, WebSearch, WebFetch, TaskCreate, TaskUpdate, TaskList
 ---
 
-# AutoFlow 初始化
+# Tide 初始化
 
-为新项目或已有项目引导安装 AutoFlow 测试框架。
+为新项目或已有项目引导安装 Tide 测试框架。
 
 ---
 
@@ -32,7 +32,7 @@ Task 1 → in_progress
 
 1. **工具检测**：`python3 --version`（>= 3.12）/ `uv --version` / `git --version`
 2. **依赖检测**：jinja2 / pydantic / pyyaml（若有缺失自动安装）
-3. **重初始化检测**：若 autoflow-config.yaml 已存在，询问使用/更新/重来
+3. **重初始化检测**：若 tide-config.yaml 已存在，询问使用/更新/重来
 4. **智能分类**：检测测试文件数、conftest、pytest 配置、HTTP 客户端、allure、CI
 
 判定规则：`TEST_FILE_COUNT >= 3 AND (CONFTEST 存在 OR PYTEST_CONFIG 存在) → existing_auto`
@@ -48,10 +48,10 @@ Task 1 完成。根据 project_type 更新 Task 2/3 主题。
 Task 2 → in_progress
 
 1. 读取 `agents/project-scanner.md` 作为 prompt，启动 project-scanner Agent（opus）
-2. 读取 .autoflow/project-profile.json
+2. 读取 .tide/project-profile.json
 3. **规范指纹生成**：运行 convention_scanner.py 生成惯例指纹
    uv run python3 ${CLAUDE_SKILL_DIR}/../../scripts/convention_scanner.py --project-root .
-4. **读取指纹**：读取 .autoflow/convention-scout.json，等待 project-scanner 将其转换为 convention-fingerprint.yaml
+4. **读取指纹**：读取 .tide/convention-scout.json，等待 project-scanner 将其转换为 convention-fingerprint.yaml
 
 Task 2 完成。Task 3 → in_progress
 
@@ -74,7 +74,7 @@ Task 2 → in_progress
 ### AI 调研
 
 1. 读取 `agents/industry-researcher.md` 作为 prompt，启动 industry-researcher Agent（sonnet）
-2. 读取 .autoflow/research-report.json
+2. 读取 .tide/research-report.json
 
 Task 2 完成。Task 3 → in_progress
 
@@ -104,7 +104,7 @@ Task 4 完成。
 Task 5 → in_progress
 
 1. Base URL → 认证方式（分支 A 可复用旧项目逻辑）→ 数据库（可选）→ Webhook（可选）
-2. 写入 .env 或 .autoflow/config.yaml
+2. 写入 .env 或 .tide/config.yaml
 
 Task 5 完成。
 
@@ -114,7 +114,7 @@ Task 5 完成。
 
 Task 6 → in_progress
 
-1. 渲染 autoflow-config.yaml（Jinja2）
+1. 渲染 tide-config.yaml（Jinja2）
 2. 运行 scaffold.py（--mode new/existing）
 3. 生成 CLAUDE.md（包含 7 维度摘要或技术栈 + 行业上下文）
 4. smoke test：URL 可达性 + 认证有效性 + 数据库连接（若配置）

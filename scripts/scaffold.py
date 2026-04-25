@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from scripts.common import AUTOFLOW_DIR, REPOS_DIR, TRASH_DIR
+from scripts.common import TIDE_DIR, REPOS_DIR, TRASH_DIR
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
@@ -106,7 +106,7 @@ _GITIGNORE = """\
 __pycache__/
 *.py[cod]
 .venv/
-.autoflow/
+.tide/
 .repos/
 .trash/
 .env
@@ -165,37 +165,37 @@ def _write_if_not_exists(path: Path, content: str) -> bool:
     return True
 
 
-def _render_autoflow_config(
+def _render_tide_config(
     root: Path, env: Environment, config_vars: dict, created: list[str]
 ) -> None:
-    """渲染 autoflow-config.yaml，若模板存在且文件不存在则创建。"""
-    template_path = TEMPLATES_DIR / "autoflow-config.yaml.j2"
+    """渲染 tide-config.yaml，若模板存在且文件不存在则创建。"""
+    template_path = TEMPLATES_DIR / "tide-config.yaml.j2"
     if not template_path.exists():
         warnings.warn(f"Template not found: {template_path}", stacklevel=2)
         return
-    content = env.get_template("autoflow-config.yaml.j2").render(**config_vars)
-    if _write_if_not_exists(root / "autoflow-config.yaml", content):
-        created.append("autoflow-config.yaml")
+    content = env.get_template("tide-config.yaml.j2").render(**config_vars)
+    if _write_if_not_exists(root / "tide-config.yaml", content):
+        created.append("tide-config.yaml")
 
 
 def append_to_existing_project(config: ScaffoldConfig) -> list[str]:
-    """为已有项目追加 AutoFlow 必需文件，不覆盖现有结构。"""
+    """为已有项目追加 Tide 必需文件，不覆盖现有结构。"""
     root = config.project_root
     created: list[str] = []
 
-    # 1. 只创建 .autoflow 目录
-    for d in [AUTOFLOW_DIR, REPOS_DIR, TRASH_DIR]:
+    # 1. 只创建 .tide 目录
+    for d in [TIDE_DIR, REPOS_DIR, TRASH_DIR]:
         (root / d).mkdir(parents=True, exist_ok=True)
 
     # 2. 追加 .gitignore 条目（不覆盖）
     gitignore_path = root / ".gitignore"
-    autoflow_entries = [".autoflow/", ".repos/", ".trash/"]
+    tide_entries = [".tide/", ".repos/", ".trash/"]
     if gitignore_path.exists():
         existing = gitignore_path.read_text()
-        new_entries = [e for e in autoflow_entries if e not in existing]
+        new_entries = [e for e in tide_entries if e not in existing]
         if new_entries:
             with open(gitignore_path, "a") as f:
-                f.write("\n# AutoFlow\n")
+                f.write("\n# Tide\n")
                 for entry in new_entries:
                     f.write(entry + "\n")
             created.append(".gitignore (appended)")
@@ -203,10 +203,10 @@ def append_to_existing_project(config: ScaffoldConfig) -> list[str]:
         gitignore_path.write_text(_GITIGNORE)
         created.append(".gitignore")
 
-    # 3. autoflow-config.yaml（若有配置变量）
+    # 3. tide-config.yaml（若有配置变量）
     if config.config_vars:
         config_env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), keep_trailing_newline=True)
-        _render_autoflow_config(root, config_env, config.config_vars, created)
+        _render_tide_config(root, config_env, config.config_vars, created)
 
     return created
 
@@ -225,7 +225,7 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
         "tests/scenariotest",
         "tests/unittest",
         "core/models",
-        AUTOFLOW_DIR,
+        TIDE_DIR,
         REPOS_DIR,
         TRASH_DIR,
     ]
@@ -289,9 +289,9 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
     if _write_if_not_exists(root / "Makefile", _MAKEFILE):
         created.append("Makefile")
 
-    # 10. autoflow-config.yaml（若有配置变量）
+    # 10. tide-config.yaml（若有配置变量）
     if config.config_vars:
-        _render_autoflow_config(root, env, config.config_vars, created)
+        _render_tide_config(root, env, config.config_vars, created)
 
     return created
 

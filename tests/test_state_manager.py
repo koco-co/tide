@@ -19,9 +19,9 @@ from scripts.state_manager import (
 
 class TestInitSession:
     def test_creates_state_file(self, tmp_path: Path) -> None:
-        """init_session 在项目根目录下创建 .autoflow/state.json。"""
+        """init_session 在项目根目录下创建 .tide/state.json。"""
         init_session(tmp_path, "test.har")
-        state_file = tmp_path / ".autoflow" / "state.json"
+        state_file = tmp_path / ".tide" / "state.json"
         assert state_file.exists()
 
     def test_state_has_session_id(self, tmp_path: Path) -> None:
@@ -126,12 +126,12 @@ class TestArchiveSession:
         history_dir = archive_session(tmp_path)
 
         assert history_dir is not None
-        assert history_dir == tmp_path / ".autoflow" / "history" / session_id
+        assert history_dir == tmp_path / ".tide" / "history" / session_id
         assert history_dir.exists()
         # state.json 应已移动到 history 目录
         assert (history_dir / "state.json").exists()
         # state.json 不应再存在于原始位置
-        assert not (tmp_path / ".autoflow" / "state.json").exists()
+        assert not (tmp_path / ".tide" / "state.json").exists()
 
     def test_archive_returns_none_without_session(self, tmp_path: Path) -> None:
         """无活跃会话时 archive 应返回 None。"""
@@ -144,4 +144,4 @@ class TestArchiveSession:
         advance_wave(tmp_path, 1)
         archive_session(tmp_path)
         # history 目录应仍然存在
-        assert (tmp_path / ".autoflow" / "history").is_dir()
+        assert (tmp_path / ".tide" / "history").is_dir()

@@ -9,10 +9,10 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from pathlib import Path
 
-from scripts.common import AUTOFLOW_DIR
+from scripts.common import TIDE_DIR
 
 
-class AutoflowPreferences(BaseModel):
+class TidePreferences(BaseModel):
     """用户偏好配置 — 从历史运行中学习。"""
     assertion_verbosity: str = "normal"  # terse | normal | verbose
     preferred_fixture_scope: str = "function"  # function | class | session | module
@@ -27,21 +27,21 @@ _PREFERENCES_FILE = "preferences.json"
 
 
 def _preferences_path(project_root: Path) -> Path:
-    return project_root / AUTOFLOW_DIR / _PREFERENCES_FILE
+    return project_root / TIDE_DIR / _PREFERENCES_FILE
 
 
-def load_preferences(project_root: Path) -> AutoflowPreferences:
+def load_preferences(project_root: Path) -> TidePreferences:
     """加载偏好配置；若不存在则返回默认值。"""
     path = _preferences_path(project_root)
     if not path.exists():
-        return AutoflowPreferences()
+        return TidePreferences()
     try:
-        return AutoflowPreferences.model_validate_json(path.read_text())
+        return TidePreferences.model_validate_json(path.read_text())
     except Exception:
-        return AutoflowPreferences()
+        return TidePreferences()
 
 
-def save_preferences(project_root: Path, prefs: AutoflowPreferences) -> None:
+def save_preferences(project_root: Path, prefs: TidePreferences) -> None:
     """保存偏好配置。"""
     path = _preferences_path(project_root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -51,7 +51,7 @@ def save_preferences(project_root: Path, prefs: AutoflowPreferences) -> None:
 def update_preferences(
     project_root: Path,
     **updates: str | int | bool,
-) -> AutoflowPreferences:
+) -> TidePreferences:
     """部分更新偏好配置（不可变方式）。"""
     current = load_preferences(project_root)
     updated = current.model_copy(update=updates)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     import sys
     from pathlib import Path
 
-    parser = argparse.ArgumentParser(description="AutoFlow preferences manager")
+    parser = argparse.ArgumentParser(description="Tide preferences manager")
     sub = parser.add_subparsers(dest="command")
 
     read_p = sub.add_parser("read")

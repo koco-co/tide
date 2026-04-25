@@ -113,7 +113,7 @@ def run_hook(point_str: str, project_root: str = ".") -> None:
     import subprocess
     from pathlib import Path
 
-    config_path = Path(project_root) / "autoflow-config.yaml"
+    config_path = Path(project_root) / "tide-config.yaml"
     registry = load_hooks_from_config(str(config_path))
 
     try:
@@ -139,7 +139,7 @@ def run_hook(point_str: str, project_root: str = ".") -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Sisyphus Autoflow Hooks CLI")
+    parser = argparse.ArgumentParser(description="Tide Hooks CLI")
     sub = parser.add_subparsers(dest="command")
 
     run_p = sub.add_parser("run")

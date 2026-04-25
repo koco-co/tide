@@ -5,7 +5,7 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="v_1775649063406055" value="AutoFlow 工作流总览" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=24;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="v_1775649063406055" value="Tide 工作流总览" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=24;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="340.0" y="20.0" width="300.0" height="40.0" as="geometry" />
         </mxCell>
         <mxCell id="v_1775649183869290" value="第零步：环境检测 + 智能分类" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;" vertex="1" parent="1">
@@ -44,7 +44,7 @@
         <mxCell id="v_1775649185175819" value="第五步：脚手架 + CLAUDE.md + 配置验证" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
           <mxGeometry x="300.0" y="690.0" width="380.0" height="40.0" as="geometry" />
         </mxCell>
-        <mxCell id="v_1775649185288404" value="/autoflow &lt;har-path&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="v_1775649185288404" value="/tide &lt;har-path&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="350.0" y="770.0" width="280.0" height="50.0" as="geometry" />
         </mxCell>
         <mxCell id="v_1775649185474778" value="Wave 1：解析与准备（并行）har-parser + repo-syncer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">

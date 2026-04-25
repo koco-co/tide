@@ -15,16 +15,16 @@ if TYPE_CHECKING:
 # 路径管理
 # ---------------------------------------------------------------------------
 
-AUTOFLOW_DIR = ".autoflow"
+TIDE_DIR = ".tide"
 REPOS_DIR = ".repos"
 TRASH_DIR = ".trash"
 
 
-def ensure_autoflow_dirs(project_root: Path) -> Path:
-    """确保 .autoflow/ 目录存在并返回其路径。"""
-    autoflow_dir = project_root / AUTOFLOW_DIR
-    autoflow_dir.mkdir(parents=True, exist_ok=True)
-    return autoflow_dir
+def ensure_tide_dirs(project_root: Path) -> Path:
+    """确保 .tide/ 目录存在并返回其路径。"""
+    tide_dir = project_root / TIDE_DIR
+    tide_dir.mkdir(parents=True, exist_ok=True)
+    return tide_dir
 
 
 def ensure_repos_dir(project_root: Path) -> Path:

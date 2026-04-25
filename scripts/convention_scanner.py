@@ -1,6 +1,6 @@
 """惯例扫描器 — AST 检测目标项目的 API URL 模式、HTTP 客户端、断言风格等规范。
 
-输出 .autoflow/convention-scout.json 供 project-scanner 生成 convention-fingerprint.yaml。
+输出 .tide/convention-scout.json 供 project-scanner 生成 convention-fingerprint.yaml。
 """
 from __future__ import annotations
 
@@ -384,9 +384,9 @@ def scan_project(project_root: Path) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="AutoFlow convention scanner")
+    parser = argparse.ArgumentParser(description="Tide convention scanner")
     parser.add_argument("--project-root", default=".")
-    parser.add_argument("--output", default=".autoflow/convention-scout.json")
+    parser.add_argument("--output", default=".tide/convention-scout.json")
     args = parser.parse_args()
 
     root = Path(args.project_root).resolve()

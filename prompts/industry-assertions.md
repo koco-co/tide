@@ -1,13 +1,13 @@
 # 行业特定断言规范
 
 > 引用方：`agents/case-writer.md`、`agents/scenario-analyzer.md`、`agents/case-reviewer.md`
-> 用途：根据 `autoflow-config.yaml` 中的 `industry.domain` 字段，为测试生成添加行业特定的断言和场景。
+> 用途：根据 `tide-config.yaml` 中的 `industry.domain` 字段，为测试生成添加行业特定的断言和场景。
 
 ---
 
 ## 使用方式
 
-1. 读取 `autoflow-config.yaml` 中的 `industry.domain` 字段
+1. 读取 `tide-config.yaml` 中的 `industry.domain` 字段
 2. 若字段存在，查找下方对应行业的断言规则
 3. 在正常 L1-L5 断言之后，追加行业特定断言
 4. 行业断言统一标注为 `# Industry[<行业>]: <断言说明>`
@@ -137,6 +137,6 @@ assert last_resp.status_code == 429, "未触发限流"
 
 `case-reviewer` 在审查时应额外检查：
 
-1. 若 `autoflow-config.yaml` 中有 `industry.domain`，检查生成的测试是否包含对应行业的必须场景
+1. 若 `tide-config.yaml` 中有 `industry.domain`，检查生成的测试是否包含对应行业的必须场景
 2. 缺少行业必须场景的文件，标记为 `MEDIUM` 严重程度
 3. 行业断言不准确的（如金融行业的幂等性检查逻辑错误），标记为 `HIGH`

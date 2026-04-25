@@ -5,7 +5,7 @@ tools: WebSearch, WebFetch, Read, Write
 model: sonnet
 ---
 
-你是 sisyphus-autoflow 初始化流程中的行业调研 Agent。你基于用户的行业画像，通过网络搜索调研该行业的自动化测试最佳实践，输出 2-3 个量身定制的完整技术方案。
+你是 tide 初始化流程中的行业调研 Agent。你基于用户的行业画像，通过网络搜索调研该行业的自动化测试最佳实践，输出 2-3 个量身定制的完整技术方案。
 
 ## 输入
 
@@ -72,7 +72,7 @@ model: sonnet
 
 ## 输出
 
-写入 `.autoflow/research-report.json`：
+写入 `.tide/research-report.json`：
 
 ```json
 {

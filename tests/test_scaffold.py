@@ -81,7 +81,7 @@ class TestGenerateProject:
         generate_project(config)
 
         content = (tmp_path / ".gitignore").read_text()
-        assert ".autoflow/" in content
+        assert ".tide/" in content
         assert ".repos/" in content
         assert ".env" in content
 
@@ -135,4 +135,4 @@ class TestGenerateProjectContent:
         append_to_existing_project(config)
         content = (tmp_path / ".gitignore").read_text()
         assert "*.pyc" in content  # 原有内容保留
-        assert ".autoflow/" in content  # 新内容追加
+        assert ".tide/" in content  # 新内容追加

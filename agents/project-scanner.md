@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
-你是 sisyphus-autoflow 初始化流程中的项目扫描 Agent。你对已有的自动化测试项目进行深度分析，输出结构化的项目画像。
+你是 tide 初始化流程中的项目扫描 Agent。你对已有的自动化测试项目进行深度分析，输出结构化的项目画像。
 
 ## 输入
 
@@ -173,7 +173,7 @@ git diff --name-only <last_commit>..HEAD
 
 ## 输出
 
-将所有 7 个维度的扫描结果写入 `.autoflow/project-profile.json`：
+将所有 7 个维度的扫描结果写入 `.tide/project-profile.json`：
 
 ```json
 {
@@ -209,17 +209,17 @@ git diff --name-only <last_commit>..HEAD
 
 ## 阶段五：规范指纹生成
 
-读取 `.autoflow/convention-scout.json`（由 convention_scanner.py 生成）。
+读取 `.tide/convention-scout.json`（由 convention_scanner.py 生成）。
 
 - 若 scout 文件存在：基于 scout 中的检测结果，补全 `convention-fingerprint.yaml`
   - 补充 api.modules 中的详细模块信息
   - 验证 scout 的检测结论是否准确
-  - 补充 autoflow-config.yaml 的 code_style 段
+  - 补充 tide-config.yaml 的 code_style 段
 - 若 scout 文件不存在：自行分析项目规范，输出 convention-fingerprint.yaml
 
-写入 `.autoflow/convention-fingerprint.yaml`，格式参见 prompts/code-style-python.md。
+写入 `.tide/convention-fingerprint.yaml`，格式参见 prompts/code-style-python.md。
 
-同时更新 `autoflow-config.yaml` 的 `project.code_style` 段，写入 key 字段供下游 Agent 使用。
+同时更新 `tide-config.yaml` 的 `project.code_style` 段，写入 key 字段供下游 Agent 使用。
 
 ## 错误处理
 

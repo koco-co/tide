@@ -429,7 +429,7 @@ grep -n "@PostMapping\|@GetMapping\|@PutMapping\|@DeleteMapping\|@RequestMapping
 
 ## 6. 输出：scenarios.json 结构
 
-分析并经用户确认后，写入 `.autoflow/scenarios.json`：
+分析并经用户确认后，写入 `.tide/scenarios.json`：
 
 ```json
 {

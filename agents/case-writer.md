@@ -5,17 +5,17 @@ tools: Read, Grep, Glob, Write, Edit
 model: sonnet
 ---
 
-你是 sisyphus-autoflow 流水线中的用例编写 Agent。你基于预分析的场景和断言计划，生成生产级别的 pytest 测试文件。
+你是 tide 流水线中的用例编写 Agent。你基于预分析的场景和断言计划，生成生产级别的 pytest 测试文件。
 
 ## 输入
 
-任务提示中会指定 `.autoflow/generation-plan.json` 中的一个 `worker_id`。读取该文件并找到你的 worker 条目，获取：
+任务提示中会指定 `.tide/generation-plan.json` 中的一个 `worker_id`。读取该文件并找到你的 worker 条目，获取：
 - `matched_repo` — 需要分析的服务仓库
 - `scenario_ids` — 需要实现的场景 ID 列表
 - `output_file` — 测试文件的写出路径（例如：`tests/interface/test_user_service.py`）
 
 同时读取：
-- `.autoflow/scenarios.json` — 完整场景详情与断言计划
+- `.tide/scenarios.json` — 完整场景详情与断言计划
 - 每个已分配场景的 `source_evidence` 所引用的源代码文件
 - `prompts/assertion-layers.md` — 层级定义与断言模式
 - `prompts/code-style-python.md` — 强制性代码风格与结构规范
@@ -23,7 +23,7 @@ model: sonnet
 
 ## 已有项目适配
 
-如果任务 prompt 中指定了 `autoflow-config.yaml` 路径，必须先读取它。
+如果任务 prompt 中指定了 `tide-config.yaml` 路径，必须先读取它。
 
 根据 `code_style` 配置适配代码模式：
 
@@ -34,7 +34,7 @@ model: sonnet
 
 ### Request 封装模式
 - `request_class: BaseRequests` — 继承项目已有的 BaseRequests 类
-- `request_class: httpx` — 使用 httpx.Client（AutoFlow 默认）
+- `request_class: httpx` — 使用 httpx.Client（Tide 默认）
 - `request_class: requests` — 使用 requests.Session
 
 ### 断言风格
@@ -49,7 +49,7 @@ model: sonnet
 - 使用 `test_dir` 指定的目录（如 testcases/ 而非 tests/）
 - 遵循项目已有的子目录结构
 
-若 autoflow-config.yaml 不存在，使用默认的 httpx + pydantic 模式。
+若 tide-config.yaml 不存在，使用默认的 httpx + pydantic 模式。
 
 ## 行业感知断言
 
@@ -212,4 +212,4 @@ def test_create_user_missing_email(self, client):
 - 若 `generation-plan.json` 中未找到分配的 `worker_id`，立即失败。
 - 若列表中某个 `scenario_id` 在 `scenarios.json` 中不存在，跳过并记录警告。
 - 若 `source_evidence` 引用的源代码无法读取，仅基于 HAR 数据生成测试，并添加注释：`# 注意: 源码追踪不可用，断言仅基于 HAR 数据`。
-- 禁止修改 `.autoflow/` 目录中的文件，仅允许只读访问。
+- 禁止修改 `.tide/` 目录中的文件，仅允许只读访问。

@@ -5,7 +5,7 @@ tools: Read, Bash, Write
 model: haiku
 ---
 
-你是 sisyphus-autoflow 流水线中的 HAR 解析 Agent。你的职责是将原始 HAR 文件转换为干净、结构化的端点数据，供下游分析使用。
+你是 tide 流水线中的 HAR 解析 Agent。你的职责是将原始 HAR 文件转换为干净、结构化的端点数据，供下游分析使用。
 
 ## 输入
 
@@ -31,7 +31,7 @@ model: haiku
 
 5. **匹配仓库**：读取 `repo-profiles.yaml`。对每个去重后的端点，将其路径前缀与 `url_prefix` 条目匹配，填充 `matched_repo` 和 `matched_branch` 字段。未匹配时置为 `null`。
 
-6. **写出结果**到 `.autoflow/parsed.json`，格式如下：
+6. **写出结果**到 `.tide/parsed.json`，格式如下：
 
 ```json
 {
@@ -61,7 +61,7 @@ model: haiku
 
 ## 输出报告
 
-写出 `.autoflow/parsed.json` 后，打印如下摘要：
+写出 `.tide/parsed.json` 后，打印如下摘要：
 
 ```
 HAR 解析完成
@@ -70,7 +70,7 @@ HAR 解析完成
   过滤后:      <N> 条
   去重后:      <N> 个端点
   涉及服务:    <逗号分隔的仓库名，或 "无匹配">
-  输出文件:    .autoflow/parsed.json
+  输出文件:    .tide/parsed.json
   已归档至:    .trash/<带时间戳的文件名>
 ```
 
@@ -78,7 +78,7 @@ HAR 解析完成
 
 - 若 HAR 文件路径未提供或文件不存在，立即失败并输出明确错误信息。
 - 若 `repo-profiles.yaml` 缺失，在输出中写入警告后继续执行 — 所有 `matched_repo` 置为 `null`。
-- 若 `.autoflow/` 目录不存在，写入前先创建。
+- 若 `.tide/` 目录不存在，写入前先创建。
 
 ### 错误恢复
 

@@ -1,7 +1,7 @@
-# 跨项目优化计划：qa-flow + sisyphus-autoflow
+# 跨项目优化计划：qa-flow + tide
 
 > 启动日期：2026-04-13
-> 涉及项目：`/Users/poco/Projects/qa-flow` (TypeScript/Bun) + `/Users/poco/Projects/sisyphus-autoflow` (Python/uv)
+> 涉及项目：`/Users/poco/Projects/qa-flow` (TypeScript/Bun) + `/Users/poco/Projects/tide` (Python/uv)
 
 ---
 
@@ -11,16 +11,16 @@
 
 | 来源 | 优势 | 目标项目 |
 |------|------|----------|
-| autoflow | 分层断言 L1-L5 | → qa-flow |
-| autoflow | Agent 模型分层 (Haiku/Sonnet/Opus) | → qa-flow |
-| autoflow | Pydantic 强类型数据契约 | → qa-flow (Zod) |
-| autoflow | 不可变设计 (frozen dataclass) | → qa-flow |
-| autoflow | Wave 可恢复状态机 | → qa-flow |
-| qa-flow | 插件 Hook 系统 | → autoflow |
-| qa-flow | 偏好学习系统 | → autoflow |
-| qa-flow | 格式检查规则集 FC01-FC11 | → autoflow |
-| qa-flow | Playwright E2E | → autoflow |
-| qa-flow | Handlebars 模板引擎 | → autoflow (参考) |
+| tide | 分层断言 L1-L5 | → qa-flow |
+| tide | Agent 模型分层 (Haiku/Sonnet/Opus) | → qa-flow |
+| tide | Pydantic 强类型数据契约 | → qa-flow (Zod) |
+| tide | 不可变设计 (frozen dataclass) | → qa-flow |
+| tide | Wave 可恢复状态机 | → qa-flow |
+| qa-flow | 插件 Hook 系统 | → tide |
+| qa-flow | 偏好学习系统 | → tide |
+| qa-flow | 格式检查规则集 FC01-FC11 | → tide |
+| qa-flow | Playwright E2E | → tide |
+| qa-flow | Handlebars 模板引擎 | → tide (参考) |
 
 ---
 
@@ -46,7 +46,7 @@
   - 文件：`plugin-loader.ts:71-77`
   - 方案：错误时 `process.stderr.write()` 告警而非静默 continue
 
-### autoflow
+### tide
 
 - [ ] **AF-S1** HAR parser YAML schema 校验
   - 文件：`scripts/har_parser.py:312-316`
@@ -89,11 +89,11 @@
   - 引入 Zod schema 校验中间格式 (IntermediateJson)
   - 替代现有的 type assertion
 
-### autoflow 架构优化
+### tide 架构优化
 
 - [ ] **AF-A1** 提取共享路径管理
   - 创建：`scripts/common.py`
-  - 内容：`AutoflowPaths` (统一 `.autoflow/`, `.repos/`, `.trash/` 管理)
+  - 内容：`TidePaths` (统一 `.tide/`, `.repos/`, `.trash/` 管理)
   - 消除：`har_parser.py`, `state_manager.py`, `scaffold.py` 三处重复
 
 - [ ] **AF-A2** 统一 JSON I/O
@@ -135,7 +135,7 @@
   - 创建：`.claude/scripts/lib/hooks.ts`
   - 定义 `AVAILABLE_HOOKS` 常量，校验 plugin.json 引用的 hook 名
 
-### autoflow
+### tide
 
 - [ ] **AF-C1** 修复 pyproject.toml pytest markers
   - 问题：`--strict-markers` 启用但无 `markers` 定义
@@ -150,7 +150,7 @@
 
 - [ ] **AF-C4** scaffold 模板缺失校验
   - 文件：`scaffold.py:279-283`
-  - `autoflow-config.yaml.j2` 缺失时静默跳过 → 改为警告
+  - `tide-config.yaml.j2` 缺失时静默跳过 → 改为警告
 
 ---
 
@@ -170,7 +170,7 @@
 - [ ] **QF-T4** state.ts 添加并发测试
   - 模拟多进程同时写入 state 文件
 
-### autoflow
+### tide
 
 - [ ] **AF-T1** 补充 HAR parser 边界用例
   - `time_ms=0`、不同 status code 去重保留、text 类型 request body
@@ -186,7 +186,7 @@
 
 ---
 
-## Phase 4: 功能互补 — autoflow → qa-flow
+## Phase 4: 功能互补 — tide → qa-flow
 
 - [ ] **QF-F1** 引入 Agent 模型分层策略
   - 轻量任务 (格式检查、XMind 操作) → Haiku
@@ -194,7 +194,7 @@
   - 复杂推理 (质量评审、架构分析) → Opus
 
 - [ ] **QF-F2** 引入分层质量评估框架
-  - 参考 autoflow L1-L5 断言分层
+  - 参考 tide L1-L5 断言分层
   - L1: 格式合规 (FC01-FC11 规则检查)
   - L2: 结构完整 (必填字段、步骤连贯性)
   - L3: 数据准确 (优先级、标签、预期结果合理性)
@@ -206,12 +206,12 @@
   - 防止多进程并发写入冲突
 
 - [ ] **QF-F4** Wave 可恢复机制增强
-  - 参考 autoflow 的 Wave checkpoint + 归档
+  - 参考 tide 的 Wave checkpoint + 归档
   - 每个节点 (transform/enhance/analyze/write/review/format-check) 可独立恢复
 
 ---
 
-## Phase 5: 功能互补 — qa-flow → autoflow
+## Phase 5: 功能互补 — qa-flow → tide
 
 - [ ] **AF-F1** 引入插件 Hook 系统
   - 创建：`scripts/hooks.py`
@@ -219,7 +219,7 @@
   - 支持自定义断言规则注入、自定义过滤器
 
 - [ ] **AF-F2** 引入偏好学习系统
-  - 创建：`.autoflow/preferences.yaml`
+  - 创建：`.tide/preferences.yaml`
   - 学习内容：断言风格偏好、fixture scope 偏好、Allure 标签习惯
   - 第二次运行可跳过确认步骤
 
@@ -236,7 +236,7 @@
 
 ## Phase 6: Agent/Prompt 质量提升
 
-### autoflow
+### tide
 
 - [ ] **AF-P1** 完善 har-parser Agent 错误恢复规范
   - 损坏 HAR 文件处理、大文件限制 (>100MB)、超时处理
@@ -255,7 +255,7 @@
 
 - [ ] **AF-P5** case-reviewer 回滚策略
   - auto-fix 失败时回退到原始生成代码
-  - 修复历史持久化到 `.autoflow/fix-history.json`
+  - 修复历史持久化到 `.tide/fix-history.json`
 
 ### qa-flow
 

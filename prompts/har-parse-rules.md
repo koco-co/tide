@@ -177,7 +177,7 @@ return None, None
 
 ## 9. 输出：parsed.json 结构
 
-将结果写入 `.autoflow/parsed.json`，结构如下：
+将结果写入 `.tide/parsed.json`，结构如下：
 
 ```json
 {

@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from scripts.preferences import (
-    AutoflowPreferences,
+    TidePreferences,
     load_preferences,
     save_preferences,
     update_preferences,
@@ -18,14 +18,14 @@ class TestPreferences:
         assert prefs.preferred_fixture_scope == "function"
 
     def test_save_and_load(self, tmp_path: Path) -> None:
-        prefs = AutoflowPreferences(assertion_verbosity="terse", industry="finance")
+        prefs = TidePreferences(assertion_verbosity="terse", industry="finance")
         save_preferences(tmp_path, prefs)
         loaded = load_preferences(tmp_path)
         assert loaded.assertion_verbosity == "terse"
         assert loaded.industry == "finance"
 
     def test_update_partial(self, tmp_path: Path) -> None:
-        save_preferences(tmp_path, AutoflowPreferences())
+        save_preferences(tmp_path, TidePreferences())
         updated = update_preferences(tmp_path, assertion_verbosity="verbose", skip_user_confirmation=True)
         assert updated.assertion_verbosity == "verbose"
         assert updated.skip_user_confirmation is True

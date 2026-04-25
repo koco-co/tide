@@ -1,4 +1,4 @@
-# AutoFlow Plugin Design Spec
+# Tide Plugin Design Spec
 
 > Claude Code Plugin for API test automation — HAR-driven, source-aware, multi-agent orchestrated
 
@@ -6,7 +6,7 @@
 
 ### 1.1 What
 
-A Claude Code Plugin (`sisyphus-autoflow`) that transforms HAR files into production-grade pytest test suites. It reads source code to understand business logic, generates L1-L5 layered assertions, and orchestrates multiple AI agents in a four-wave pipeline.
+A Claude Code Plugin (`tide`) that transforms HAR files into production-grade pytest test suites. It reads source code to understand business logic, generates L1-L5 layered assertions, and orchestrates multiple AI agents in a four-wave pipeline.
 
 ### 1.2 Why
 
@@ -29,7 +29,7 @@ No existing tool combines HAR input + source code analysis + interactive scenari
 | API-to-repo mapping | Configuration file (`repo-profiles.yaml`) |
 | DB assertions | Required from v1 (optional per-project config) |
 | Notifications | Terminal AskUserQuestion + external webhook (DingTalk/Feishu/Slack) |
-| Skill split | Two skills: `/using-autoflow` (init) + `/autoflow` (main workflow) |
+| Skill split | Two skills: `/using-tide` (init) + `/tide` (main workflow) |
 | Test organization | `tests/{interface,scenariotest,unittest}/{service_module}/test_*.py` |
 | Architecture | Wave-based hybrid orchestration (4 waves, 5 agents) |
 
@@ -38,7 +38,7 @@ No existing tool combines HAR input + source code analysis + interactive scenari
 ## 2. Plugin Structure
 
 ```
-sisyphus-autoflow/
+tide/
 ├── README.md                               # GitHub README (Mermaid diagrams, badges, usage)
 ├── README_EN.md                            # English README (optional)
 ├── LICENSE                                 # MIT License
@@ -46,9 +46,9 @@ sisyphus-autoflow/
 ├── pyproject.toml                          # Plugin's own dev dependencies (uv + ruff + pytest)
 ├── Makefile                                # Dev shortcuts: test, lint, typecheck, release
 ├── skills/
-│   ├── using-autoflow/
+│   ├── using-tide/
 │   │   └── SKILL.md                        # Skill 1: Environment init wizard
-│   └── autoflow/
+│   └── tide/
 │       └── SKILL.md                        # Skill 2: HAR→test main workflow
 ├── agents/
 │   ├── har-parser.md                       # Wave1: HAR parse + dedup + filter
@@ -107,14 +107,14 @@ sisyphus-autoflow/
 
 ---
 
-## 3. Skill 1: /using-autoflow (Environment Init Wizard)
+## 3. Skill 1: /using-tide (Environment Init Wizard)
 
 ### 3.1 Frontmatter
 
 ```yaml
 ---
-name: using-autoflow
-description: "Initialize AutoFlow environment — project scaffolding, repo config, tech stack setup. Use when: first run, /using-autoflow, 'initialize autoflow', 'setup autoflow'."
+name: using-tide
+description: "Initialize Tide environment — project scaffolding, repo config, tech stack setup. Use when: first run, /using-tide, 'initialize tide', 'setup tide'."
 argument-hint: "[--force]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
@@ -188,7 +188,7 @@ notifications:                           # Optional
 ### 3.4 Auto-Generated CLAUDE.md Structure
 
 ```markdown
-# AutoFlow Project Configuration
+# Tide Project Configuration
 
 ## Tech Stack
 - Python 3.13 + uv + pytest + httpx + pydantic
@@ -216,14 +216,14 @@ notifications:                           # Optional
 
 ---
 
-## 4. Skill 2: /autoflow (Main Workflow)
+## 4. Skill 2: /tide (Main Workflow)
 
 ### 4.1 Frontmatter
 
 ```yaml
 ---
-name: autoflow
-description: "Generate pytest test suites from HAR files with source-aware AI analysis. Triggers on: /autoflow <har-path>, 'generate tests from HAR', providing a .har file path."
+name: tide
+description: "Generate pytest test suites from HAR files with source-aware AI analysis. Triggers on: /tide <har-path>, 'generate tests from HAR', providing a .har file path."
 argument-hint: "<har-file-path> [--quick] [--resume]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
@@ -234,8 +234,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 
 Before entering Wave 1, the SKILL.md orchestrator performs:
 
-1. **Environment check**: `repo-profiles.yaml` exists? If not → redirect to `/using-autoflow`
-2. **Resume check**: `.autoflow/state.json` exists? If yes → AskUserQuestion: resume or restart?
+1. **Environment check**: `repo-profiles.yaml` exists? If not → redirect to `/using-tide`
+2. **Resume check**: `.tide/state.json` exists? If yes → AskUserQuestion: resume or restart?
 3. **HAR validation**: File exists? Valid JSON? Has `log.entries`?
 4. **Argument parsing**: `--quick` skips Wave 2 confirmation, `--resume` forces resume mode
 
@@ -245,8 +245,8 @@ Before entering Wave 1, the SKILL.md orchestrator performs:
 
 | Agent | Model | Input | Output |
 |-------|-------|-------|--------|
-| har-parser | haiku | HAR file path, `har-parse-rules.md` | `.autoflow/parsed.json` |
-| repo-syncer | haiku | `repo-profiles.yaml` (all configured repos) | `.autoflow/repo-status.json` |
+| har-parser | haiku | HAR file path, `har-parse-rules.md` | `.tide/parsed.json` |
+| repo-syncer | haiku | `repo-profiles.yaml` (all configured repos) | `.tide/repo-status.json` |
 
 **har-parser agent logic:**
 
@@ -259,7 +259,7 @@ Before entering Wave 1, the SKILL.md orchestrator performs:
    - Same path, different params → keep as parameterized test data
    - Same path, different status codes → keep separately (normal + error scenarios)
 4. Match each endpoint to a repo via `repo-profiles.yaml` URL prefix matching (informational only; repo-syncer pulls all repos independently)
-5. Write `.autoflow/parsed.json`
+5. Write `.tide/parsed.json`
 6. Move HAR file → `.trash/{timestamp}_{filename}`
 
 **parsed.json schema:**
@@ -306,7 +306,7 @@ Before entering Wave 1, the SKILL.md orchestrator performs:
 **Agent:** scenario-analyzer (model: opus)
 
 **Input:**
-- `.autoflow/parsed.json`
+- `.tide/parsed.json`
 - Source code from matched repos (Controller → Service → DAO layers)
 - `prompts/scenario-enrich.md`
 - `prompts/assertion-layers.md`
@@ -345,7 +345,7 @@ For each endpoint:
 | L4 Business | Source business logic, state machines; DB if configured | Conditional (scenario tests) |
 | L5 AI-inferred | Implicit rules from source code analysis | Conditional (high-confidence only) |
 
-**Output:** `.autoflow/scenarios.json` containing:
+**Output:** `.tide/scenarios.json` containing:
 - Endpoint list with scenario assignments
 - CRUD closure groups
 - Assertion plan per scenario per layer
@@ -430,7 +430,7 @@ Review dimensions (from `prompts/review-checklist.md`):
 uv run pytest --collect-only tests/
 
 # Run interface tests
-uv run pytest tests/interface/ -x -v --alluredir=.autoflow/allure-results
+uv run pytest tests/interface/ -x -v --alluredir=.tide/allure-results
 
 # Collect results
 # Pass/Fail/Skip statistics
@@ -453,7 +453,7 @@ Delivered via:
 
 **Checkpoint ④:** `state.json { current_wave: 4, status: "delivered" }`
 
-Post-delivery: archive `.autoflow/*` → `.autoflow/history/{session_id}/`
+Post-delivery: archive `.tide/*` → `.tide/history/{session_id}/`
 
 ---
 
@@ -478,10 +478,10 @@ Post-delivery: archive `.autoflow/*` → `.autoflow/history/{session_id}/`
 
 ### 5.3 Inter-Agent Communication
 
-Agents do not communicate directly. All data flows through `.autoflow/` directory files:
+Agents do not communicate directly. All data flows through `.tide/` directory files:
 
 ```
-.autoflow/
+.tide/
 ├── state.json              # Wave checkpoint state
 ├── parsed.json             # Wave1 → Wave2 (endpoint data)
 ├── repo-status.json        # Wave1 → Wave2 (repo sync status)
@@ -653,12 +653,12 @@ L5 generation rules:
 | `init --har <path>` | Create new session, generate session_id |
 | `advance --wave <N> --data '{}'` | Mark wave complete, advance to next |
 | `resume` | Read state.json, return resume point info |
-| `archive` | Move `.autoflow/*` → `.autoflow/history/{session_id}/` |
+| `archive` | Move `.tide/*` → `.tide/history/{session_id}/` |
 
 ### 7.3 Resume Flow
 
 ```
-/autoflow invoked → check .autoflow/state.json
+/tide invoked → check .tide/state.json
   ├─ Not found → normal flow from Wave 1
   └─ Found → AskUserQuestion: Resume / Restart / View files
        └─ Resume → read current_wave
@@ -703,11 +703,11 @@ L5 generation rules:
 
 ## 9. Generated Project Structure
 
-After `/using-autoflow` init + first `/autoflow` run:
+After `/using-tide` init + first `/tide` run:
 
 ```
 {project_root}/
-├── .autoflow/                      # Autoflow working directory (gitignored)
+├── .tide/                      # Tide working directory (gitignored)
 │   ├── state.json
 │   └── history/
 ├── .repos/                         # Source code repos (gitignored)
@@ -811,7 +811,7 @@ After `/using-autoflow` init + first `/autoflow` run:
 The README.md follows GitHub community standards with Mermaid diagrams for visual clarity.
 
 ```markdown
-# sisyphus-autoflow
+# tide
 
 > HAR-driven, source-aware API test automation — powered by Claude Code
 
@@ -851,10 +851,10 @@ The README.md follows GitHub community standards with Mermaid diagrams for visua
 ## Usage
 
 ### Initialize Project
-{/using-autoflow usage}
+{/using-tide usage}
 
 ### Generate Tests from HAR
-{/autoflow usage with examples}
+{/tide usage with examples}
 
 ## Configuration
 
@@ -898,8 +898,8 @@ MIT
 
 ```mermaid
 graph TD
-    A[/"🎯 /autoflow &lt;har-file&gt;"/] --> B{Environment ready?}
-    B -->|No| C[/"🔧 /using-autoflow"/]
+    A[/"🎯 /tide &lt;har-file&gt;"/] --> B{Environment ready?}
+    B -->|No| C[/"🔧 /using-tide"/]
     C --> B
     B -->|Yes| D{Resume session?}
     D -->|New| E["⚡ Wave 1: Parse & Prepare"]
@@ -1001,11 +1001,11 @@ graph LR
     style L5 fill:#e1bee7,stroke:#8e24aa
 ```
 
-### 12.4 Using-Autoflow Init Mermaid Diagram
+### 12.4 Using-Tide Init Mermaid Diagram
 
 ```mermaid
 graph TD
-    A[/"🔧 /using-autoflow"/] --> B["Step 1: Environment Detection"]
+    A[/"🔧 /using-tide"/] --> B["Step 1: Environment Detection"]
     B --> B1{Python ≥ 3.12?}
     B1 -->|No| B2["❌ Prompt install"]
     B1 -->|Yes| B3{uv installed?}
@@ -1069,7 +1069,7 @@ tests/fixtures/
 
 ```toml
 [project]
-name = "sisyphus-autoflow"
+name = "tide"
 version = "0.1.0"
 description = "HAR-driven, source-aware API test automation plugin for Claude Code"
 requires-python = ">=3.12"
@@ -1156,7 +1156,7 @@ The plugin is published to **both** GitHub (source of truth) and Claude Code Plu
 
 ### 14.2 GitHub Repository Setup
 
-**Repository:** `github.com/{owner}/sisyphus-autoflow`
+**Repository:** `github.com/{owner}/tide`
 
 **GitHub Actions CI (`.github/workflows/ci.yml`):**
 
@@ -1203,12 +1203,12 @@ jobs:
 
 ```yaml
 ---
-name: sisyphus-autoflow
+name: tide
 description: "HAR-driven, source-aware API test automation. Generate pytest suites with L1-L5 layered assertions from HAR files + backend source code."
 version: "0.1.0"
 author: "{author}"
 license: MIT
-repository: "https://github.com/{owner}/sisyphus-autoflow"
+repository: "https://github.com/{owner}/tide"
 keywords: ["api-testing", "har", "pytest", "automation", "ai"]
 requires:
   bins: ["python3", "uv", "git"]
@@ -1219,20 +1219,20 @@ requires:
 
 ```bash
 # From Claude Code Plugin registry (when available)
-claude plugins add sisyphus-autoflow
+claude plugins add tide
 
 # From GitHub directly
-claude plugins add github:{owner}/sisyphus-autoflow
+claude plugins add github:{owner}/tide
 
 # Manual install (clone to plugins directory)
-git clone https://github.com/{owner}/sisyphus-autoflow.git ~/.claude/plugins/sisyphus-autoflow
+git clone https://github.com/{owner}/tide.git ~/.claude/plugins/tide
 ```
 
 ### 14.4 Version Strategy
 
 | Version | Scope |
 |---------|-------|
-| 0.1.0 | MVP: /using-autoflow + /autoflow with L1-L3 assertions, no DB |
+| 0.1.0 | MVP: /using-tide + /tide with L1-L3 assertions, no DB |
 | 0.2.0 | L4-L5 assertions + DB integration |
 | 0.3.0 | External notifications (DingTalk/Feishu/Slack) |
 | 0.4.0 | --quick mode + resume/checkpoint |

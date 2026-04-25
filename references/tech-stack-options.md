@@ -1,6 +1,6 @@
 # 技术栈选型参考
 
-本文档梳理 sisyphus-autoflow 生成的测试项目各层的可选技术方案，供 `/using-autoflow` 向导和人工决策参考。
+本文档梳理 tide 生成的测试项目各层的可选技术方案，供 `/using-tide` 向导和人工决策参考。
 
 ---
 
@@ -32,7 +32,7 @@
 - 社区活跃，`pytest-httpx` 可用于 mock 测试
 
 **缺点：**
-- pydantic 模型需要手动定义（autoflow 会自动生成，但仍有维护成本）
+- pydantic 模型需要手动定义（tide 会自动生成，但仍有维护成本）
 - httpx 相对 requests 知名度略低，部分老项目文档仍用 requests
 
 **适用场景：** 新项目、需要 async 支持、团队使用现代 Python
@@ -89,9 +89,9 @@ test = [
 - YAML 不是真正的编程语言：复杂逻辑（循环、条件、动态数据）需要回退到 Python，造成混合代码难以维护
 - 调试困难：YAML 中的错误堆栈指向框架内部，定位问题比纯 Python 慢
 - L4/L5 高层断言几乎无法在 YAML 中表达，需要大量自定义 hook
-- autoflow 生成代码为 Python，与 Tavern YAML 范式不兼容
+- tide 生成代码为 Python，与 Tavern YAML 范式不兼容
 
-**适用场景：** 简单的接口冒烟测试、非开发人员主导的测试场景；**不推荐**用于 sisyphus-autoflow 生成的完整测试套件
+**适用场景：** 简单的接口冒烟测试、非开发人员主导的测试场景；**不推荐**用于 tide 生成的完整测试套件
 
 ---
 
@@ -241,7 +241,7 @@ ignore = ["E501"]
 | 代码检查 | ruff | flake8 + isort |
 | 类型检查 | pyright | mypy |
 
-**默认技术栈（`/using-autoflow` 生成的 `pyproject.toml`）：**
+**默认技术栈（`/using-tide` 生成的 `pyproject.toml`）：**
 
 ```toml
 [project]

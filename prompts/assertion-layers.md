@@ -425,7 +425,7 @@ assert resp.json()["code"] != 1  # L5[SPECULATIVE]：根据方法名推断可能
 
 ### 认证逻辑复用
 
-- 当 `autoflow-config.yaml` 指定 `auth_method: reuse` 时：
+- 当 `tide-config.yaml` 指定 `auth_method: reuse` 时：
   - 优先查找项目中已有的 `conftest.py` 认证 fixture
   - 若未找到，生成标准 `@pytest.fixture` 认证逻辑并输出警告
   - 绝不硬编码 token 或密码

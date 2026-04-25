@@ -263,7 +263,7 @@ uv run pytest --collect-only tests/
 
 ## 7. 审查报告输出
 
-审查完成后，写入 `.autoflow/review-report.json`：
+审查完成后，写入 `.tide/review-report.json`：
 
 ```json
 {

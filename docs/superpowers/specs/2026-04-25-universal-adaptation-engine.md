@@ -2,18 +2,18 @@
 
 ## 概述
 
-将 sisyphus-autoflow 从"固定模板生成"升级为"通用适配引擎"：安装后自动扫描目标项目的代码规范，生成的测试自动匹配项目现有的 API 引用方式、HTTP 客户端、断言风格、Allure 标注、测试数据结构等规范。
+将 tide 从"固定模板生成"升级为"通用适配引擎"：安装后自动扫描目标项目的代码规范，生成的测试自动匹配项目现有的 API 引用方式、HTTP 客户端、断言风格、Allure 标注、测试数据结构等规范。
 
 ## 架构
 
 ```
-/using-autoflow → convention_scanner.py (AST) → scout.json
+/using-tide → convention_scanner.py (AST) → scout.json
                        ↓
                project-scanner (opus) → convention-fingerprint.yaml
                        ↓
-               autoflow-config.yaml (引用 fingerprint 关键字段)
+               tide-config.yaml (引用 fingerprint 关键字段)
                        ↓
-/autoflow → case-writer (sonnet) ← 读取 fingerprint → 生成匹配代码
+/tide → case-writer (sonnet) ← 读取 fingerprint → 生成匹配代码
 ```
 
 ## 核心组件
@@ -107,7 +107,7 @@ module_structure:
 
 ### 3. Case-Writer prompt 动态组装
 
-修改 `skills/autoflow/SKILL.md` 预检阶段，在检测到 fingerprint 时注入额外约束：
+修改 `skills/tide/SKILL.md` 预检阶段，在检测到 fingerprint 时注入额外约束：
 
 ```
 当前模式：
@@ -125,8 +125,8 @@ case-writer 收到 fingerprint 后输出的代码需要：
 ### 4. 生成文件独立目录
 
 生成的测试文件输出到独立位置，与手写测试隔离：
-- `testcases/scenariotest/autoflow_generated/`
-- 文件名：`test_autoflow_{module}_{timestamp}.py`
+- `testcases/scenariotest/tide_generated/`
+- 文件名：`test_tide_{module}_{timestamp}.py`
 - 用户 review 后手动合并到正式目录
 
 ## 验证策略
@@ -144,6 +144,6 @@ case-writer 收到 fingerprint 后输出的代码需要：
 修改:
   agents/project-scanner.md         — 增加 fingerprint 生成指令  
   prompts/code-style-python.md      — 增加 fingerprint 适配策略
-  skills/autoflow/SKILL.md          — 预检加载 fingerprint 并注入 case-writer
-  skills/using-autoflow/SKILL.md    — 扫描步骤增加 fingerprint 生成
+  skills/tide/SKILL.md          — 预检加载 fingerprint 并注入 case-writer
+  skills/using-tide/SKILL.md    — 扫描步骤增加 fingerprint 生成
 ```

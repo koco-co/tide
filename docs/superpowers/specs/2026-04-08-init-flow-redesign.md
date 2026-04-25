@@ -1,4 +1,4 @@
-# /using-autoflow 初始化流程重构设计
+# /using-tide 初始化流程重构设计
 
 > 日期：2026-04-08
 > 状态：已确认，待实施
@@ -7,17 +7,17 @@
 
 ## 背景
 
-当前 `/using-autoflow` 初始化流程采用固定的技术栈选项（推荐/保守/自定义），对已有项目只做配置文件级别的扫描（ruff/mypy 等），存在以下不足：
+当前 `/using-tide` 初始化流程采用固定的技术栈选项（推荐/保守/自定义），对已有项目只做配置文件级别的扫描（ruff/mypy 等），存在以下不足：
 
 1. **已有项目**：只检测代码风格配置，未深度理解代码逻辑、架构模式、鉴权方式
 2. **新项目**：提供固定框架选项，未考虑用户行业、平台、团队等因素
-3. **行业上下文**：完全缺失，后续 /autoflow 生成测试时无法参考行业特性
+3. **行业上下文**：完全缺失，后续 /tide 生成测试时无法参考行业特性
 
 ## 设计目标
 
 - 已有自动化项目：Agent 深度通读 → 交互式逐项确认 → 写入配置
 - 新项目：收集行业画像 → Agent 网络调研 → 2-3 个完整技术方案 → 用户选择
-- 行业信息全流程影响（初始化 + 后续 /autoflow 生成）
+- 行业信息全流程影响（初始化 + 后续 /tide 生成）
 - 多环境/多版本：初始化时收集信息并记录，实际功能留后续版本
 
 ---
@@ -29,7 +29,7 @@
 │ 第零步：环境检测 + 智能分类                        │
 │   检测工具 → 扫描项目标志 → 判定项目类型              │
 │   输出：project_type = existing_auto | new          │
-│   特殊：检测到 autoflow-config.yaml → 快速重初始化    │
+│   特殊：检测到 tide-config.yaml → 快速重初始化    │
 └────────────────┬────────────────────────────────┘
                  │
         ┌────────┴────────┐
@@ -82,23 +82,23 @@ git --version
 
 ### 快速重初始化检测
 
-检查 `autoflow-config.yaml` 是否已存在：
+检查 `tide-config.yaml` 是否已存在：
 
 ```
 若已存在：
 AskUserQuestion(
-  "检测到已有 AutoFlow 配置（上次初始化：<日期>）。",
+  "检测到已有 Tide 配置（上次初始化：<日期>）。",
   options=[
-    "使用现有配置直接进入 /autoflow（推荐）",
+    "使用现有配置直接进入 /tide（推荐）",
     "更新配置（只修改变更项）",
     "完全重新初始化"
   ]
 )
 ```
 
-- 选择「使用现有配置」→ 直接终止，提示用户运行 /autoflow
+- 选择「使用现有配置」→ 直接终止，提示用户运行 /tide
 - 选择「更新配置」→ 读取现有配置，只询问用户想修改的部分
-- 选择「完全重新初始化」→ 备份现有配置到 `.autoflow/backup/`，继续完整流程
+- 选择「完全重新初始化」→ 备份现有配置到 `.tide/backup/`，继续完整流程
 
 ### 智能分类
 
@@ -128,7 +128,7 @@ else:
 
 - 1-2 个零散脚本 → 判为 `new`，但提示"检测到少量测试文件，如需保留请告知"
 - tests/ 目录存在但全空 → 判为 `new`
-- 检测到非 Python 测试框架（Java/JS）→ 提示"检测到非 Python 测试代码，AutoFlow 目前仅支持 Python"
+- 检测到非 Python 测试框架（Java/JS）→ 提示"检测到非 Python 测试代码，Tide 目前仅支持 Python"
 
 ---
 
@@ -139,7 +139,7 @@ else:
 - **模型：** opus
 - **工具：** Read, Grep, Glob, Bash
 - **输入：** 项目根目录
-- **输出：** `.autoflow/project-profile.json`
+- **输出：** `.tide/project-profile.json`
 
 ### 增量检测
 
@@ -209,8 +209,8 @@ Agent 扫描完成后，按以下 7 个维度逐项展示并确认：
 ### 输出
 
 确认后生成/更新：
-- `.autoflow/project-profile.json` — 完整扫描结果（机器可读）
-- `autoflow-config.yaml` — 合并 7 个维度的确认结果
+- `.tide/project-profile.json` — 完整扫描结果（机器可读）
+- `tide-config.yaml` — 合并 7 个维度的确认结果
 - `CLAUDE.md` — 包含项目理解的上下文说明
 
 ---
@@ -243,7 +243,7 @@ Agent 扫描完成后，按以下 7 个维度逐项展示并确认：
 - **模型：** sonnet
 - **工具：** WebSearch, WebFetch, Read, Write
 - **输入：** 行业画像（5 个问题的答案）
-- **输出：** `.autoflow/research-report.json`
+- **输出：** `.tide/research-report.json`
 
 Agent 调研内容：
 1. 该行业的 API 自动化测试最佳实践
@@ -313,7 +313,7 @@ AskUserQuestion(
 ### 行业信息持久化
 
 ```yaml
-# autoflow-config.yaml
+# tide-config.yaml
 industry:
   domain: "金融/银行"
   system_type: "微服务架构"
@@ -361,7 +361,7 @@ solution:
 ### 第五步：脚手架生成 + CLAUDE.md + 配置验证
 
 **分支 A：**
-- 调用 `scaffold.py --mode existing`，只追加 .autoflow/ 相关文件
+- 调用 `scaffold.py --mode existing`，只追加 .tide/ 相关文件
 - CLAUDE.md 包含 Agent 扫描的 7 维度项目理解
 
 **分支 B：**
@@ -397,7 +397,7 @@ python3 -c "import pymysql; conn = pymysql.connect(...); print('DB OK'); conn.cl
 
 ## 全流程行业影响
 
-`autoflow-config.yaml` 中的 `industry` 段将在后续 `/autoflow` 流程中被以下 Agent 读取：
+`tide-config.yaml` 中的 `industry` 段将在后续 `/tide` 流程中被以下 Agent 读取：
 
 | Agent | 影响 |
 |-------|------|
@@ -439,7 +439,7 @@ assert resp2.json()["code"] == "DUPLICATE_REQUEST"
 - 分支 A 的 project-scanner Agent → 7 维度确认
 - 分支 B 的行业画像 → industry-researcher Agent → 方案选择 → 试运行
 - 合流后的共用步骤（仓库配置 → 连接配置 → 脚手架 + 验证）
-- /autoflow 4 波次流程（行业信息贯穿）
+- /tide 4 波次流程（行业信息贯穿）
 
 **绘制方式：**
 
@@ -470,7 +470,7 @@ $DRAWIO --project assets/workflow.drawio export render assets/workflow.png -f pn
 | 快速开始 | 更新初始化步骤描述 |
 | 使用指南 > 步骤 1 | 重写，体现分支 A/B 的不同路径 |
 | 融入已有项目 | 重写场景 A（深度扫描）和场景 B（行业调研）的说明 |
-| 配置参考 > autoflow-config.yaml | 新增 `industry` 和 `solution` 段的文档 |
+| 配置参考 > tide-config.yaml | 新增 `industry` 和 `solution` 段的文档 |
 | 项目结构 | 新增 project-scanner 和 industry-researcher Agent |
 | Roadmap | 更新 v1.2 特性列表 |
 
@@ -482,8 +482,8 @@ $DRAWIO --project assets/workflow.drawio export render assets/workflow.png -f pn
 
 | 文件 | 变更 |
 |------|------|
-| `skills/using-autoflow/SKILL.md` | 重写整个初始化流程 |
-| `skills/autoflow/SKILL.md` | 预检阶段读取 industry 配置 |
+| `skills/using-tide/SKILL.md` | 重写整个初始化流程 |
+| `skills/tide/SKILL.md` | 预检阶段读取 industry 配置 |
 | `agents/case-writer.md` | 增加行业感知断言生成规则 |
 | `agents/scenario-analyzer.md` | 增加行业特定场景类别 |
 | `agents/case-reviewer.md` | 增加行业合规评审维度 |
@@ -499,7 +499,7 @@ $DRAWIO --project assets/workflow.drawio export render assets/workflow.png -f pn
 |------|------|
 | `agents/project-scanner.md` | 项目深度扫描 Agent 定义 |
 | `agents/industry-researcher.md` | 行业调研 Agent 定义 |
-| `templates/autoflow-config.yaml.j2` | 配置文件模板 |
+| `templates/tide-config.yaml.j2` | 配置文件模板 |
 | `prompts/industry-assertions.md` | 行业特定断言规范 |
 
 ---

@@ -1,11 +1,11 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Sisyphus--AutoFlow-1.3-7C3AED?style=for-the-badge&logoColor=white">
-  <img alt="Sisyphus-AutoFlow" src="https://img.shields.io/badge/Sisyphus--AutoFlow-1.3-7C3AED?style=for-the-badge&logoColor=white">
+  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Tide-1.3-7C3AED?style=for-the-badge&logoColor=white">
+  <img alt="Tide" src="https://img.shields.io/badge/Tide-1.3-7C3AED?style=for-the-badge&logoColor=white">
 </picture>
 
-# <img src="https://em-content.zobj.net/source/apple/391/test-tube_1f9ea.png" width="32" /> Sisyphus-AutoFlow
+# <img src="https://em-content.zobj.net/source/apple/391/test-tube_1f9ea.png" width="32" /> Tide
 
 ### HAR-Driven, Source-Aware API Test Generation
 
@@ -30,7 +30,7 @@
 <br />
 
 ```
-📡 HAR ─── /autoflow ──→ 🔍 源码分析 ──→ 🧪 pytest 测试套件 ──→ 📊 Allure 报告
+📡 HAR ─── /tide ──→ 🔍 源码分析 ──→ 🧪 pytest 测试套件 ──→ 📊 Allure 报告
 ```
 
 </div>
@@ -80,7 +80,7 @@
 
 ## 工作流总览
 
-![AutoFlow Pipeline](assets/workflow.png)
+![Tide Pipeline](assets/workflow.png)
 
 <details>
 <summary><b>4 波次详解</b></summary>
@@ -89,8 +89,8 @@
 
 | Agent | 模型 | 输入 | 输出 |
 |-------|------|------|------|
-| **har-parser** | haiku | HAR 文件 | `.autoflow/parsed.json` |
-| **repo-syncer** | haiku | `repo-profiles.yaml` | `.autoflow/repo-status.json` |
+| **har-parser** | haiku | HAR 文件 | `.tide/parsed.json` |
+| **repo-syncer** | haiku | `repo-profiles.yaml` | `.tide/repo-status.json` |
 
 两个 Agent 并行执行。无源码仓库时自动跳过 repo-syncer。
 
@@ -135,9 +135,9 @@
 <details>
 <summary><b>任务可视化</b></summary>
 
-AutoFlow 在流程开始时创建任务清单，实时展示当前进度：
+Tide 在流程开始时创建任务清单，实时展示当前进度：
 
-**`/autoflow` 执行时的任务面板：**
+**`/tide` 执行时的任务面板：**
 
 | 状态 | 任务 |
 |------|------|
@@ -148,7 +148,7 @@ AutoFlow 在流程开始时创建任务清单，实时展示当前进度：
 | ○ | [4/4] 评审与交付 |
 | ○ | 验收报告与归档 |
 
-**`/using-autoflow` 执行时的任务面板：**
+**`/using-tide` 执行时的任务面板：**
 
 | 状态 | 任务 |
 |------|------|
@@ -194,10 +194,10 @@ AutoFlow 在流程开始时创建任务清单，实时展示当前进度：
 
 ```bash
 # 1. 添加仓库为 marketplace
-claude plugins marketplace add koco-co/sisyphus-autoflow
+claude plugins marketplace add koco-co/tide
 
 # 2. 安装插件
-claude plugins install sisyphus-autoflow
+claude plugins install tide
 
 # 验证安装
 claude plugins list
@@ -209,16 +209,16 @@ claude plugins list
 **全局安装（所有项目可用）：**
 
 ```bash
-git clone https://github.com/koco-co/sisyphus-autoflow.git ~/.claude/plugins/sisyphus-autoflow
-cd ~/.claude/plugins/sisyphus-autoflow && uv sync
+git clone https://github.com/koco-co/tide.git ~/.claude/plugins/tide
+cd ~/.claude/plugins/tide && uv sync
 ```
 
 **项目级安装：**
 
 ```bash
 mkdir -p .claude/plugins
-git clone https://github.com/koco-co/sisyphus-autoflow.git .claude/plugins/sisyphus-autoflow
-cd .claude/plugins/sisyphus-autoflow && uv sync && cd ../../..
+git clone https://github.com/koco-co/tide.git .claude/plugins/tide
+cd .claude/plugins/tide && uv sync && cd ../../..
 ```
 
 </details>
@@ -230,10 +230,10 @@ cd .claude/plugins/sisyphus-autoflow && uv sync && cd ../../..
 cd /path/to/your-test-project
 
 # 2. 初始化环境（首次使用，在 Claude Code 中输入）
-/using-autoflow
+/using-tide
 
 # 3. 丢入 HAR 文件，生成测试套件
-/autoflow ./recordings/api.har
+/tide ./recordings/api.har
 ```
 
 ---
@@ -245,7 +245,7 @@ cd /path/to/your-test-project
 在 Claude Code 中输入：
 
 ```
-/using-autoflow
+/using-tide
 ```
 
 交互式向导会引导完成：
@@ -274,7 +274,7 @@ cd /path/to/your-test-project
 | 方案试运行 | 生成最小示例测试文件，确认风格后全量生成 |
 | 仓库配置 + 连接配置 + 配置验证 | 同上 |
 
-生成配置文件：`repo-profiles.yaml` · `autoflow-config.yaml` · `CLAUDE.md`
+生成配置文件：`repo-profiles.yaml` · `tide-config.yaml` · `CLAUDE.md`
 
 ### 步骤 2：录制 HAR 文件
 
@@ -284,28 +284,28 @@ cd /path/to/your-test-project
 
 ```bash
 # 标准模式（全流程 + 交互确认）
-/autoflow ./recordings/api.har
+/tide ./recordings/api.har
 
 # 快速模式（跳过确认清单）
-/autoflow ./recordings/api.har --quick
+/tide ./recordings/api.har --quick
 
 # 恢复中断的会话
-/autoflow --resume
+/tide --resume
 ```
 
 ### 步骤 4：验收
 
-生成完成后，AutoFlow 会输出精确的验收命令：
+生成完成后，Tide 会输出精确的验收命令：
 
 ```bash
 # 预检（仅收集，不执行）
 pytest tests/interface/ tests/scenariotest/ --collect-only
 
 # 执行测试 + 生成 Allure 结果
-pytest tests/interface/ tests/scenariotest/ -v --alluredir=.autoflow/allure-results
+pytest tests/interface/ tests/scenariotest/ -v --alluredir=.tide/allure-results
 
 # 查看 Allure 报告
-allure serve .autoflow/allure-results
+allure serve .tide/allure-results
 ```
 
 > 注：实际命令会根据项目的包管理器（uv/pip/poetry）和测试目录自动适配。
@@ -318,7 +318,7 @@ allure serve .autoflow/allure-results
 
 ```bash
 mkdir my-api-tests && cd my-api-tests && git init
-# 在 Claude Code 中：/using-autoflow
+# 在 Claude Code 中：/using-tide
 ```
 
 向导会创建完整的项目脚手架：`tests/` · `core/` · `conftest.py` · `pyproject.toml` · `Makefile`
@@ -327,7 +327,7 @@ mkdir my-api-tests && cd my-api-tests && git init
 
 ```bash
 cd /path/to/existing-test-project
-# 在 Claude Code 中：/using-autoflow
+# 在 Claude Code 中：/using-tide
 ```
 
 **向导会自动检测项目类型，派 Agent 深度扫描 7 个维度：**
@@ -347,8 +347,8 @@ cd /path/to/existing-test-project
 ### 场景 C：纯脚本模式（不使用 Claude Code）
 
 ```bash
-git clone https://github.com/koco-co/sisyphus-autoflow.git
-cd sisyphus-autoflow && uv sync
+git clone https://github.com/koco-co/tide.git
+cd tide && uv sync
 
 # HAR 解析
 uv run python -c "
@@ -377,7 +377,7 @@ repos:
       - /api/v1
 ```
 
-### autoflow-config.yaml
+### tide-config.yaml
 
 ```yaml
 project:
@@ -394,7 +394,7 @@ project:
     allure_enabled: true
   package_manager: pip    # uv | pip | poetry
 
-# 行业信息（由 /using-autoflow 自动生成）
+# 行业信息（由 /using-tide 自动生成）
 industry:
   domain: "金融/银行"
   system_type: "微服务架构"
@@ -434,10 +434,10 @@ solution:
 ## 项目结构
 
 ```text
-sisyphus-autoflow/
+tide/
 ├── skills/                          # Claude Code 技能定义
-│   ├── autoflow/SKILL.md            #   /autoflow — 主流程（4 波编排）
-│   └── using-autoflow/SKILL.md      #   /using-autoflow — 初始化向导
+│   ├── tide/SKILL.md            #   /tide — 主流程（4 波编排）
+│   └── using-tide/SKILL.md      #   /using-tide — 初始化向导
 ├── agents/                          # 5 个 Agent 定义
 │   ├── har-parser.md                #   HAR 解析（haiku）
 │   ├── repo-syncer.md               #   仓库同步（haiku）
@@ -478,8 +478,8 @@ sisyphus-autoflow/
 ## 开发
 
 ```bash
-git clone https://github.com/koco-co/sisyphus-autoflow.git
-cd sisyphus-autoflow
+git clone https://github.com/koco-co/tide.git
+cd tide
 uv sync --dev
 
 make test       # 运行测试
@@ -516,4 +516,4 @@ make ci   # 所有检查通过
 
 ## License
 
-[MIT](./LICENSE) &copy; 2026 Sisyphus-AutoFlow contributors
+[MIT](./LICENSE) &copy; 2026 Tide contributors

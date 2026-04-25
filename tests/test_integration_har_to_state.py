@@ -48,7 +48,7 @@ class TestHarToStateFlow:
         assert history_dir.exists()
         assert (history_dir / "state.json").exists()
         # 原文件应已移动
-        assert not (tmp_path / ".autoflow" / "state.json").exists()
+        assert not (tmp_path / ".tide" / "state.json").exists()
 
     def test_resume_no_session(self, tmp_path: Path) -> None:
         """无 session 时 resume 返回 None。"""

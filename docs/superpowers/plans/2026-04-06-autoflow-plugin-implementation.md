@@ -1,14 +1,14 @@
-# AutoFlow Plugin Implementation Plan
+# Tide Plugin Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the `sisyphus-autoflow` Claude Code Plugin — a HAR-driven, source-aware API test automation system with 2 skills, 5 agents, 6 Python scripts, and dual GitHub + Plugin publishing.
+**Goal:** Build the `tide` Claude Code Plugin — a HAR-driven, source-aware API test automation system with 2 skills, 5 agents, 6 Python scripts, and dual GitHub + Plugin publishing.
 
 **Architecture:** Four-wave orchestration pipeline with 5 specialized AI agents. Python scripts handle deterministic operations (HAR parsing, git sync, state management, scaffolding, notifications, test execution). Markdown files define agent behaviors, prompt templates, and skill entry points. All wired together via a PLUGIN.md manifest.
 
 **Tech Stack:** Python 3.12+ / uv / pydantic / httpx / jinja2 / pyyaml / pytest / ruff / pyright
 
-**Spec:** `docs/superpowers/specs/2026-04-06-autoflow-plugin-design.md`
+**Spec:** `docs/superpowers/specs/2026-04-06-tide-plugin-design.md`
 
 ---
 
@@ -65,8 +65,8 @@
 - `agents/case-reviewer.md`
 
 ### skills/ (create)
-- `skills/using-autoflow/SKILL.md`
-- `skills/autoflow/SKILL.md`
+- `skills/using-tide/SKILL.md`
+- `skills/tide/SKILL.md`
 
 ### references/ (create)
 - `references/assertion-examples.md`
@@ -89,7 +89,7 @@
 
 ```toml
 [project]
-name = "sisyphus-autoflow"
+name = "tide"
 version = "0.1.0"
 description = "HAR-driven, source-aware API test automation plugin for Claude Code"
 requires-python = ">=3.12"
@@ -169,7 +169,7 @@ dist/
 .venv/
 
 # Plugin working directories (in user projects, not plugin itself)
-.autoflow/
+.tide/
 .repos/
 .trash/
 
@@ -195,25 +195,25 @@ coverage.xml
 
 ```markdown
 ---
-name: sisyphus-autoflow
+name: tide
 description: "HAR-driven, source-aware API test automation. Generate pytest suites with L1-L5 layered assertions from HAR files + backend source code."
 version: "0.1.0"
 author: "koco-co"
 license: MIT
-repository: "https://github.com/koco-co/sisyphus-autoflow"
+repository: "https://github.com/koco-co/tide"
 keywords: ["api-testing", "har", "pytest", "automation", "ai"]
 requires:
   bins: ["python3", "uv", "git"]
 ---
 
-# sisyphus-autoflow
+# tide
 
 HAR-driven, source-aware API test automation plugin for Claude Code.
 
 ## Skills
 
-- `/using-autoflow` — Initialize project environment, configure repos, tech stack, and connections
-- `/autoflow <har-file>` — Generate pytest test suites from HAR files with AI-powered source analysis
+- `/using-tide` — Initialize project environment, configure repos, tech stack, and connections
+- `/tide <har-file>` — Generate pytest test suites from HAR files with AI-powered source analysis
 ```
 
 - [ ] **Step 6: Create scripts/__init__.py and tests/__init__.py**
@@ -990,7 +990,7 @@ from scripts.state_manager import (
 class TestInitSession:
     def test_creates_state_file(self, tmp_path: Path):
         state = init_session(tmp_path, "test.har")
-        state_file = tmp_path / ".autoflow" / "state.json"
+        state_file = tmp_path / ".tide" / "state.json"
         assert state_file.exists()
 
     def test_state_has_session_id(self, tmp_path: Path):
@@ -1043,9 +1043,9 @@ class TestArchiveSession:
         advance_wave(tmp_path, 3)
         advance_wave(tmp_path, 4)
         archive_session(tmp_path)
-        autoflow = tmp_path / ".autoflow"
-        assert not (autoflow / "state.json").exists()
-        history = autoflow / "history"
+        tide = tmp_path / ".tide"
+        assert not (tide / "state.json").exists()
+        history = tide / "history"
         assert history.exists()
         archived = list(history.iterdir())
         assert len(archived) == 1
@@ -1105,7 +1105,7 @@ def _now_iso() -> str:
 
 
 def _state_dir(project_root: Path) -> Path:
-    return project_root / ".autoflow"
+    return project_root / ".tide"
 
 
 def _state_file(project_root: Path) -> Path:
@@ -1125,7 +1125,7 @@ def _write_state(project_root: Path, state: SessionState) -> None:
 
 
 def init_session(project_root: Path, har_filename: str) -> SessionState:
-    """Create a new autoflow session."""
+    """Create a new tide session."""
     sd = _state_dir(project_root)
     sd.mkdir(parents=True, exist_ok=True)
 
@@ -1629,7 +1629,7 @@ class TestGenerateProject:
         )
         generate_project(config)
         content = (tmp_path / ".gitignore").read_text()
-        assert ".autoflow/" in content
+        assert ".tide/" in content
         assert ".repos/" in content
         assert ".env" in content
 
@@ -1689,7 +1689,7 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
         root / "tests" / "scenariotest",
         root / "tests" / "unittest",
         root / "core" / "models",
-        root / ".autoflow",
+        root / ".tide",
         root / ".repos",
         root / ".trash",
     ]
@@ -1746,7 +1746,7 @@ def generate_project(config: ScaffoldConfig) -> list[str]:
     gitignore = """__pycache__/
 *.py[cod]
 .venv/
-.autoflow/
+.tide/
 .repos/
 .trash/
 .env
@@ -1935,12 +1935,12 @@ from scripts.notifier import (
 class TestFormatDingtalk:
     def test_markdown_format(self):
         payload = NotificationPayload(
-            title="AutoFlow Complete",
+            title="Tide Complete",
             body="Generated 87 tests\n- Pass: 78\n- Fail: 5",
         )
         msg = format_dingtalk(payload)
         assert msg["msgtype"] == "markdown"
-        assert "AutoFlow Complete" in msg["markdown"]["title"]
+        assert "Tide Complete" in msg["markdown"]["title"]
         assert "87 tests" in msg["markdown"]["text"]
 
     def test_truncates_long_body(self):
@@ -1951,18 +1951,18 @@ class TestFormatDingtalk:
 
 class TestFormatFeishu:
     def test_card_format(self):
-        payload = NotificationPayload(title="AutoFlow", body="Done")
+        payload = NotificationPayload(title="Tide", body="Done")
         msg = format_feishu(payload)
         assert msg["msg_type"] == "interactive"
-        assert "AutoFlow" in str(msg)
+        assert "Tide" in str(msg)
 
 
 class TestFormatSlack:
     def test_blocks_format(self):
-        payload = NotificationPayload(title="AutoFlow", body="Done")
+        payload = NotificationPayload(title="Tide", body="Done")
         msg = format_slack(payload)
         assert "blocks" in msg
-        assert any("AutoFlow" in str(b) for b in msg["blocks"])
+        assert any("Tide" in str(b) for b in msg["blocks"])
 
 
 class TestSendNotification:
@@ -2344,17 +2344,17 @@ Each agent file has YAML frontmatter (name, description, tools, model) and Markd
 - [ ] **Step 1: Create har-parser.md**
 
 Frontmatter: `name: har-parser, model: haiku, tools: Read, Bash, Write`
-Instructions: Call `scripts/har_parser.py`, read `prompts/har-parse-rules.md`, output `.autoflow/parsed.json`, move HAR to `.trash/`.
+Instructions: Call `scripts/har_parser.py`, read `prompts/har-parse-rules.md`, output `.tide/parsed.json`, move HAR to `.trash/`.
 
 - [ ] **Step 2: Create repo-syncer.md**
 
 Frontmatter: `name: repo-syncer, model: haiku, tools: Bash, Read`
-Instructions: Read `repo-profiles.yaml`, call `scripts/repo_sync.py` for each repo, output `.autoflow/repo-status.json`.
+Instructions: Read `repo-profiles.yaml`, call `scripts/repo_sync.py` for each repo, output `.tide/repo-status.json`.
 
 - [ ] **Step 3: Create scenario-analyzer.md**
 
 Frontmatter: `name: scenario-analyzer, model: opus, tools: Read, Grep, Glob, Bash`
-Instructions: Read parsed.json + source code, follow `prompts/scenario-enrich.md` + `prompts/assertion-layers.md`, output `.autoflow/scenarios.json` + `.autoflow/generation-plan.json`. Most detailed agent — includes full source tracing strategy from spec section 4.4.
+Instructions: Read parsed.json + source code, follow `prompts/scenario-enrich.md` + `prompts/assertion-layers.md`, output `.tide/scenarios.json` + `.tide/generation-plan.json`. Most detailed agent — includes full source tracing strategy from spec section 4.4.
 
 - [ ] **Step 4: Create case-writer.md**
 
@@ -2364,7 +2364,7 @@ Instructions: Receive assigned endpoints from generation-plan.json, read source 
 - [ ] **Step 5: Create case-reviewer.md**
 
 Frontmatter: `name: case-reviewer, model: opus, tools: Read, Grep, Glob, Write, Edit, Bash`
-Instructions: Review generated code per `prompts/review-checklist.md`, auto-fix per deviation thresholds, run pytest, collect results, output `.autoflow/review-report.json` + `.autoflow/execution-report.json`.
+Instructions: Review generated code per `prompts/review-checklist.md`, auto-fix per deviation thresholds, run pytest, collect results, output `.tide/review-report.json` + `.tide/execution-report.json`.
 
 - [ ] **Step 6: Commit**
 
@@ -2375,10 +2375,10 @@ git commit -m "feat: add agent definitions for all 5 pipeline agents"
 
 ---
 
-## Task 11: /using-autoflow SKILL.md
+## Task 11: /using-tide SKILL.md
 
 **Files:**
-- Create: `skills/using-autoflow/SKILL.md`
+- Create: `skills/using-tide/SKILL.md`
 
 - [ ] **Step 1: Write SKILL.md**
 
@@ -2393,16 +2393,16 @@ Frontmatter from spec section 3.1. Body implements the 5-step flow from spec sec
 - [ ] **Step 2: Commit**
 
 ```bash
-git add skills/using-autoflow/
-git commit -m "feat: add /using-autoflow initialization wizard skill"
+git add skills/using-tide/
+git commit -m "feat: add /using-tide initialization wizard skill"
 ```
 
 ---
 
-## Task 12: /autoflow SKILL.md
+## Task 12: /tide SKILL.md
 
 **Files:**
-- Create: `skills/autoflow/SKILL.md`
+- Create: `skills/tide/SKILL.md`
 
 - [ ] **Step 1: Write SKILL.md**
 
@@ -2419,8 +2419,8 @@ Frontmatter from spec section 4.1. Body implements the four-wave orchestration f
 - [ ] **Step 2: Commit**
 
 ```bash
-git add skills/autoflow/
-git commit -m "feat: add /autoflow main workflow skill with four-wave orchestration"
+git add skills/tide/
+git commit -m "feat: add /tide main workflow skill with four-wave orchestration"
 ```
 
 ---
@@ -2439,7 +2439,7 @@ Follow spec section 12 structure exactly. Include:
 - How It Works — embed the Mermaid workflow diagram from spec 12.2
 - Assertion Layers — embed the Mermaid layer diagram from spec 12.3
 - Installation (Claude Code Plugin + GitHub)
-- Usage (/using-autoflow + /autoflow with examples)
+- Usage (/using-tide + /tide with examples)
 - Configuration (repo-profiles.yaml schema + .env table)
 - Project Structure (generated) — tree diagram from spec section 9
 - Development (prerequisites, setup, make test, make lint)

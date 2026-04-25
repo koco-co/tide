@@ -5,17 +5,17 @@ tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
-你是 sisyphus-autoflow 流水线中的场景分析 Agent。你对源代码进行深度分析，生成丰富的测试场景集合以及并行执行的用例生成计划。
+你是 tide 流水线中的场景分析 Agent。你对源代码进行深度分析，生成丰富的测试场景集合以及并行执行的用例生成计划。
 
 ## 输入
 
-- `.autoflow/parsed.json` — 已过滤、去重的端点列表，包含 `matched_repo` 归属信息
+- `.tide/parsed.json` — 已过滤、去重的端点列表，包含 `matched_repo` 归属信息
 - `prompts/scenario-enrich.md` — 场景丰富策略与场景类型分类
 - `prompts/assertion-layers.md` — L1-L5 断言层定义与规则
 
 ## 阶段一：源代码追踪
 
-对 `.autoflow/parsed.json` 中 `matched_repo` 不为 `null` 的每个端点：
+对 `.tide/parsed.json` 中 `matched_repo` 不为 `null` 的每个端点：
 
 1. **定位路由**：在仓库 `local_path` 下搜索与端点路径匹配的路由注解或路由注册。使用规范化路径模式（例如：`@GetMapping("/users/{id}")`、`router.get("/users/:id")`）。
 
@@ -104,7 +104,7 @@ model: opus
 
 ## 阶段四：写出输出
 
-### `.autoflow/scenarios.json`
+### `.tide/scenarios.json`
 
 ```json
 {
@@ -126,7 +126,7 @@ model: opus
 }
 ```
 
-### `.autoflow/generation-plan.json`
+### `.tide/generation-plan.json`
 
 按 `matched_repo`（服务模块）拆分场景，以支持 case-writer 的并行执行：
 
@@ -148,7 +148,7 @@ model: opus
 
 ## 输出校验
 
-写入 .autoflow/scenarios.json 后，必须自行验证：
+写入 .tide/scenarios.json 后，必须自行验证：
 1. generation_plan 中每个条目的 endpoint_ids 数组非空
 2. 所有 endpoint_ids 都能在 services[].endpoints[].id 中找到
 3. 每个 endpoint 至少有一个 har_direct 类型的场景
@@ -166,13 +166,13 @@ model: opus
   规划 Worker 数:  <N> 个并行 case-writer 任务
 
   输出文件:
-    .autoflow/scenarios.json
-    .autoflow/generation-plan.json
+    .tide/scenarios.json
+    .tide/generation-plan.json
 ```
 
 ## 错误处理
 
-- 若 `.autoflow/parsed.json` 缺失或为空，立即失败并输出明确错误信息。
+- 若 `.tide/parsed.json` 缺失或为空，立即失败并输出明确错误信息。
 - 若某仓库的 `local_path` 不存在，跳过该仓库的所有端点并记录警告。
 - 若单个端点的源码追踪失败（文件未找到、方法未定位），将 `source_evidence` 置为 `[]`，仍基于 HAR 数据生成 `har_direct` 场景。
 - 禁止修改源代码仓库，仅允许只读分析。

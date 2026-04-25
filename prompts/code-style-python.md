@@ -7,7 +7,7 @@
 
 ## 已有项目风格优先规则
 
-当 `autoflow-config.yaml` 中 `project.type` 为 `existing` 时：
+当 `tide-config.yaml` 中 `project.type` 为 `existing` 时：
 
 1. **目录结构**：使用项目已有的测试入口目录（如 `testcases/`），不创建 `tests/`
 2. **API 封装**：遵循项目已有的 API 定义模式（如 Enum 类、常量等）
@@ -16,13 +16,13 @@
 5. **认证方式**：复用项目已有的认证逻辑（如 `BaseCookies`）
 6. **Allure 使用**：遵循项目已有的 allure 装饰器层级
 
-**以上规则优先于本文档中的默认规范。** 当已有项目风格与 AutoFlow 默认风格冲突时，以已有项目风格为准。
+**以上规则优先于本文档中的默认规范。** 当已有项目风格与 Tide 默认风格冲突时，以已有项目风格为准。
 
 ### 行业特定代码规则
 
-当 `autoflow-config.yaml` 中存在 `industry.domain` 字段时，还需遵循 `prompts/industry-assertions.md` 中对应行业的断言规范。
+当 `tide-config.yaml` 中存在 `industry.domain` 字段时，还需遵循 `prompts/industry-assertions.md` 中对应行业的断言规范。
 
-优先级：已有项目风格 > 行业特定规则 > AutoFlow 默认规范。
+优先级：已有项目风格 > 行业特定规则 > Tide 默认规范。
 
 ---
 
@@ -245,7 +245,7 @@ assert resp.json()["code"] != BUSINESS_SUCCESS_CODE, (
 def created_task_id(client: APIClient) -> Generator[int, None, None]:
     """为整个模块创建同步任务，所有测试完成后清理。"""
     resp = client.post("/dmetadata/v1/syncTask/add", json={
-        "taskName": "autoflow_test_task",
+        "taskName": "tide_test_task",
         "datasourceId": 1,
     })
     task_id = resp.json()["data"]
@@ -261,7 +261,7 @@ def created_task_id(client: APIClient) -> Generator[int, None, None]:
 def fresh_task(client: APIClient) -> Generator[dict, None, None]:
     """为每个测试创建新任务，测试完成后删除。"""
     resp = client.post("/dmetadata/v1/syncTask/add", json={
-        "taskName": f"autoflow_test_{id(object())}",  # 唯一名称
+        "taskName": f"tide_test_{id(object())}",  # 唯一名称
     })
     task = resp.json()["data"]
     yield task
@@ -270,7 +270,7 @@ def fresh_task(client: APIClient) -> Generator[dict, None, None]:
 
 ### 7.3 Fixture 数据规则
 
-- 所有测试创建的数据名称使用 `autoflow_test_` 前缀——便于清理
+- 所有测试创建的数据名称使用 `tide_test_` 前缀——便于清理
 - 只读 fixture 使用 `scope="module"`（查询已存在数据）
 - 写 fixture 使用 `scope="function"`（每个测试创建并修改）
 - 绝不在测试间共享可变 fixture 状态
@@ -479,7 +479,7 @@ def test_query_success(self, client, db):
 
 ## 14. 惯例指纹适配（convention fingerprint）
 
-当项目存在 `.autoflow/convention-fingerprint.yaml` 时，case-writer 必须遵循以下映射：
+当项目存在 `.tide/convention-fingerprint.yaml` 时，case-writer 必须遵循以下映射：
 
 | fingerprint 字段 | 生成代码约束 |
 |---|---|
