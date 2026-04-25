@@ -4,6 +4,7 @@ from pathlib import Path
 from scripts.convention_scanner import (
     detect_api_pattern,
     detect_assertion_style,
+    detect_env_management,
     detect_http_client,
 )
 
@@ -138,3 +139,25 @@ class TestDetectAssertionStyle:
         )
         result = detect_assertion_style(tmp_path, project_root=tmp_path)
         assert result["has_code_success"] is True
+
+
+class TestDetectEnvManagement:
+    def test_detect_env_management(self, tmp_path: Path) -> None:
+        """检测多环境配置。"""
+        env_dir = tmp_path / "config" / "env"
+        env_dir.mkdir(parents=True)
+        (env_dir / "ci_62.ini").write_text("[base]\nurl=http://ci-62.com\n")
+        (env_dir / "ci_63.ini").write_text("[base]\nurl=http://ci-63.com\n")
+        env_file = tmp_path / ".env"
+        env_file.write_text("env_file = config/env/ci_63.ini\n")
+
+        result = detect_env_management(tmp_path)
+        assert result["detected"] is True
+        assert result["count"] == 2
+        assert result["switch_method"] == "dotenv"
+        assert result["active"] == "ci_63"
+
+    def test_detect_env_management_no_env(self, tmp_path: Path) -> None:
+        """没有多环境配置时返回 detected=False。"""
+        result = detect_env_management(tmp_path)
+        assert result["detected"] is False

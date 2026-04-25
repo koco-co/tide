@@ -502,6 +502,51 @@ def detect_module_structure(project_root: Path) -> dict[str, Any]:
     }
 
 
+def detect_env_management(project_root: Path) -> dict[str, Any]:
+    """检测多环境管理模式。"""
+    # 检测 config/env/*.ini
+    env_dir = project_root / "config" / "env"
+    env_files: list[dict[str, str]] = []
+    if env_dir.is_dir():
+        for f in sorted(env_dir.glob("*.ini")):
+            name = f.stem
+            env_files.append({"name": name, "file": str(f.relative_to(project_root))})
+
+    # 检测 .env 文件中的 env_file 切换机制
+    switch_method = "hardcode"
+    env_file_path = project_root / ".env"
+    active_env = None
+    if env_file_path.exists():
+        text = env_file_path.read_text(errors="ignore")
+        for line in text.splitlines():
+            line = line.strip()
+            if line.startswith("env_file") and "=" in line:
+                switch_method = "dotenv"
+            if not line.startswith("#") and "env_file" in line:
+                val = line.split("=", 1)[1].strip()
+                active_env = Path(val).stem if val else None
+
+    # 检测 env_config.py 中的 ENV_CONF 模式
+    config_module = None
+    env_conf_path = project_root / "config" / "env_config.py"
+    if env_conf_path.exists():
+        text = env_conf_path.read_text(errors="ignore")
+        if "ENV_CONF" in text:
+            config_module = "config.env_config"
+
+    if not env_files:
+        return {"detected": False}
+
+    return {
+        "detected": True,
+        "count": len(env_files),
+        "files": env_files,
+        "switch_method": switch_method,
+        "active": active_env,
+        "config_module": config_module,
+    }
+
+
 def scan_project(project_root: Path) -> dict[str, Any]:
     """执行所有检测并返回完整的惯例指纹。"""
     test_dir_candidates = [
