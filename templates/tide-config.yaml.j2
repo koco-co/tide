@@ -1,35 +1,99 @@
 # tide-config.yaml — 由 /using-tide 自动生成
-# 此文件记录项目配置，供 /tide 全流程读取
 
 project:
+  name: "{{ project_name | default('') }}"
   type: {{ project_type }}  # existing | new
-  test_dir: {{ test_dir | default("tests") }}
-  test_types:
-{%- for t in test_types %}
-    - {{ t }}
-{%- endfor %}
+  complexity: {{ complexity | default('simple') }}  # simple | moderate | complex
+  {% if python_version %}
+  python_version: {{ python_version }}
+  {% endif %}
+  {% if test_framework %}
+  test_framework: {{ test_framework }}
+  {% endif %}
 
-{%- if project_type == "existing" %}
-  code_style:
-    api_pattern: {{ code_style.api_pattern | default("inline") }}
-{%- if code_style.api_pattern_path %}
-    api_pattern_path: {{ code_style.api_pattern_path }}
-{%- endif %}
-    request_class: {{ code_style.request_class | default("httpx") }}
-{%- if code_style.request_class_path %}
-    request_class_path: {{ code_style.request_class_path }}
-{%- endif %}
-    assertion_style: "{{ code_style.assertion_style | default('assert resp.status_code == 200') }}"
-    auth_method: {{ code_style.auth_method | default("cookie") }}
-{%- if code_style.auth_class %}
-    auth_class: {{ code_style.auth_class }}
-    auth_class_path: {{ code_style.auth_class_path }}
-{%- endif %}
-    allure_enabled: {{ code_style.allure_enabled | default(true) | lower }}
-  package_manager: {{ package_manager | default("uv") }}
-{%- endif %}
+# ---------- 代码规范 ----------
+code_style:
+  api_pattern: {{ api_pattern | default('inline') }}
+  {% if http_client %}
+  http_client:
+    type: {{ http_client.type }}
+    {% if http_client.custom_class %}
+    custom_class: {{ http_client.custom_class }}
+    {% endif %}
+  {% endif %}
+  {% if assertion_style %}
+  assertion_style: {{ assertion_style }}
+  {% endif %}
+  {% if test_structure %}
+  test_structure:
+    file_suffix: {{ test_structure.file_suffix | default('test_*.py') }}
+    fixture_style: {{ test_structure.fixture_style | default('conftest_fixture') }}
+  {% endif %}
 
-{%- if industry %}
+# ---------- 环境（仅 detected=true 时）----------
+{% if environments and environments.detected %}
+environments:
+  files:
+    {% for env in environments.files %}
+    - { name: {{ env.name }}, file: {{ env.file }} }
+    {% endfor %}
+  active: {{ environments.active | default('') }}
+  switch_method: {{ environments.switch_method | default('hardcode') }}
+  {% if environments.config_module %}
+  config_module: {{ environments.config_module }}
+  {% endif %}
+{% endif %}
+
+# ---------- 测试运行器（仅 type=custom 时）----------
+{% if test_runner and test_runner.type == 'custom' %}
+test_runner:
+  entry: {{ test_runner.entry }}
+  options:
+    parallel: {{ test_runner.options.parallel | default('false') }}
+    {% if test_runner.options.workers %}
+    default_workers: {{ test_runner.options.workers }}
+    {% endif %}
+    reruns: {{ test_runner.options.reruns | default(0) }}
+  {% if test_runner.module_entries %}
+  module_entries:
+    {% for module, command in test_runner.module_entries.items() %}
+    {{ module }}: {{ command }}
+    {% endfor %}
+  {% endif %}
+{% endif %}
+
+# ---------- 认证（仅 method != none 时）----------
+{% if auth and auth.method != 'none' %}
+auth:
+  method: {{ auth.method }}
+  {% if auth.auth_class %}
+  class: {{ auth.auth_class }}
+  {% if auth.auth_module %}
+  module: {{ auth.auth_module }}
+  {% endif %}
+  {% endif %}
+  {% if auth.flow %}
+  flow:
+    {% for step in auth.flow %}
+    - {{ step }}
+    {% endfor %}
+  {% endif %}
+{% endif %}
+
+# ---------- 监控（仅 detected=true 时）----------
+{% if monitoring and monitoring.detected %}
+monitoring:
+  {% if monitoring.perf_monitor %}
+  performance:
+    threshold_ms: {{ monitoring.perf_monitor.threshold_ms | default(3000) }}
+  {% endif %}
+  {% if monitoring.alert_channels %}
+  alerts: {{ monitoring.alert_channels | join(', ') }}
+  {% endif %}
+{% endif %}
+
+{% if industry %}
+# ---------- 行业背景（new project 流程）----------
 industry:
   domain: "{{ industry.domain }}"
   system_type: "{{ industry.system_type }}"
@@ -43,9 +107,10 @@ industry:
 {%- for c in industry.compliance | default([]) %}
     - "{{ c }}"
 {%- endfor %}
-{%- endif %}
+{% endif %}
 
-{%- if solution %}
+{% if solution %}
+# ---------- 推荐方案（new project 流程）----------
 solution:
   name: "{{ solution.name }}"
   fit_score: {{ solution.fit_score }}
@@ -60,4 +125,4 @@ solution:
 {%- for item in solution.industry_specific | default([]) %}
     - "{{ item }}"
 {%- endfor %}
-{%- endif %}
+{% endif %}
