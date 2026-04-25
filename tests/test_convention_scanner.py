@@ -76,6 +76,12 @@ class TestDetectHttpClient:
         assert result["library"] == "unknown"
         assert result["client_pattern"] == "custom_class"
         assert result["custom_class"] == "BaseRequests"
+        detail = result["custom_class_detail"]
+        assert detail["name"] == "BaseRequests"
+        assert isinstance(detail["module"], str) and len(detail["module"]) > 0
+        assert detail["method"]["has_desc_param"] is False
+        assert "self" in detail["method"]["signature"]
+        assert "url" in detail["method"]["signature"]
 
     def test_ignores_venv(self, tmp_path: Path) -> None:
         """Files in .venv should be excluded."""

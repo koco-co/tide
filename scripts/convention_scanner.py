@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 _EXCLUDED_DIRS = frozenset({".venv", "venv", "__pycache__", "node_modules", "dist", "build"})
+_HTTP_METHODS = frozenset({"post", "get", "put", "delete", "patch", "options", "head"})
 
 
 def _iter_py_files(root: Path) -> Iterator[Path]:
@@ -111,20 +112,19 @@ def detect_api_pattern(project_root: Path) -> dict[str, Any]:
     return {"type": "inline", "modules": []}
 
 
-def _detect_client_method_signature(
-    tree: ast.Module,
-    class_name: str,
-) -> dict[str, Any] | None:
+def _detect_client_method_signature(node: ast.ClassDef) -> dict[str, Any] | None:
     """检测自定义客户端的 HTTP 方法签名。"""
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and node.name == class_name:
-            for item in node.body:
-                if isinstance(item, ast.FunctionDef) and item.name == "post":
-                    args = [ast.unparse(a) for a in item.args.args]
-                    return {
-                        "has_desc_param": "desc" in args,
-                        "signature": f"post({', '.join(args)})",
-                    }
+    for item in node.body:
+        if isinstance(item, ast.FunctionDef) and item.name == "post":
+            args = [ast.unparse(a) for a in item.args.args]
+            if item.args.vararg:
+                args.append(f"*{ast.unparse(item.args.vararg)}")
+            if item.args.kwarg:
+                args.append(f"**{ast.unparse(item.args.kwarg)}")
+            return {
+                "has_desc_param": "desc" in args,
+                "signature": f"post({', '.join(args)})",
+            }
     return None
 
 
@@ -179,7 +179,7 @@ def detect_http_client(project_root: Path) -> dict[str, Any]:
                 break
 
         # AST 检测自定义包装类（包含 post/get/put/delete 的 request/client 类）
-        _http_methods = frozenset({"post", "get", "put", "delete", "patch", "options", "head"})
+        # Use module-level _HTTP_METHODS for http method checks
         for node in ast.walk(tree):
             if (isinstance(node, ast.ClassDef)
                     and ("request" in node.name.lower() or "client" in node.name.lower())):
@@ -187,18 +187,18 @@ def detect_http_client(project_root: Path) -> dict[str, Any]:
                 for item in ast.walk(node):
                     if (isinstance(item, ast.Call)
                             and isinstance(item.func, ast.Attribute)
-                            and item.func.attr in _http_methods):
+                            and item.func.attr in _HTTP_METHODS):
                         is_custom = True
                         break
                     if (isinstance(item, ast.FunctionDef)
-                            and item.name in _http_methods):
+                            and item.name in _HTTP_METHODS):
                         is_custom = True
                         break
                 if is_custom:
                     custom_classes.append(node.name)
                     if custom_class_detail is None:
                         rel_path = str(py_file.relative_to(project_root))
-                        method_sig = _detect_client_method_signature(tree, node.name)
+                        method_sig = _detect_client_method_signature(node)
                         custom_class_detail = {
                             "name": node.name,
                             "module": rel_path.replace("/", ".").rstrip(".py"),
