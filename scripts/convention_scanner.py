@@ -503,7 +503,12 @@ def detect_module_structure(project_root: Path) -> dict[str, Any]:
 
 
 def detect_env_management(project_root: Path) -> dict[str, Any]:
-    """检测多环境管理模式。"""
+    """检测多环境管理模式。
+
+    仅以 config/env/*.ini 文件存在作为 detected 的主要信号。
+    .env 切换机制和 ENV_CONF 模块在 detected=True 时作为补充信息返回。
+    若无 .ini 文件，即使存在 .env 或 ENV_CONF 也返回 detected=False。
+    """
     # 检测 config/env/*.ini
     env_dir = project_root / "config" / "env"
     env_files: list[dict[str, str]] = []
@@ -532,7 +537,8 @@ def detect_env_management(project_root: Path) -> dict[str, Any]:
     if env_conf_path.exists():
         text = env_conf_path.read_text(errors="ignore")
         if "ENV_CONF" in text:
-            config_module = "config.env_config"
+            rel_path = str(env_conf_path.relative_to(project_root))
+            config_module = rel_path.replace("/", ".").rstrip(".py")
 
     if not env_files:
         return {"detected": False}

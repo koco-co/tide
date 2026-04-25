@@ -157,6 +157,17 @@ class TestDetectEnvManagement:
         assert result["switch_method"] == "dotenv"
         assert result["active"] == "ci_63"
 
+    def test_detect_env_management_with_config_module(self, tmp_path: Path) -> None:
+        """检测 config_module 派生逻辑。"""
+        env_dir = tmp_path / "config" / "env"
+        env_dir.mkdir(parents=True)
+        (env_dir / "ci_62.ini").write_text("[base]\nurl=http://ci-62.com\n")
+        env_config_dir = tmp_path / "config"
+        (env_config_dir / "env_config.py").write_text("ENV_CONF = 'test'")
+        result = detect_env_management(tmp_path)
+        assert result["detected"] is True
+        assert result["config_module"] == "config.env_config"
+
     def test_detect_env_management_no_env(self, tmp_path: Path) -> None:
         """没有多环境配置时返回 detected=False。"""
         result = detect_env_management(tmp_path)
