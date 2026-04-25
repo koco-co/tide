@@ -111,6 +111,23 @@ def detect_api_pattern(project_root: Path) -> dict[str, Any]:
     return {"type": "inline", "modules": []}
 
 
+def _detect_client_method_signature(
+    tree: ast.Module,
+    class_name: str,
+) -> dict[str, Any] | None:
+    """检测自定义客户端的 HTTP 方法签名。"""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef) and item.name == "post":
+                    args = [ast.unparse(a) for a in item.args.args]
+                    return {
+                        "has_desc_param": "desc" in args,
+                        "signature": f"post({', '.join(args)})",
+                    }
+    return None
+
+
 def detect_http_client(project_root: Path) -> dict[str, Any]:
     """检测 HTTP 客户端：requests / httpx / aiohttp / direct + session 或直接调用。"""
     imports_requests = 0
@@ -118,16 +135,21 @@ def detect_http_client(project_root: Path) -> dict[str, Any]:
     imports_aiohttp = 0
     uses_session = False
     custom_classes: list[str] = []
+    custom_class_detail: dict[str, Any] | None = None
 
+    # Step 1: 收集所有已解析文件
+    parsed_files: list[tuple[Path, ast.Module]] = []
     for py_file in _iter_py_files(project_root):
         try:
             text = py_file.read_text()
         except (OSError, UnicodeDecodeError):
             continue
         tree = _parse_ast(text, filename=str(py_file))
-        if tree is None:
-            continue
+        if tree is not None:
+            parsed_files.append((py_file, tree))
 
+    # Step 2: 统计 imports、Session 调用、自定义类
+    for py_file, tree in parsed_files:
         # AST 检测 import
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -161,16 +183,27 @@ def detect_http_client(project_root: Path) -> dict[str, Any]:
         for node in ast.walk(tree):
             if (isinstance(node, ast.ClassDef)
                     and ("request" in node.name.lower() or "client" in node.name.lower())):
+                is_custom = False
                 for item in ast.walk(node):
                     if (isinstance(item, ast.Call)
                             and isinstance(item.func, ast.Attribute)
                             and item.func.attr in _http_methods):
-                        custom_classes.append(node.name)
+                        is_custom = True
                         break
                     if (isinstance(item, ast.FunctionDef)
                             and item.name in _http_methods):
-                        custom_classes.append(node.name)
+                        is_custom = True
                         break
+                if is_custom:
+                    custom_classes.append(node.name)
+                    if custom_class_detail is None:
+                        rel_path = str(py_file.relative_to(project_root))
+                        method_sig = _detect_client_method_signature(tree, node.name)
+                        custom_class_detail = {
+                            "name": node.name,
+                            "module": rel_path.replace("/", ".").rstrip(".py"),
+                            "method": method_sig,
+                        }
 
     if imports_httpx > imports_requests and imports_httpx > imports_aiohttp:
         lib = "httpx"
@@ -183,11 +216,14 @@ def detect_http_client(project_root: Path) -> dict[str, Any]:
 
     pattern: str = "custom_class" if custom_classes else ("session" if uses_session else "direct")
 
-    return {
+    result: dict[str, Any] = {
         "library": lib,
         "client_pattern": pattern,
         "custom_class": custom_classes[0] if custom_classes else None,
     }
+    if custom_class_detail is not None:
+        result["custom_class_detail"] = custom_class_detail
+    return result
 
 
 def detect_assertion_style(test_dir: Path) -> dict[str, Any]:
