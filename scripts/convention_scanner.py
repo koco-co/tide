@@ -211,9 +211,8 @@ def detect_assertion_style(test_dir: Path) -> dict[str, Any]:
                     counts["status_only"] += 1
                 elif ".get(" not in source and "[" not in source:
                     counts["attr"] += 1
-                if len(samples) < 3 and counts["total"] <= 5:
-                    if isinstance(node.test, ast.Compare):
-                        samples.append(ast.unparse(node.test))
+                if len(samples) < 3 and counts["total"] <= 5 and isinstance(node.test, ast.Compare):
+                    samples.append(ast.unparse(node.test))
 
     if counts["total"] == 0:
         return {"style": "unknown", "common_checks": []}
@@ -236,7 +235,7 @@ def detect_allure_pattern(project_root: Path) -> dict[str, Any]:
     for py_file in list(project_root.rglob("test_*.py")) + list(project_root.rglob("*_test.py")):
         try:
             text = py_file.read_text(errors="ignore")
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             continue
         if "import allure" in text or "from allure" in text:
             enabled = True
@@ -256,7 +255,11 @@ def detect_allure_pattern(project_root: Path) -> dict[str, Any]:
         "enabled": True,
         "epic_level": allure_epic > 0,
         "title_level": "both" if allure_title > 0 else "none",
-        "step_pattern": "context" if allure_step_ctx > allure_step_deco else ("decorator" if allure_step_deco > 0 else "none"),
+        "step_pattern": (
+            "context" if allure_step_ctx > allure_step_deco
+            else "decorator" if allure_step_deco > 0
+            else "none"
+        ),
     }
 
 
@@ -291,7 +294,7 @@ def detect_auth_method(project_root: Path) -> dict[str, Any]:
             continue
         try:
             text = py_file.read_text(errors="ignore")
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             continue
         text_lower = text.lower()
         if "cookie" in text_lower and "cooki" in text_lower:
