@@ -46,7 +46,10 @@ model: opus
 
 ## 阶段二：场景生成
 
-若任务 prompt 中包含 `industry_mode = true`，同时读取 `prompts/industry-assertions.md`，为写入类接口追加上表中的 `industry_*` 类型场景。行业场景仅在对应行业匹配时生成。
+根据主管（orchestrator）在任务 prompt 中传递的上下文动态调整行为：
+- 若上下文包含 `no_source_mode = true`：跳过阶段一（源代码追踪），所有场景标记 confidence: 'low'
+- 若上下文包含 `test_types`：仅生成 test_types 中指定的类型
+- 若上下文包含 `industry_mode = true`：同时读取 prompts/industry-assertions.md，为写入类接口追加行业特有场景
 
 以 `prompts/scenario-enrich.md` 为策略指南，为每个端点生成场景。需考虑的场景类型：
 
