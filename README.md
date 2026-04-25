@@ -190,57 +190,33 @@ Tide 在流程开始时创建任务清单，实时展示当前进度：
 - [uv](https://docs.astral.sh/uv/) 包管理器（推荐）或 pip
 - Git
 
-### 安装
+### 安装插件
 
 ```bash
-# 1. 添加仓库为 marketplace
+# 方式一：从 marketplace 安装（推荐）
 claude plugins marketplace add koco-co/tide
-
-# 2. 安装插件
 claude plugins install tide
+
+# 方式二：或直接克隆（适用于全局安装）
+git clone https://github.com/koco-co/tide.git ~/.claude/plugins/tide
+cd ~/.claude/plugins/tide && uv sync
 
 # 验证安装
 claude plugins list
 ```
 
-<details>
-<summary><b>其他安装方式</b></summary>
-
-**全局安装（所有项目可用）：**
+安装后，**打开新终端窗口**进入你的测试项目目录，启动 Claude Code：
 
 ```bash
-git clone https://github.com/koco-co/tide.git ~/.claude/plugins/tide
-cd ~/.claude/plugins/tide && uv sync
-```
-
-**项目级安装：**
-
-```bash
-mkdir -p .claude/plugins
-git clone https://github.com/koco-co/tide.git .claude/plugins/tide
-cd .claude/plugins/tide && uv sync && cd ../../..
-```
-
-</details>
-
-### 初始化 + 生成
-
-```bash
-# 1. 进入测试项目目录
 cd /path/to/your-test-project
-
-# 2. 初始化环境（首次使用，在 Claude Code 中输入）
-/using-tide
-
-# 3. 丢入 HAR 文件，生成测试套件
-/tide ./recordings/api.har
+claude
 ```
 
 ---
 
 ## 使用指南
 
-### 步骤 1：初始化项目
+### 第一步：初始化项目（仅首次）
 
 在 Claude Code 中输入：
 
@@ -248,107 +224,117 @@ cd /path/to/your-test-project
 /using-tide
 ```
 
-交互式向导会引导完成：
+这是一个交互式向导，会根据项目类型自动选择路径：
 
-交互式向导会根据项目类型自动选择路径：
-
-**已有自动化项目（自动检测）：**
+**已有自动化项目**（如 dtstack-httprunner）→ 自动检测为 existing：
 
 | 步骤 | 说明 |
 |------|------|
-| 环境检测 + 智能分类 | 自动判定为已有项目 |
-| 深度扫描 (project-scanner) | opus Agent 通读项目代码，输出 7 维度分析 |
-| 交互式确认 | 架构、代码风格、鉴权、工具链、Allure、数据管理、行业 — 逐项确认 |
-| 仓库配置 | 输入后端仓库 URL，自动 clone + URL 前缀映射 |
-| 连接配置 | Base URL · 认证（可复用旧项目逻辑）· 数据库 · 通知 |
-| 配置验证 | 自动 smoke test：URL 可达 + 认证有效 + DB 连接 |
+| 项目扫描 | 自动通读代码，检测 API 封装方式、HTTP 客户端、断言风格等 |
+| 交互确认 | 逐项确认扫描结果，可手动调整 |
+| 仓库配置 | 输入后端仓库 URL（可选，用于源码分析增强断言） |
+| 连接配置 | Base URL · 认证方式 |
+| 生成配置 | 写入 `tide-config.yaml` |
 
-**新项目 / 非自动化项目：**
+**全新项目** → 自动检测为 new：
 
 | 步骤 | 说明 |
 |------|------|
-| 环境检测 + 智能分类 | 自动判定为新项目 |
-| 行业画像收集 | 行业、系统类型、团队规模、特殊需求、鉴权复杂度 |
-| AI 调研 (industry-researcher) | sonnet Agent 网络搜索行业最佳实践 |
-| 方案推荐 | 展示 2-3 个完整技术方案，用户选择 |
-| 方案试运行 | 生成最小示例测试文件，确认风格后全量生成 |
-| 仓库配置 + 连接配置 + 配置验证 | 同上 |
+| 行业画像 | 选择行业、系统类型、团队规模 |
+| AI 调研 | 自动搜索行业最佳实践，推荐技术方案 |
+| 方案确认 | 选择技术栈（框架/客户端/报告/CI 等） |
+| 脚手架 | 生成完整的项目结构 + 示例测试 |
 
-生成配置文件：`repo-profiles.yaml` · `tide-config.yaml` · `CLAUDE.md`
+生成文件：`tide-config.yaml` · `repo-profiles.yaml` · `CLAUDE.md`
 
-### 步骤 2：录制 HAR 文件
+### 第二步：录制 HAR 文件
 
 在浏览器开发者工具 Network 面板中操作目标系统，导出 `.har` 文件。
 
-### 步骤 3：生成测试
+### 第三步：生成测试
 
 ```bash
 # 标准模式（全流程 + 交互确认）
 /tide ./recordings/api.har
 
-# 快速模式（跳过确认清单）
+# 快速模式（跳过确认清单，适合 CI）
 /tide ./recordings/api.har --quick
 
 # 恢复中断的会话
 /tide --resume
 ```
 
-### 步骤 4：验收
+#### 约定适配（自动）
 
-生成完成后，Tide 会输出精确的验收命令：
+Tide 在生成测试代码时会自动适配目标项目的编码规范——无需手动配置：
+
+| 检测维度 | 自动适配行为 |
+|---------|------------|
+| API 定义 | Enum 类如 `BatchApi.create_project.value`、Class 常量、或内联 URL |
+| HTTP 客户端 | 自定义 `BaseRequests`、`httpx`、或 `requests` |
+| 断言风格 | `resp["code"] == 1`、`resp.status_code == 200`、或 `resp.get("key")` |
+| 测试结构 | `*_test.py` 后缀或 `test_*.py`、`setup_class` 或 conftest fixture |
+| Allure 标注 | 自动生成 `@allure.feature` / `@allure.story`，或不使用 |
+| pytest markers | 自动应用项目已有的 markers（如 `@pytest.mark.smoke`）|
+
+适配信息来自 `scripts/convention_scanner.py` 的 AST 检测，存储在 `.tide/convention-scout.json` 中。
+
+### 第四步：验收
+
+生成完成后输出验收命令：
 
 ```bash
-# 预检（仅收集，不执行）
-pytest tests/interface/ tests/scenariotest/ --collect-only
+# 收集测试用例（验证语法）
+pytest --collect-only
 
-# 执行测试 + 生成 Allure 结果
-pytest tests/interface/ tests/scenariotest/ -v --alluredir=.tide/allure-results
+# 执行测试 + Allure 报告
+pytest -v --alluredir=.tide/allure-results
 
 # 查看 Allure 报告
 allure serve .tide/allure-results
 ```
 
-> 注：实际命令会根据项目的包管理器（uv/pip/poetry）和测试目录自动适配。
+> 实际命令会根据项目的配置自动适配。
 
 ---
 
-## 融入已有项目
+## 常见场景
 
-### 场景 A：全新项目
+### 场景 A：全新项目从零开始
 
 ```bash
 mkdir my-api-tests && cd my-api-tests && git init
-# 在 Claude Code 中：/using-tide
+# 启动 Claude Code → /using-tide
 ```
 
-向导会创建完整的项目脚手架：`tests/` · `core/` · `conftest.py` · `pyproject.toml` · `Makefile`
+生成脚手架：`tests/` · `conftest.py` · `pyproject.toml` · `Makefile`
 
-### 场景 B：已有自动化项目
+### 场景 B：已有自动化项目（如 dtstack-httprunner）
 
 ```bash
 cd /path/to/existing-test-project
-# 在 Claude Code 中：/using-tide
+# 启动 Claude Code → /using-tide（初始化配置）
+# → /tide ./recordings/api.har（生成测试）
 ```
 
-**向导会自动检测项目类型，派 Agent 深度扫描 7 个维度：**
+Tide 会自动检测：
+- API 封装模式（Enum / Class / 内联）
+- 自定义 HTTP 客户端和调用签名
+- 断言风格和辅助方法
+- 测试文件命名规范
+- pytest markers
+- Allure 使用模式
 
-| 维度 | 检测内容 |
-|------|---------|
-| 项目架构 | 测试入口目录、子目录结构、conftest 层级 |
-| 代码风格 | API 封装模式、Request 工具类、断言风格 |
-| 鉴权方式 | 认证类位置、Cookie/Token/OAuth2 |
-| 依赖工具链 | Python 版本、包管理器、HTTP 客户端 |
-| Allure 模式 | 装饰器层级、step 使用率 |
-| 数据管理 | 数据来源、parametrize、清理策略 |
-| 行业上下文 | AI 推断行业/领域、合规要求 |
-
-每个维度逐项确认后写入配置。**原则：项目已有规范 > 行业规则 > 插件默认规范。**
+生成的测试代码自动遵循已有项目的编码规范，无侵入。
 
 ### 场景 C：纯脚本模式（不使用 Claude Code）
 
 ```bash
 git clone https://github.com/koco-co/tide.git
 cd tide && uv sync
+
+# 执行项目扫描（输出 convention-scout.json）
+uv run python3 scripts/convention_scanner.py --project-root /path/to/project
 
 # HAR 解析
 uv run python -c "
@@ -446,13 +432,18 @@ tide/
 │   ├── case-reviewer.md             #   评审修复（opus）
 │   ├── project-scanner.md           #   项目深度扫描（opus）
 │   └── industry-researcher.md       #   行业调研（sonnet）             #   评审修复（opus）
-├── prompts/                         # Agent 规范文档
+├── prompts/                         # Agent 规范文档（按需加载）
+│   ├── code-style-python/           # Python 代码风格模块
+│   │   ├── 00-core.md               #   通用核心规范
+│   │   ├── 10-api-enum.md           #   Enum 风格 API
+│   │   ├── 20-client-custom.md      #   自定义 HTTP 客户端
+│   │   ├── 30-assert-code-success.md #   resp['code']==1 断言
+│   │   └── ...                      #   更多条件模块
 │   ├── assertion-layers.md          #   L1-L5 断言规范
-│   ├── code-style-python.md         #   Python 测试代码风格
 │   ├── har-parse-rules.md           #   HAR 解析过滤规则
 │   ├── review-checklist.md          #   评审清单与质量标准
 │   ├── scenario-enrich.md           #   8 种场景类别生成策略
-│   └── industry-assertions.md       #   行业特定断言规范           #   8 种场景类别生成策略
+│   └── industry-assertions.md       #   行业特定断言规范
 ├── scripts/                         # Python 工具库
 │   ├── common.py                    #   共享常量、JSON/日志工具
 │   ├── har_parser.py                #   HAR 解析与去重（Pydantic 校验）
@@ -498,7 +489,7 @@ make fmt        # 代码格式化
 | **v1.0** | HAR 解析 · 4 波编排 · L1-L5 断言 · DB 验证 · 检查点恢复 · 外部通知 |
 | **v1.1** | 旧项目适配 · 验证透明度 · 验收命令优化 · 路径修复 · 测试类型选择 |
 | **v1.3**（当前） | 跨项目优化 · Hook 系统 · 偏好学习 · 格式检查器 · 测试覆盖 78% |
-| v1.4 | 多语言后端支持（TypeScript · Go · Python 后端） |
+| **v1.4**（进行中） | Convention 指纹驱动适配 · Prompt 按需加载（省 ~50% tokens）· 成本预估 · 多项目风格扩展框架 |
 | v1.4 | OpenAPI / Swagger spec 作为补充输入源 |
 | v2.0 | UI 自动化集成（Playwright）· 性能测试 |
 
