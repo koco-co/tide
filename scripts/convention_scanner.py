@@ -710,6 +710,38 @@ def detect_conftest_chain(project_root: Path) -> dict[str, Any]:
     }
 
 
+def detect_monitoring(project_root: Path) -> dict[str, Any]:
+    """检测性能监控与告警体系。"""
+    result: dict[str, Any] = {"detected": False}
+
+    for py_file in list(project_root.rglob("*.py"))[:60]:
+        if ".venv" in str(py_file) or "__pycache__" in str(py_file):
+            continue
+        try:
+            text = py_file.read_text(errors="ignore")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        # 检测性能监控装饰器
+        if "calc_request_time_and_alarm" in text or "request_time" in text:
+            result["perf_monitor"] = {"pattern": "decorator"}
+            m = re.search(r"cost_time\s*>\s*(\d+)", text)
+            if m:
+                result["perf_monitor"]["threshold_ms"] = int(m.group(1)) * 1000
+
+        # 检测告警通道
+        if "send_ding_talk" in text or "dingtalk" in text.lower():
+            result.setdefault("alert_channels", []).append("dingtalk")
+        if "InfluxDBClient" in text or "influxdb" in text.lower():
+            result.setdefault("alert_channels", []).append("influxdb")
+        if "write_to_alert_file" in text:
+            result["alert_file"] = True
+
+    if result.get("perf_monitor") or result.get("alert_channels"):
+        result["detected"] = True
+    return result
+
+
 def scan_project(project_root: Path) -> dict[str, Any]:
     """执行所有检测并返回完整的惯例指纹。"""
     test_dir_candidates = [

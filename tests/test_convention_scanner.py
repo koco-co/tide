@@ -8,6 +8,7 @@ from scripts.convention_scanner import (
     detect_conftest_chain,
     detect_env_management,
     detect_http_client,
+    detect_monitoring,
     detect_test_runner,
 )
 
@@ -251,6 +252,28 @@ def db(): ...
         result = detect_conftest_chain(tmp_path)
         assert result["layers"] == []
         assert result["fixture_count"] == 0
+
+
+class TestDetectMonitoring:
+    def test_detect_monitoring(self, tmp_path: Path) -> None:
+        base = tmp_path / "utils/common"
+        base.mkdir(parents=True)
+        (base / "base.py").write_text('''
+def calc_request_time_and_alarm(func):
+    def wrapper(*args, **kwargs):
+        cost_time = 3.5
+        if cost_time > 3:
+            send_ding_talk("alert")
+        return func(*args, **kwargs)
+    return wrapper
+''')
+        result = detect_monitoring(tmp_path)
+        assert result["detected"] is True
+        assert "dingtalk" in result.get("alert_channels", [])
+
+    def test_detect_monitoring_none(self, tmp_path: Path) -> None:
+        result = detect_monitoring(tmp_path)
+        assert result["detected"] is False
 
 
 class TestDetectAuthFlow:
