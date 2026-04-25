@@ -420,6 +420,49 @@ def detect_test_data_pattern(project_root: Path) -> dict[str, Any]:
     return {"pattern": "inline", "data_dir": None, "mirror_structure": False}
 
 
+def detect_test_style(project_root: Path) -> dict[str, Any]:
+    """检测测试风格：文件后缀、fixture 模式、pytest markers。"""
+    test_dir_candidates = [
+        project_root / "testcases",
+        project_root / "tests",
+        project_root / "test",
+    ]
+    test_dir = next((d for d in test_dir_candidates if d.is_dir()), None)
+    if not test_dir:
+        return {"file_suffix": "test_*.py", "fixture_style": "unknown", "markers": []}
+
+    # 文件后缀检测
+    test_underscore = len(list(test_dir.rglob("*_test.py")))
+    test_prefix = len(list(test_dir.rglob("test_*.py")))
+
+    # fixture 风格检测
+    conftest_files = list(test_dir.rglob("conftest.py"))
+    has_setup_class = False
+    for cf in conftest_files[:3]:
+        try:
+            text = cf.read_text(errors="ignore")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if "setup_class" in text or "setup_method" in text:
+            has_setup_class = True
+
+    # Marker 检测
+    markers: list[str] = []
+    pytest_ini = project_root / "pytest.ini"
+    if pytest_ini.exists():
+        text = pytest_ini.read_text(errors="ignore")
+        for line in text.splitlines():
+            m = re.match(r"\s+(\w+):", line)
+            if m:
+                markers.append(m.group(1))
+
+    return {
+        "file_suffix": "*_test.py" if test_underscore > test_prefix else "test_*.py",
+        "fixture_style": "setup_class" if has_setup_class else "conftest_fixture",
+        "markers": markers,
+    }
+
+
 def detect_module_structure(project_root: Path) -> dict[str, Any]:
     """检测项目模块结构：single / multi_module。"""
     modules: list[str] = []
@@ -456,6 +499,7 @@ def scan_project(project_root: Path) -> dict[str, Any]:
         "service_layer": detect_service_layer(project_root),
         "auth": detect_auth_method(project_root),
         "test_data": detect_test_data_pattern(project_root),
+        "test_style": detect_test_style(project_root),
         "module_structure": detect_module_structure(project_root),
     }
 
