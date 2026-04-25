@@ -26,3 +26,6 @@ Thumbs.db
 htmlcov/
 .coverage
 coverage.xml
+
+# Worktrees
+.worktrees/
