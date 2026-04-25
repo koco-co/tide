@@ -57,3 +57,50 @@ def update_preferences(
     updated = current.model_copy(update=updates)
     save_preferences(project_root, updated)
     return updated
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(description="AutoFlow preferences manager")
+    sub = parser.add_subparsers(dest="command")
+
+    read_p = sub.add_parser("read")
+    read_p.add_argument("--key", help="Specific preference key to read")
+    read_p.add_argument("--project-root", default=".")
+
+    write_p = sub.add_parser("write")
+    write_p.add_argument("--key", required=True)
+    write_p.add_argument("--value", required=True)
+    write_p.add_argument("--project-root", default=".")
+
+    args = parser.parse_args()
+    root = Path(args.project_root)
+
+    if args.command == "read":
+        prefs = load_preferences(root)
+        if args.key:
+            val = getattr(prefs, args.key, None)
+            if val is not None:
+                print(val)
+            else:
+                print(f"Unknown key: {args.key}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(prefs.model_dump_json(indent=2))
+    elif args.command == "write":
+        raw: str = args.value
+        if raw.lower() == "true":
+            value = True
+        elif raw.lower() == "false":
+            value = False
+        elif raw.isdigit():
+            value = int(raw)
+        else:
+            value = raw
+        update_preferences(root, **{args.key: value})
+        print(f"Set {args.key} = {value}")
+    else:
+        parser.print_help()
