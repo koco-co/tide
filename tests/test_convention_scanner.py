@@ -4,6 +4,7 @@ from pathlib import Path
 from scripts.convention_scanner import (
     detect_api_pattern,
     detect_assertion_style,
+    detect_auth_flow,
     detect_conftest_chain,
     detect_env_management,
     detect_http_client,
@@ -250,3 +251,33 @@ def db(): ...
         result = detect_conftest_chain(tmp_path)
         assert result["layers"] == []
         assert result["fixture_count"] == 0
+
+
+class TestDetectAuthFlow:
+    def test_detect_auth_flow_no_auth(self, tmp_path: Path) -> None:
+        """无认证文件时返回 method=none。"""
+        result = detect_auth_flow(tmp_path)
+        assert result["method"] == "none"
+
+    def test_detect_auth_flow_cookie(self, tmp_path: Path) -> None:
+        utils = tmp_path / "utils" / "common"
+        utils.mkdir(parents=True)
+        auth_file = utils / "get_cookies.py"
+        auth_file.write_text('''
+class BaseCookies:
+    def get_public_key(self): ...
+    def login(self): ...
+    def refresh(self): ...
+from config.env_config import ENV_CONF
+''')
+        (tmp_path / "conftest.py").write_text("import pytest")
+        result = detect_auth_flow(tmp_path)
+        assert result["method"] == "cookie"
+        assert result["auth_class"] == "BaseCookies"
+        assert result["flow"] is not None
+        assert "login" in result["flow"]
+
+    def test_detect_auth_flow_none(self, tmp_path: Path) -> None:
+        result = detect_auth_flow(tmp_path)
+        assert result["method"] == "none"
+        assert result["flow"] is None

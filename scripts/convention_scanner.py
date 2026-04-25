@@ -388,7 +388,7 @@ def detect_service_layer(project_root: Path) -> dict[str, Any]:
     }
 
 
-def detect_auth_method(project_root: Path) -> dict[str, Any]:
+def _detect_auth_type(project_root: Path) -> dict[str, Any]:
     """检测认证方式：cookie / token / basic / none。"""
     auth_keywords: dict[str, int] = {"cookie": 0, "token": 0, "oauth": 0, "basic": 0}
 
@@ -414,6 +414,48 @@ def detect_auth_method(project_root: Path) -> dict[str, Any]:
         return {"method": "none"}
     dominant = max(auth_keywords, key=lambda k: auth_keywords[k])
     return {"method": dominant}
+
+
+def detect_auth_flow(project_root: Path) -> dict[str, Any]:
+    """检测认证流程：认证类、步骤链、凭证来源。"""
+    # 基础认证类型检测（使用重命名的内部函数）
+    base_result = _detect_auth_type(project_root)
+    if base_result["method"] == "none":
+        return {**base_result, "flow": None, "auth_class": None}
+
+    # 查找认证类
+    auth_class = None
+    auth_module = None
+    flow_steps: list[str] = []
+    credentials_from = None
+
+    for py_file in _iter_py_files(project_root):
+        try:
+            text = py_file.read_text(errors="ignore")
+        except (OSError, UnicodeDecodeError):
+            continue
+        # 检测类名含 Cookie/Token/Auth
+        if "class BaseCookies" in text or "class BaseToken" in text:
+            m = re.search(r"class\s+(\w+)", text)
+            if m:
+                auth_class = m.group(1)
+                auth_module = str(py_file.relative_to(project_root)).replace("/", ".").rstrip(".py")
+            # 检测认证步骤
+            for step_keyword in ["get_public_key", "encrypt", "login", "refresh"]:
+                if re.search(rf"def\s+.*{step_keyword}", text):
+                    flow_steps.append(step_keyword)
+        if "ENV_CONF" in text and auth_class:
+            credentials_from = "env_config"
+
+    if auth_class:
+        return {
+            "method": base_result["method"],
+            "auth_class": auth_class,
+            "auth_module": auth_module,
+            "flow": flow_steps if flow_steps else None,
+            "credentials_from": credentials_from,
+        }
+    return base_result
 
 
 def detect_test_data_pattern(project_root: Path) -> dict[str, Any]:
@@ -684,7 +726,7 @@ def scan_project(project_root: Path) -> dict[str, Any]:
         "assertion": detect_assertion_style(test_dir, project_root),
         "allure": detect_allure_pattern(project_root),
         "service_layer": detect_service_layer(project_root),
-        "auth": detect_auth_method(project_root),
+        "auth": detect_auth_flow(project_root),
         "test_data": detect_test_data_pattern(project_root),
         "test_style": detect_test_style(project_root),
         "module_structure": detect_module_structure(project_root),
