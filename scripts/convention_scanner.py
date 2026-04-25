@@ -597,6 +597,77 @@ def detect_test_runner(project_root: Path) -> dict[str, Any]:
     }
 
 
+def _extract_fixtures(conftest_path: Path) -> list[str]:
+    """从 conftest.py 提取 fixture 函数名。"""
+    try:
+        tree = ast.parse(conftest_path.read_text(), filename=str(conftest_path))
+    except SyntaxError:
+        return []
+    fixtures: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            for deco in node.decorator_list:
+                if (isinstance(deco, ast.Name) and deco.id == "fixture") or \
+                   (isinstance(deco, ast.Attribute) and deco.attr == "fixture"):
+                    fixtures.append(node.name)
+                    break
+    return fixtures
+
+
+def _categorize_fixtures(fixtures: list[str]) -> dict[str, list[str]]:
+    """对 fixture 按用途分类。"""
+    categories: dict[str, list[str]] = {"auth": [], "data": [], "db": [], "cleanup": [], "other": []}
+    for f in fixtures:
+        if any(k in f.lower() for k in ["cooki", "token", "auth", "login"]):
+            categories["auth"].append(f)
+        elif any(k in f.lower() for k in ["data", "init", "create", "ddl"]):
+            categories["data"].append(f)
+        elif "db" in f.lower():
+            categories["db"].append(f)
+        elif any(k in f.lower() for k in ["clean", "clear", "teardown", "final"]) or "yield" in f.lower():
+            categories["cleanup"].append(f)
+        else:
+            categories["other"].append(f)
+    return {k: v for k, v in categories.items() if v}
+
+
+def detect_conftest_chain(project_root: Path) -> dict[str, Any]:
+    """检测 conftest 层级结构和关键 fixture。"""
+    conftest_layers: list[dict[str, Any]] = []
+    all_fixtures: list[str] = []
+
+    # 扫描项目级 conftest.py
+    root_conftest = project_root / "conftest.py"
+    if root_conftest.exists():
+        fixtures = _extract_fixtures(root_conftest)
+        conftest_layers.append({"level": "root", "path": "conftest.py", "fixtures": fixtures})
+        all_fixtures.extend(fixtures)
+
+    # 递归扫描 test directories
+    for test_dir_name in ["testcases", "tests", "test"]:
+        base_dir = project_root / test_dir_name
+        if not base_dir.is_dir():
+            continue
+        for conftest in sorted(base_dir.rglob("conftest.py")):
+            rel = str(conftest.relative_to(project_root))
+            fixtures = _extract_fixtures(conftest)
+            conftest_layers.append({
+                "level": "sub",
+                "path": rel,
+                "fixtures": fixtures,
+            })
+            all_fixtures.extend(fixtures)
+
+    # 检测特殊 fixture 类型
+    fixture_types = _categorize_fixtures(all_fixtures)
+
+    return {
+        "layers": conftest_layers,
+        "fixture_count": len(all_fixtures),
+        "fixture_types": fixture_types,
+    }
+
+
 def scan_project(project_root: Path) -> dict[str, Any]:
     """执行所有检测并返回完整的惯例指纹。"""
     test_dir_candidates = [

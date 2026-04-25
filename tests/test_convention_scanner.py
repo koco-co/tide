@@ -4,6 +4,7 @@ from pathlib import Path
 from scripts.convention_scanner import (
     detect_api_pattern,
     detect_assertion_style,
+    detect_conftest_chain,
     detect_env_management,
     detect_http_client,
     detect_test_runner,
@@ -229,3 +230,23 @@ class Run:
         result = detect_test_runner(tmp_path)
         assert result["options"]["parallel"] is True
         assert result["options"]["workers"] == 8
+
+
+class TestDetectConftestChain:
+    def test_detect_conftest_chain(self, tmp_path: Path) -> None:
+        root = tmp_path / "conftest.py"
+        root.write_text("""
+import pytest
+@pytest.fixture
+def client(): ...
+@pytest.fixture
+def db(): ...
+""")
+        result = detect_conftest_chain(tmp_path)
+        assert len(result["layers"]) >= 1
+        assert "client" in result["fixture_types"].get("other", [])
+
+    def test_detect_conftest_chain_none(self, tmp_path: Path) -> None:
+        result = detect_conftest_chain(tmp_path)
+        assert result["layers"] == []
+        assert result["fixture_count"] == 0
