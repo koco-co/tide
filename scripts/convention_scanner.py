@@ -313,6 +313,9 @@ def detect_allure_pattern(project_root: Path) -> dict[str, Any]:
     allure_step_deco = 0
     allure_step_ctx = 0
     enabled = False
+    attach_on_request = False
+    allure_feature_values: set[str] = set()
+    allure_story_values: set[str] = set()
 
     for py_file in list(project_root.rglob("test_*.py")) + list(project_root.rglob("*_test.py")):
         try:
@@ -330,10 +333,24 @@ def detect_allure_pattern(project_root: Path) -> dict[str, Any]:
         if "@allure.step" in text:
             allure_step_deco += 1
 
+    for py_file in list(project_root.rglob("*.py"))[:50]:
+        if ".venv" in str(py_file) or "__pycache__" in str(py_file):
+            continue
+        try:
+            text = py_file.read_text(errors="ignore")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if "allure.attach" in text:
+            attach_on_request = True
+        for m in re.finditer(r'@allure\.feature\("([^"]+)"\)', text):
+            allure_feature_values.add(m.group(1))
+        for m in re.finditer(r'@allure\.story\("([^"]+)"\)', text):
+            allure_story_values.add(m.group(1))
+
     if not enabled:
         return {"enabled": False}
 
-    return {
+    result = {
         "enabled": True,
         "epic_level": allure_epic > 0,
         "title_level": "both" if allure_title > 0 else "none",
@@ -343,6 +360,10 @@ def detect_allure_pattern(project_root: Path) -> dict[str, Any]:
             else "none"
         ),
     }
+    result["attach_on_request"] = attach_on_request
+    result["feature_names"] = sorted(allure_feature_values) if allure_feature_values else None
+    result["story_names"] = sorted(allure_story_values) if allure_story_values else None
+    return result
 
 
 def detect_service_layer(project_root: Path) -> dict[str, Any]:
