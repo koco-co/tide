@@ -388,6 +388,152 @@ def detect_service_layer(project_root: Path) -> dict[str, Any]:
     }
 
 
+def detect_service_utilities(project_root: Path) -> dict[str, Any]:
+    """扫描 utils/ 下的 Service/Request 层工具类，提取可复用的方法。
+
+    遍历 utils/**/services/ 和 utils/**/requests/ 目录，对每个类提取：
+    - 类名、模块路径、父类
+    - 方法签名（参数名 + 类型注解，不含 self）
+    - docstrings 摘要
+    - 归类到所属模块
+
+    输出格式：
+    ```json
+    {
+      "detected": true,
+      "modules": {
+        "assets": {
+          "services": [
+            {
+              "class": "DatasourceService",
+              "module": "utils.assets.services.datasource",
+              "methods": [
+                {"name": "get_datasource_id_by_name", "args": ["datasource_name"],
+                 "returns": "数据源ID", "doc": "根据数据源名称获取数据源ID"}
+              ]
+            }
+          ],
+          "requests": [...]
+        }
+      }
+    }
+    ```
+    """
+    utils_dir = project_root / "utils"
+    if not utils_dir.is_dir():
+        return {"detected": False, "modules": {}}
+
+    modules: dict[str, dict[str, list[dict[str, Any]]]] = {}
+
+    for svc_dir in list(utils_dir.rglob("services")) + list(utils_dir.rglob("requests")):
+        # Determine module name: the first subdirectory under utils/
+        rel = svc_dir.relative_to(utils_dir)
+        module_name = rel.parts[0]  # e.g., "assets" from utils/assets/services/
+        category = svc_dir.name  # "services" or "requests"
+
+        if module_name not in modules:
+            modules[module_name] = {"services": [], "requests": []}
+
+        for py_file in sorted(svc_dir.glob("*.py")):
+            if py_file.name.startswith("_") or py_file.name == "__init__.py":
+                continue
+            try:
+                text = py_file.read_text(errors="ignore")
+            except OSError:
+                continue
+            tree = _parse_ast(text, filename=str(py_file))
+            if tree is None:
+                continue
+
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                # Skip if it's a test class
+                if node.name.startswith("Test"):
+                    continue
+
+                # Resolve base classes
+                bases: list[str] = []
+                for base in node.bases:
+                    if isinstance(base, ast.Name):
+                        bases.append(base.id)
+                    elif isinstance(base, ast.Attribute):
+                        bases.append(f"{ast.unparse(base.value)}.{base.attr}")
+                    else:
+                        bases.append(ast.unparse(base))
+
+                methods: list[dict[str, Any]] = []
+                for item in node.body:
+                    if not isinstance(item, ast.FunctionDef):
+                        continue
+                    # Skip private / magic methods
+                    if item.name.startswith("__"):
+                        continue
+
+                    args: list[dict[str, str]] = []
+                    for arg in item.args.args:
+                        if arg.arg == "self":
+                            continue
+                        arg_info: dict[str, str] = {"name": arg.arg}
+                        if arg.annotation:
+                            arg_info["type"] = ast.unparse(arg.annotation)
+                        args.append(arg_info)
+
+                    # Return type annotation
+                    returns: str | None = None
+                    if item.returns:
+                        returns = ast.unparse(item.returns)
+
+                    # Docstring (first line)
+                    doc: str | None = None
+                    if (item.body and isinstance(item.body[0], ast.Expr)
+                            and isinstance(item.body[0].value, ast.Constant)
+                            and isinstance(item.body[0].value.value, str)):
+                        doc = item.body[0].value.value.strip().split("\n")[0].strip()
+
+                    methods.append({
+                        "name": item.name,
+                        "args": args,
+                        "returns": returns,
+                        "doc": doc,
+                    })
+
+                rel_path = str(py_file.relative_to(project_root))
+                module_path = rel_path.replace("/", ".").rstrip(".py")
+
+                modules[module_name][category].append({
+                    "class": node.name,
+                    "module": module_path,
+                    "file": rel_path,
+                    "bases": bases,
+                    "methods": methods,
+                    "method_count": len(methods),
+                })
+
+    # Filter out empty entries and count totals
+    total_services = 0
+    total_requests = 0
+    non_empty_modules: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for mod_name, categories in modules.items():
+        entry: dict[str, list[dict[str, Any]]] = {}
+        if categories["services"]:
+            entry["services"] = categories["services"]
+            total_services += len(categories["services"])
+        if categories["requests"]:
+            entry["requests"] = categories["requests"]
+            total_requests += len(categories["requests"])
+        if entry:
+            non_empty_modules[mod_name] = entry
+
+    return {
+        "detected": bool(non_empty_modules),
+        "module_count": len(non_empty_modules),
+        "total_service_classes": total_services,
+        "total_request_classes": total_requests,
+        "modules": non_empty_modules,
+    }
+
+
 def _detect_auth_type(project_root: Path) -> dict[str, Any]:
     """检测认证方式：cookie / token / basic / none。"""
     auth_keywords: dict[str, int] = {"cookie": 0, "token": 0, "oauth": 0, "basic": 0}
@@ -794,6 +940,7 @@ def scan_project(project_root: Path) -> dict[str, Any]:
         "assertion": detect_assertion_style(test_dir, project_root),
         "allure": detect_allure_pattern(project_root),
         "service_layer": detect_service_layer(project_root),
+        "service_utilities": detect_service_utilities(project_root),
         "auth": detect_auth_flow(project_root),
         "test_data": detect_test_data_pattern(project_root),
         "test_style": detect_test_style(project_root),

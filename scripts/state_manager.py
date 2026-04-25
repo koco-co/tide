@@ -40,6 +40,8 @@ class SessionState(BaseModel):
     current_wave: int = 0
     waves: dict[str, WaveState] = {}
     user_confirmations: dict[str, UserConfirmation] = {}
+    metadata: dict = {}
+    """会话元数据: test_granularity, business_context, project_assets, user_intent 等。"""
 
 
 # ---------------------------------------------------------------------------
@@ -80,8 +82,19 @@ def _write_state(project_root: Path, state: SessionState) -> None:
 # ---------------------------------------------------------------------------
 
 
-def init_session(project_root: Path, har_filename: str) -> SessionState:
-    """创建包含 4 个待执行波次的新 tide 会话。
+def init_session(
+    project_root: Path,
+    har_filename: str,
+    wave_count: int = 5,
+    metadata: dict | None = None,
+) -> SessionState:
+    """创建新的 tide 会话，支持动态波次数量与会话元数据。
+
+    Args:
+        project_root: 包含 .tide/ 的根目录。
+        har_filename: HAR 文件名。
+        wave_count: 波次数（默认 5: 意图采集→解析→分析→生成→评审）。
+        metadata: 会话元数据（test_granularity, business_context 等）。
 
     Raises:
         ValueError: 若 project_root 中已存在会话。
@@ -95,17 +108,15 @@ def init_session(project_root: Path, har_filename: str) -> SessionState:
     timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")
     session_id = f"af_{timestamp}"
 
-    waves: dict[str, WaveState] = {
-        "1": WaveState(),
-        "2": WaveState(),
-        "3": WaveState(),
-        "4": WaveState(),
-    }
+    waves: dict[str, WaveState] = {}
+    for i in range(1, wave_count + 1):
+        waves[str(i)] = WaveState()
 
     state = SessionState(
         session_id=session_id,
         source_har=har_filename,
         waves=waves,
+        metadata=metadata or {},
     )
 
     _write_state(project_root, state)
@@ -158,6 +169,26 @@ def advance_wave(
     return new_state
 
 
+def update_metadata(project_root: Path, updates: dict) -> SessionState:
+    """更新会话元数据（如用户意图采集后设置 test_granularity）。
+
+    Args:
+        project_root: 包含 .tide/ 的根目录。
+        updates: 要更新的元数据键值对。
+
+    Raises:
+        ValueError: 若不存在活跃会话。
+    """
+    state = _read_state(project_root)
+    if state is None:
+        raise ValueError("No active session found")
+
+    new_metadata = {**state.metadata, **updates}
+    new_state = state.model_copy(update={"metadata": new_metadata})
+    _write_state(project_root, new_state)
+    return new_state
+
+
 def resume_session(project_root: Path) -> SessionState | None:
     """加载并返回当前会话状态，若无会话则返回 None。"""
     return _read_state(project_root)
@@ -195,6 +226,8 @@ if __name__ == "__main__":
     init_p = sub.add_parser("init")
     init_p.add_argument("--har", required=True)
     init_p.add_argument("--project-root", default=".")
+    init_p.add_argument("--metadata", default="{}", help="JSON 格式的会话元数据")
+    init_p.add_argument("--wave-count", type=int, default=5)
 
     advance_p = sub.add_parser("advance_wave")
     advance_p.add_argument("--wave", type=int, required=True)
@@ -208,7 +241,9 @@ if __name__ == "__main__":
 
     if args.command == "init":
         try:
-            state = init_session(root, args.har)
+            import json as _json
+            meta = _json.loads(args.metadata) if isinstance(args.metadata, str) else {}
+            state = init_session(root, args.har, wave_count=args.wave_count, metadata=meta)
             print(f"Session initialized: {state.session_id}")
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)

@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, WebS
 
 # Tide 初始化
 
+> **重要：除非必要，否则不要改动已有项目中的测试配置或脚本。如需修改，先用 AskUserQuestion 向用户报告改动原因和改动范围，确认后方可执行。**
+
 为新项目或已有项目引导安装 Tide 测试框架。
 
 ---
@@ -41,10 +43,11 @@ ID 记为 `<task_1_id>` 到 `<task_6_id>`。
 
 Task 1 → in_progress
 
-1. **工具检测**：`python3 --version`（>= 3.12）/ `uv --version` / `git --version`
-2. **依赖检测**：jinja2 / pydantic / pyyaml（若有缺失自动安装）
-3. **重初始化检测**：若 tide-config.yaml 已存在，询问使用/更新/重来
-4. **智能分类**：检测测试文件数、conftest、pytest 配置、HTTP 客户端、allure、CI
+1. **Tide 运行环境检查**：`python3 --version`（>= 3.12，Tide 自身需要）/ `uv --version` / `git --version`
+2. **项目 Python 版本检测**：依次检查 `.python-version` / `pyproject.toml` → `requires-python` / `setup.py`或`setup.cfg` → `python_requires` / `Pipfile` → `python_version`，输出项目要求的 Python 版本（此版本仅作为上下文记录，不影响 Tide 运行）
+3. **依赖检测**：jinja2 / pydantic / pyyaml（若有缺失自动安装）
+4. **重初始化检测**：若 tide-config.yaml 已存在，询问使用/更新/重来
+5. **智能分类**：检测测试文件数、conftest、pytest 配置、HTTP 客户端、allure、CI
 
 判定规则：`TEST_FILE_COUNT >= 3 AND (CONFTEST 存在 OR PYTEST_CONFIG 存在) → existing_auto`
 
@@ -125,15 +128,19 @@ Task 3 完成。
 
 Task 4 → in_progress
 
-1. **检查已有仓库**：`ls -d .tide/repos/*/ 2>/dev/null`，若已有仓库：
-   - 读取每个仓库的 `git remote get-url origin` 和当前分支
+> 注意：当前项目已在工作目录中，无需再配置。此步骤仅管理**额外源码仓库**（被测服务等），存储在 `.tide/repos/` 下。
+
+1. **检查已有仓库**：`ls -d .tide/repos/*/*/ 2>/dev/null`，仅检测 `.tide/repos/` 下的仓库，**不要读取当前项目的 git 信息**。
+   - 若已有仓库：读取每个仓库的 `git remote get-url origin` 和当前分支
    - 展示给用户确认（使用 AskUserQuestion）
    - 用户确认或修正后写入 repo-profiles.yaml
 2. **首次配置**（无 .tide/repos 时）：
-   - 读取 CLAUDE.md 中的 `### Source Repositories` 节，提取仓库名称和分支
-   - 根据仓库名推断 Git 地址（约定：CLAUDE.md 已有项目名称则自动拼接）
-   - 展示给用户确认
-   - git clone 各仓库到 .tide/repos/ 下
+   - 让用户提供需要关联的源码仓库 Git 地址
+   - 使用 `uv run python3 scripts/repo_sync.py clone <url> -b <branch>` 进行克隆，自动按组名路径保存到 `.tide/repos/<group>/<repo>`
+3. 配置 URL 前缀映射关系
+4. 写入 repo-profiles.yaml
+
+切换迭代分支时，可使用 `uv run python3 scripts/repo_sync.py checkout <branch>` 批量切换所有仓库。
 3. 配置 URL 前缀映射关系
 4. 写入 repo-profiles.yaml
 
@@ -158,8 +165,7 @@ Task 6 → in_progress
 
 1. 渲染 tide-config.yaml（Jinja2）
 2. 运行 scaffold.py（--mode new/existing）
-3. 生成 CLAUDE.md（包含 7 维度摘要或技术栈 + 行业上下文）
-4. smoke test：
+3. smoke test：
    - URL 可达性 + 认证有效性 + 数据库连接（若配置）
    - 若 tide-config.yaml 中存在 test_runner.type == custom：
      - 展示：`python {{ test_runner.entry }}` 运行全部测试

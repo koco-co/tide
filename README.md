@@ -245,7 +245,7 @@ claude
 | 方案确认 | 选择技术栈（框架/客户端/报告/CI 等） |
 | 脚手架 | 生成完整的项目结构 + 示例测试 |
 
-生成文件：`tide-config.yaml` · `repo-profiles.yaml` · `CLAUDE.md`
+生成文件：`tide-config.yaml` · `repo-profiles.yaml`
 
 ### 第二步：录制 HAR 文件
 

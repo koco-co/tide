@@ -11,6 +11,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import yaml
@@ -180,6 +181,8 @@ class ParsedResult(BaseModel):
     base_url: str
     endpoints: list[ParsedEndpoint]
     summary: ParsedSummary
+    sequences: list[dict] = []
+    """Request sequence analysis: operation chains, async patterns, CRUD pairs."""
 
 
 # ---------------------------------------------------------------------------
@@ -353,6 +356,145 @@ def _extract_base_url(entry: HarEntry) -> str:
 # ---------------------------------------------------------------------------
 
 
+def analyze_request_sequences(
+    endpoints: list[ParsedEndpoint], entries: list[HarEntry],
+) -> list[dict[str, Any]]:
+    """分析 HAR 条目请求序列，识别操作链和异步模式。
+
+    按时间戳排序，识别：
+    1. **操作链**：同一 module 下，按时间顺序的连续调用（如：查列表→查详情）
+    2. **异步模式**：请求返回 taskId → 随后有状态轮询调用
+    3. **CRUD 对**：同一资源路径的 POST→GET→PUT→DELETE 序列
+
+    返回 detected_sequences：
+    ```json
+    [
+      {
+        "type": "operation_chain | async_pattern | crud_pair",
+        "module": "assets",
+        "flows": [
+          {"step": 1, "method": "POST", "path": "/create", "description": "..."},
+          {"step": 2, "method": "GET", "path": "/{id}"}
+        ],
+        "confidence": "high | medium"
+      }
+    ]
+    ```
+    """
+    if not entries or not endpoints:
+        return []
+
+    # Build a mapping from endpoint path to endpoint id
+    path_to_endpoint: dict[str, ParsedEndpoint] = {}
+    for ep in endpoints:
+        path_to_endpoint[ep.path] = ep
+
+    # Sort entries by time
+    sorted_entries = sorted(entries, key=lambda e: e.time)
+
+    sequences: list[dict[str, Any]] = []
+    current_module = None
+    current_chain: list[dict[str, Any]] = []
+    seen_async_task_ids: dict[str, int] = {}
+
+    for entry in sorted_entries:
+        path = entry.request.path
+        method = entry.request.method
+        _, module = _extract_service_module(path)
+
+        # Detect module transitions
+        if module != current_module and current_chain:
+            if len(current_chain) >= 2:
+                sequences.append({
+                    "type": "operation_chain",
+                    "module": current_module or "",
+                    "flows": list(current_chain),
+                    "confidence": "medium",
+                })
+            current_chain = []
+        current_module = module
+
+        # Detect async pattern: response body contains taskId/flowId/jobId
+        is_async = False
+        task_id = None
+        resp_body = entry.response.body
+        if resp_body and isinstance(resp_body, dict):
+            data = resp_body.get("data")
+            if isinstance(data, dict):
+                for key in ("taskId", "flowId", "jobId", "id"):
+                    if data.get(key) and isinstance(data[key], (int, str)):
+                        task_id = str(data[key])
+                        is_async = True
+                        break
+            elif isinstance(data, (int, str)):
+                task_id = str(data)
+                # Check if this looks like a generated ID (not a small number)
+                if task_id.isdigit() and int(task_id) > 1000:
+                    is_async = True
+
+        # Track async task IDs and look for subsequent polling
+        for task_key, step_count in list(seen_async_task_ids.items()):
+            if task_key in path:
+                # This is a poll request referencing a task
+                sequences.append({
+                    "type": "async_pattern",
+                    "module": module,
+                    "flows": [
+                        {"step": step_count, "method": method, "path": path,
+                         "description": f"轮询异步任务 {task_key}"},
+                    ],
+                    "confidence": "high",
+                })
+                del seen_async_task_ids[task_key]
+
+        if is_async and task_id:
+            step_num = len(current_chain) + 1
+            seen_async_task_ids[task_id] = step_num
+            current_chain.append({
+                "step": step_num,
+                "method": method,
+                "path": path,
+                "description": f"触发异步任务(taskId={task_id})",
+            })
+        else:
+            current_chain.append({
+                "step": len(current_chain) + 1,
+                "method": method,
+                "path": path,
+                "description": f"{method} {path.split('/')[-1]}",
+            })
+
+        # Detect if path contains {id} patterns that match previous create
+        for prev in current_chain[:-1]:
+            prev_path = prev["path"]
+            if prev_path.endswith("/create") or prev_path.endswith("/add"):
+                # Next request with the same base path might be an operation on created resource
+                prev_base = prev_path.rsplit("/", 1)[0]
+                if path.startswith(prev_base) and path != prev_path:
+                    sequences.append({
+                        "type": "crud_pair",
+                        "module": module,
+                        "flows": [
+                            {"step": prev["step"], "method": prev["method"], "path": prev_path,
+                             "description": "创建资源"},
+                            {"step": len(current_chain), "method": method, "path": path,
+                             "description": "操作新建资源"},
+                        ],
+                        "confidence": "medium",
+                    })
+
+    # Flush last chain
+    if len(current_chain) >= 2:
+        sequences.append({
+            "type": "operation_chain",
+            "module": current_module or "",
+            "flows": list(current_chain),
+            "confidence": "medium",
+        })
+
+    return sequences
+
+
 def parse_har(
     har_path: Path,
     profiles_path: Path | None,
@@ -399,7 +541,7 @@ def parse_har(
     # --- 构建 base_url ---
     base_url = _extract_base_url(entries[0])
 
-    # --- 构建 endpoints ---
+    # -- 构建 endpoints --
     endpoints: list[ParsedEndpoint] = []
     services: set[str] = set()
     modules: set[str] = set()
@@ -433,6 +575,9 @@ def parse_har(
             )
         )
 
+    # --- 请求序列分析 ---
+    sequences = analyze_request_sequences(endpoints, entries)
+
     return ParsedResult(
         source_har=str(har_path),
         parsed_at=datetime.now(tz=UTC).isoformat(),
@@ -445,4 +590,5 @@ def parse_har(
             services=sorted(services),
             modules=sorted(modules),
         ),
+        sequences=sequences,
     )

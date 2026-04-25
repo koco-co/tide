@@ -1,7 +1,9 @@
 """用于克隆和拉取 git 仓库的同步工具函数。"""
 
+import argparse
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,7 +50,6 @@ def load_profiles(profiles_path: Path) -> list[dict]:
 
     profiles = config.get("profiles", [])
     if not isinstance(profiles, list):
-        import sys
         print(f"[repo-sync] Warning: profiles is not a list in {profiles_path}", file=sys.stderr)
         return []
 
@@ -88,6 +89,7 @@ def sync_repo(repo_path: Path, repo_url: str = "", branch: str = "main") -> Repo
                 check=True,
             )
         else:
+            repo_path.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(
                 ["git", "clone", "-b", branch, repo_url, str(repo_path)],
                 capture_output=True,
@@ -138,3 +140,154 @@ def sync_all(profiles_path: Path, project_root: Path) -> list[RepoStatus]:
         results.append(status)
 
     return results
+
+
+def cmd_clone(args: argparse.Namespace) -> int:
+    """Clone 一个仓库到 .tide/repos/<group>/<repo>。"""
+    group, repo_name = parse_repo_url(args.url)
+    dest = args.root / ".tide" / "repos" / group / repo_name
+    if dest.exists():
+        print(f"已存在: {dest}（跳过）")
+        return 0
+
+    print(f"克隆 {args.url} → {dest}（分支: {args.branch}）")
+    status = sync_repo(dest, repo_url=args.url, branch=args.branch)
+    _print_status(status)
+    return 0 if status.success else 1
+
+
+def cmd_checkout(args: argparse.Namespace) -> int:
+    """批量切换所有仓库到指定分支。"""
+    profiles = load_profiles(args.profiles)
+    if not profiles:
+        print("无已配置的仓库（repo-profiles.yaml 为空或不存在）")
+        return 0
+
+    has_error = False
+    for profile in profiles:
+        repo_path = args.root / profile.get("path", "")
+        branch = args.branch
+        name = profile.get("name", repo_path.name)
+
+        if not (repo_path / ".git").exists():
+            print(f"⚠ {name}: 仓库不存在（跳过）")
+            continue
+
+        try:
+            subprocess.run(
+                ["git", "fetch", "--all"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "checkout", branch],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "pull"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            rev = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            print(f"✓ {name} → {branch}（{rev.stdout.strip()}）")
+        except subprocess.CalledProcessError as exc:
+            print(f"✗ {name}: {exc.stderr.strip()}")
+            has_error = True
+
+    return 1 if has_error else 0
+
+
+def cmd_pull(args: argparse.Namespace) -> int:
+    """批量拉取所有仓库 latest。"""
+    profiles = load_profiles(args.profiles)
+    if not profiles:
+        print("无已配置的仓库")
+        return 0
+
+    has_error = False
+    for profile in profiles:
+        repo_path = args.root / profile.get("path", "")
+        name = profile.get("name", repo_path.name)
+
+        if not (repo_path / ".git").exists():
+            print(f"⚠ {name}: 仓库不存在（跳过）")
+            continue
+
+        status = sync_repo(repo_path, branch=profile.get("branch", "main"))
+        if status.success:
+            print(f"✓ {name} → {status.head_commit}")
+        else:
+            print(f"✗ {name}: {status.error}")
+            has_error = True
+
+    return 1 if has_error else 0
+
+
+def cmd_sync(args: argparse.Namespace) -> int:
+    """同步 profiles 中所有仓库（clone 或 pull）。"""
+    results = sync_all(args.profiles, args.root)
+    has_error = False
+    for status in results:
+        _print_status(status)
+        if not status.success:
+            has_error = True
+    return 1 if has_error else 0
+
+
+def _print_status(status: RepoStatus) -> None:
+    if status.success:
+        print(f"✓ {status.name} → {status.head_commit}")
+    else:
+        print(f"✗ {status.name}: {status.error}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Tide 源码仓库管理工具")
+    parser.add_argument("--root", type=Path, default=Path.cwd(), help="项目根目录（默认当前目录）")
+    parser.add_argument(
+        "--profiles",
+        type=Path,
+        default=Path.cwd() / ".tide" / "repos" / "repo-profiles.yaml",
+        help="repo-profiles.yaml 路径（默认 .tide/repos/repo-profiles.yaml）",
+    )
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    # clone
+    clone_p = sub.add_parser("clone", help="克隆仓库到 .tide/repos/<group>/<repo>")
+    clone_p.add_argument("url", help="Git 仓库 URL")
+    clone_p.add_argument("-b", "--branch", default="main", help="分支（默认 main）")
+    clone_p.set_defaults(func=cmd_clone)
+
+    # checkout
+    co_p = sub.add_parser("checkout", help="批量切换所有仓库到指定分支")
+    co_p.add_argument("branch", help="目标分支名")
+    co_p.set_defaults(func=cmd_checkout)
+
+    # pull
+    pull_p = sub.add_parser("pull", help="批量拉取所有仓库")
+    pull_p.set_defaults(func=cmd_pull)
+
+    # sync
+    sync_p = sub.add_parser("sync", help="同步 profiles 中所有仓库（clone 或 pull）")
+    sync_p.set_defaults(func=cmd_sync)
+
+    args = parser.parse_args()
+    sys.exit(args.func(args))
+
+
+if __name__ == "__main__":
+    main()

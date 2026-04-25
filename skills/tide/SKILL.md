@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 
 # Tide：HAR 转 Pytest 测试生成
 
+> **重要：除非必要，否则不要改动已有项目中的测试配置或脚本。如需修改，先用 AskUserQuestion 向用户报告改动原因和改动范围，确认后方可执行。**
+
 ## 第零步：自更新
 
 在开始之前检查 Tide 插件是否有更新。
@@ -88,9 +90,31 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
     ║ 预估成本: ~$<Y>                      ║
     ╚══════════════════════════════════════╝
     ```
-    询问用户是否继续。用户拒绝则终止流程。接受则继续 Wave 1。
+    询问用户是否继续。用户拒绝则终止流程。接受则继续。
 
-12. Task 1 完成。
+12. **用户意图采集**（新增）：
+    在进入 Wave 1 之前，用 AskUserQuestion 询问以下问题，明确用户期望的测试粒度：
+
+    ```
+    请选择测试粒度：
+    
+    A. 单接口回放 — 每个 HAR 端点对应一个独立测试，验证 HTTP 状态码和基本响应
+    B. CRUD 闭环 — 按资源维度组织增删改查生命周期测试
+    C. 端到端链路 — 按业务场景串联多个接口（如：建表→同步→查询→清理），含 setup/teardown
+    D. 混合模式 — 核心链路做端到端，其余做单接口回放
+    ```
+
+    同时询问用户业务场景描述（可选）：
+    ```
+    这批 HAR 对应的业务场景是什么？（例如："资产模块的元数据同步全链路测试"）
+    这有助于 AI 理解接口之间的业务关联，生成更有意义的测试。
+    ```
+
+    根据回答设置 `test_granularity`（single_api / crud / e2e_chain / hybrid）和 `business_context` 变量，用于后续 wave。
+
+    > 若未选择，默认 hybrid 模式：检测到同一 module 中有 POST 请求依赖关系则做 e2e，其余单接口。
+
+13. Task 1 完成。
 
 ---
 
@@ -99,9 +123,42 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
 Task 2 → in_progress
 
 1. `uv run python3 ${CLAUDE_SKILL_DIR}/../../scripts/state_manager.py init --har "${har_path}"`
-2. **并行**启动 har-parser 和 repo-syncer Agent，prompt 分别见 `agents/har-parser.md` 和 `agents/repo-syncer.md`（仅在 `no_source_mode=false` 时启动后者）
-3. 读取验证输出（.tide/parsed.json / .tide/repo-status.json）
-4. 输出验证摘要，检查点保存
+2. **并行**启动 har-parser、repo-syncer 和 project-asset-scanner 三个 Agent，prompt 分别见：
+   - `agents/har-parser.md`
+   - `agents/repo-syncer.md`（仅在 `no_source_mode=false` 时启动）
+   - `agents/project-asset-scanner.md`（新增）— 扫描项目 utils/ 下已有的 Service/Request 工具类，生成可复用方法清单（仅在 `fingerprint_mode=true` 时启动）
+3. 读取验证输出：
+   - `.tide/parsed.json` — 解析后的端点列表
+   - `.tide/repo-status.json` — 仓库同步状态
+   - `.tide/project-assets.json`（新增）— 项目工具类资产清单
+4. **向用户报告解析结果**：读取 .tide/parsed.json，按模块和方法归类端点，同时说明测试粒度设定。用 AskUserQuestion 展示以下信息，询问是否确认进入下一阶段：
+
+   ```
+   HAR 解析完成：
+   - 原始请求数：42
+   - 去重后端点数：18
+   - 测试粒度：端到端链路 / 单接口回放
+
+   测试场景分布：
+   batch 模块
+     场景 1：查询批量任务列表
+       · GET /api/batch/list
+       · GET /api/batch/search
+     ...
+
+   项目可复用资产（基于 convention-fingerprint）：
+   - DatasourceService.get_datasource_id_by_name(name) — 按名称查数据源ID
+   - DataMapService.get_asset_metadata_sync_result(schema, type) — 全链路同步结果
+   - MetaDataRequest.page_table_column(tableId) — 查表字段
+   代码生成时将优先使用这些已有封装而非从零实现。
+
+   仓库同步状态：
+   - dt-insight-web/dt-center-assets ✓（main@2a3b4c5）
+
+   是否进入场景分析阶段？
+   ```
+
+5. 输出验证摘要，检查点保存
 
 **[Hook]** 若 tide-config.yaml 中有 hook 配置，执行 `uv run python3 scripts/hooks.py run wave1:parse:after`
 
@@ -113,7 +170,13 @@ Task 2 完成。
 
 Task 3 → in_progress
 
-1. 读取 `agents/scenario-analyzer.md`，传入上下文：no_source_mode、test_types、industry_mode
+1. 读取 `agents/scenario-analyzer.md`，传入上下文：
+   - `no_source_mode` — 是否无源码模式
+   - `test_types` — 配置中指定的测试类型
+   - `industry_mode` — 是否启用行业规则
+   - **`test_granularity`**（新增）— 用户选择的测试粒度
+   - **`business_context`**（新增）— 用户描述的业务场景
+   - **`async_mode`**（新增）— 自动检测：若端点中有异步接口（返回 taskId 后轮询），标记为 async
 2. 启动 scenario-analyzer Agent（opus）
 3. 读取 .tide/scenarios.json
 4. 若非 `--quick`，展示确认清单供用户确认
@@ -128,9 +191,22 @@ Task 3 → in_progress
 
 Task 4 → in_progress
 
-1. 读取 .tide/scenarios.json → generation_plan
-2. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入 detected_auth_type
-3. 全部完成后，对每个生成文件执行 py_compile + AST 检查
+1. 读取 `.tide/scenarios.json` → `generation_plan`
+2. 读取 `.tide/project-assets.json`（若存在）— 项目已有工具类清单
+3. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入：
+   - `detected_auth_type` — 认证方式
+   - **`project_assets`**（新增）— 项目已有工具类方法清单，要求优先复用
+   - **`test_granularity`**（新增）— 测试粒度
+   - **`business_context`**（新增）— 业务场景描述
+   - 按需加载的 code-style-python prompt 模块（来自 fingerprint 组装）
+4. 全部完成后，对每个生成文件执行 py_compile + AST 检查
+5. **格式检查**（新增）：对所有生成文件执行 format_checker：
+   ```bash
+   uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
+   ```
+   - 对 FC04（硬编码 URL）和 FC11（硬编码业务 ID）的 WARNING 级别违规，自动提取并尝试修复
+   - 对 FC08（print 语句）的 ERROR 级别违规，自动移除
+   - 记录问题到 `.tide/format-report.json`
 
 **[偏好]** 写入本次生成的模块数 `uv run python3 scripts/preferences.py write --key last_module_count --value <N>`
 
@@ -143,7 +219,23 @@ Task 4 → in_progress
 Task 5 → in_progress
 
 1. 启动 case-reviewer Agent，prompt 见 `agents/case-reviewer.md`
-2. 检测包管理器并执行测试
+   - case-reviewer 会依次完成：静态审查 → 自动修复 → 测试执行（pytest collect-only + pytest -x -v --tb=short）→ **失败语义分析（新增）** → 最多 2 轮修复循环 → 输出 review-report.json 和 execution-report.json
+   - **失败语义分析**：当测试失败时，解析 response body 的错误信息，判断失败根因类别：
+     - `TEST_BUG` — 测试写错了（参数不对、断言值错）→ 自动修复
+     - `ENV_ISSUE` — 环境问题（服务不可用、数据不存在）→ 标记为环境问题，调整预期
+     - `BUSINESS_BUG` — 业务 bug（code≠1 但非参数问题）→ 标记为疑似缺陷
+   - **等待 case-reviewer 全部完成再继续下一步**
+2. 读取 `.tide/execution-report.json`，向用户报告执行结果：
+
+   ```
+   测试执行完成
+   - 收集：成功
+   - 通过：15/18
+   - 失败：3
+   - 失败归类：测试本身问题 1，环境问题 1，疑似缺陷 1
+   - 修复轮数：1
+   ```
+
 3. 生成验收报告
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run wave4:review:after` 和 `uv run python3 scripts/hooks.py run output:notify`
@@ -154,7 +246,7 @@ Task 5 完成。
 
 Task 6 → in_progress
 
-1. 显示最终摘要（测试通过数/失败数/断言覆盖率）
+1. 显示最终摘要（测试通过数/失败数/断言覆盖率/失败归类）
 2. 打印验收命令（pytest collect-only / pytest run / allure serve）
 3. 归档会话
 

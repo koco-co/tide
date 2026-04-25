@@ -10,6 +10,7 @@ from scripts.convention_scanner import (
     detect_http_client,
     detect_module_dependencies,
     detect_monitoring,
+    detect_service_utilities,
     detect_test_runner,
 )
 
@@ -320,3 +321,96 @@ class TestDetectModuleDependencies:
     def test_detect_module_dependencies_none(self, tmp_path: Path) -> None:
         result = detect_module_dependencies(tmp_path)
         assert result["count"] == 0
+
+
+class TestDetectServiceUtilities:
+    """Service/Request 工具类扫描测试"""
+
+    def test_detects_services_and_requests(self, tmp_path: Path) -> None:
+        utils_services = tmp_path / "utils" / "assets" / "services"
+        utils_services.mkdir(parents=True)
+        (utils_services / "__init__.py").write_text("")
+        (utils_services / "datasource.py").write_text("""
+class DatasourceService:
+    \"\"\"数据源服务\"\"\"
+    def get_datasource_id_by_name(self, datasource_name):
+        \"\"\"根据名称查ID\"\"\"
+        pass
+    def import_datasource(self, ds_id):
+        \"\"\"导入数据源\"\"\"
+        pass
+""")
+        utils_requests = tmp_path / "utils" / "assets" / "requests"
+        utils_requests.mkdir(parents=True)
+        (utils_requests / "__init__.py").write_text("")
+        (utils_requests / "meta_data_requests.py").write_text("""
+class MetaDataRequest:
+    \"\"\"元数据请求\"\"\"
+    def page_table_column(self, table_id):
+        \"\"\"分页查字段\"\"\"
+        pass
+""")
+        result = detect_service_utilities(tmp_path)
+        assert result["detected"] is True
+        assert "assets" in result["modules"]
+        assert len(result["modules"]["assets"]["services"]) == 1
+        assert len(result["modules"]["assets"]["requests"]) == 1
+
+        svc = result["modules"]["assets"]["services"][0]
+        assert svc["class"] == "DatasourceService"
+        assert len(svc["methods"]) == 2
+        assert svc["methods"][0]["name"] == "get_datasource_id_by_name"
+
+        req = result["modules"]["assets"]["requests"][0]
+        assert req["class"] == "MetaDataRequest"
+        assert req["methods"][0]["name"] == "page_table_column"
+
+    def test_no_utils_dir_returns_not_detected(self, tmp_path: Path) -> None:
+        result = detect_service_utilities(tmp_path)
+        assert result["detected"] is False
+        assert result["modules"] == {}
+
+    def test_skips_init_py(self, tmp_path: Path) -> None:
+        """仅有 __init__.py 的目录被视为无有效工具类。"""
+        utils_dir = tmp_path / "utils" / "assets" / "services"
+        utils_dir.mkdir(parents=True)
+        (utils_dir / "__init__.py").write_text("# empty")
+        result = detect_service_utilities(tmp_path)
+        assert result["detected"] is False
+
+    def test_method_signature_parsing(self, tmp_path: Path) -> None:
+        utils_dir = tmp_path / "utils" / "test" / "services"
+        utils_dir.mkdir(parents=True)
+        (utils_dir / "svc.py").write_text("""
+from typing import Optional
+
+class QueryService:
+    def get_by_name(self, name: str, age: int = 0) -> Optional[dict]:
+        \"\"\"按名称查询\"\"\"
+        pass
+""")
+        result = detect_service_utilities(tmp_path)
+        svc = result["modules"]["test"]["services"][0]
+        m = svc["methods"][0]
+        assert m["name"] == "get_by_name"
+        assert m["args"] == [
+            {"name": "name", "type": "str"},
+            {"name": "age", "type": "int"},
+        ]
+        assert m["returns"] == "Optional[dict]"
+        assert m["doc"] == "按名称查询"
+
+    def test_skips_test_classes(self, tmp_path: Path) -> None:
+        utils_dir = tmp_path / "utils" / "test" / "services"
+        utils_dir.mkdir(parents=True)
+        (utils_dir / "svc.py").write_text("""
+class TestHelperService:
+    def helper_method(self): pass
+class RealService:
+    def real_method(self): pass
+""")
+        result = detect_service_utilities(tmp_path)
+        classes = result["modules"]["test"]["services"]
+        names = [c["class"] for c in classes]
+        assert "TestHelperService" not in names
+        assert "RealService" in names

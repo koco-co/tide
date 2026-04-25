@@ -22,6 +22,12 @@ typecheck:
 
 ci: lint typecheck test
 
+dev:
+	@bash scripts/sync-dev.sh
+
+dev-watch:
+	@bash scripts/sync-dev.sh --watch
+
 PLUGIN_DIR := $(shell python3 -c "import json; d=json.load(open('$(HOME)/.claude/plugins/installed_plugins.json')); [print(e['installPath']) for v in d.get('plugins',{}).values() for e in v if 'tide' in e.get('installPath','')]" 2>/dev/null)
 
 install-plugin:

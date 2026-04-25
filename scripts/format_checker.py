@@ -45,6 +45,7 @@ RULES: list[FormatRule] = [
     FormatRule("FC08", "无 print() 语句", Severity.ERROR),
     FormatRule("FC09", "行长不超过 120 字符", Severity.WARNING),
     FormatRule("FC10", "嵌套深度不超过 3 层", Severity.WARNING),
+    FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.WARNING),
 ]
 
 _RULE_MAP = {r.id: r for r in RULES}
@@ -177,13 +178,36 @@ def _check_unused_imports(tree: ast.Module, filepath: str) -> list[Violation]:
 _CRITICAL_URL_PATTERNS = ("/api/", "/v1/", "/v2/")
 
 
+def _is_within_enum_class(tree: ast.Module, node: ast.AST) -> bool:
+    """检查节点是否在 Enum 类定义内部（API 路径枚举应被豁免）。"""
+    for parent in ast.walk(tree):
+        if isinstance(parent, ast.ClassDef):
+            # 检查类是否继承自 Enum
+            is_enum = any(
+                isinstance(b, ast.Name) and b.id == "Enum"
+                or isinstance(b, ast.Attribute) and b.attr == "Enum"
+                for b in parent.bases
+            )
+            if is_enum:
+                for child in ast.walk(parent):
+                    if child is node:
+                        return True
+    return False
+
+
 def _check_hardcoded_data(tree: ast.Module, filepath: str) -> list[Violation]:
-    """FC04: 无硬编码测试数据（URL、长数字 ID）。"""
+    """FC04: 无硬编码测试数据（URL、长数字 ID）。
+
+    豁免 API Enum 定义中的路径字符串（如 AssetsApi 枚举值）。
+    """
     violations: list[Violation] = []
     rule = _RULE_MAP["FC04"]
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant):
             if isinstance(node.value, str) and any(p in node.value for p in _CRITICAL_URL_PATTERNS):
+                # 跳过 Enum 类中的 API 路径定义
+                if _is_within_enum_class(tree, node):
+                    continue
                 violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail=f"可能的硬编码 URL: {node.value[:60]}"))
             elif isinstance(node.value, int) and node.value > 99999:
                 violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail=f"可能的硬编码 ID: {node.value}"))
@@ -229,6 +253,39 @@ def _check_nesting_depth(tree: ast.Module, filepath: str) -> list[Violation]:
     return violations
 
 
+_HARDCODED_ID_KEYS = frozenset({
+    "tableId", "dataSourceId", "sourceId", "projectId",
+    "tenantId", "catalogueId", "taskId", "userId", "roleId",
+    "dsId", "dbId", "clusterId", "engineId",
+})
+
+
+def _check_hardcoded_business_ids(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC11: 无硬编码业务ID（tableId、dataSourceId等）。
+
+    检测字典 JSON payload 中数值类型的硬编码业务 ID，要求通过
+    运行时查询获取而非写死。
+    """
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC11"]
+
+    for node in ast.walk(tree):
+        # 匹配 {"tableId": 1} 或 {"dataSourceId": 99999999} 这种模式
+        if isinstance(node, ast.Dict):
+            for key, value in zip(node.keys, node.values):
+                if (isinstance(key, ast.Constant) and isinstance(key.value, str)
+                        and key.value in _HARDCODED_ID_KEYS
+                        and isinstance(value, ast.Constant)
+                        and isinstance(value.value, (int,))
+                        and value.value != 0):  # 允许 tableId: 0 作为 fallback
+                    violations.append(Violation(
+                        rule=rule, file=filepath, line=node.lineno,
+                        detail=f"硬编码业务ID: {key.value}={value.value}，应通过运行时查询获取",
+                    ))
+
+    return violations
+
+
 def check_file(filepath: str) -> list[Violation]:
     """对单个 Python 文件执行所有格式检查。"""
     path = Path(filepath)
@@ -258,6 +315,7 @@ def check_file(filepath: str) -> list[Violation]:
     violations.extend(_check_assert_message(tree, filepath))
     violations.extend(_check_pydantic_description(tree, filepath))
     violations.extend(_check_nesting_depth(tree, filepath))
+    violations.extend(_check_hardcoded_business_ids(tree, filepath))
 
     return violations
 

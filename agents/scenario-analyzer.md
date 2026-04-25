@@ -9,9 +9,20 @@ model: opus
 
 ## 输入
 
-- `.tide/parsed.json` — 已过滤、去重的端点列表，包含 `matched_repo` 归属信息
+- `.tide/parsed.json` — 已过滤、去重的端点列表，包含 `matched_repo` 归属信息和 **请求序列分析结果**
 - `prompts/scenario-enrich.md` — 场景丰富策略与场景类型分类
 - `prompts/assertion-layers.md` — L1-L5 断言层定义与规则
+- 任务 prompt 中会传入以下上下文参数：
+  - `test_granularity`（新增）：`single_api` | `crud` | `e2e_chain` | `hybrid`
+    - `single_api` — 只生成 har_direct 单接口回放
+    - `crud` — 生成 CRUD 生命周期场景
+    - `e2e_chain` — 按 HAR 请求序列生成端到端链路场景
+    - `hybrid` — 核心链路做 e2e，其余单接口
+  - `business_context`（新增）：用户描述的业务场景文字
+  - `async_mode`（新增）：boolean，HAR 中是否检测到异步任务模式
+  - `no_source_mode` — 是否无源码模式
+  - `test_types` — 配置中指定的测试类型
+  - `industry_mode` — 是否启用行业规则
 
 ## 阶段一：源代码追踪
 
@@ -38,11 +49,16 @@ model: opus
 5. **识别 CRUD 闭环**：找出同一 Controller 文件中的所有其他路由，梳理该资源的完整增删改查生命周期。这些是测试中用于状态准备和清理的"闭环端点"。
 
 6. **汇总每个端点的提取信息**：
-   - `param_validation`：已校验参数及其约束条件列表
-   - `exception_handlers`：异常类型及其 HTTP 状态码映射列表
+   - `param_validation`：已校验参数及其约束条件列表（如 `@NotNull`, `@Min(1) @Max(100)`, `@Size(max=50)`）
+   - `exception_handlers`：异常类型及其 HTTP 状态码映射列表（如 `BizException("数据源不存在")` → code=0）
    - `permission_checks`：鉴权/角色要求
-   - `tables_touched`：涉及的数据库表名列表
+   - `tables_touched`：涉及的数据库表名列表和 SQL 操作类型
    - `closure_endpoints`：CRUD 同组端点的 method+path 列表
+   - **`concrete_boundaries`（新增）**：从源码注解提取的具象边界值
+     - `@Min(1)` → `{"field": "pageNow", "min": 1, "test_value": 0}`
+     - `@Max(100)` → `{"field": "rowNum", "max": 100, "test_value": 101}`
+   - **`exception_params`（新增）**：可触发异常路径的具象入参
+     - 如 `dataSourceId: 99999999` 触发 "数据源不存在"
 
 ## 阶段二：场景生成
 
@@ -50,12 +66,22 @@ model: opus
 - 若上下文包含 `no_source_mode = true`：跳过阶段一（源代码追踪），所有场景标记 confidence: 'low'
 - 若上下文包含 `test_types`：仅生成 test_types 中指定的类型
 - 若上下文包含 `industry_mode = true`：同时读取 prompts/industry-assertions.md，为写入类接口追加行业特有场景
+- **若上下文包含 `test_granularity`**（新增）：
+  - `single_api` → 仅为每个端点生成 `har_direct`、`param_validation`、`boundary` 类型场景
+  - `crud` → 对含有 CRUD 闭环的模块生成 `crud_closure` 场景；其余生成 `har_direct`
+  - `e2e_chain` → **读取 parsed.json 的 `sequences` 字段，为每个操作链生成 `e2e_chain` 场景**，含 setup/teardown 步骤
+  - `hybrid` → 对 `sequences` 中检测到的操作链做 e2e，其余端点单接口回放
+- **若上下文包含 `business_context`**（新增）：在场景描述中融入业务语境。例如 business_context="资产元数据同步" 时，场景描述为 "DDL建表→元数据同步→数据地图查询→表详情→清理"
+- **若上下文包含 `async_mode = true`**（新增）：对异步端点自动生成轮询验证步骤，在场景的 `setup_steps` 中添加 poll 循环
+
+以 `prompts/scenario-enrich.md` 为策略指南，为每个端点生成场景。需考虑的场景类型：
 
 以 `prompts/scenario-enrich.md` 为策略指南，为每个端点生成场景。需考虑的场景类型：
 
 | 类型 | 说明 |
 |------|------|
 | `har_direct` | 直接回放捕获的 HAR 请求 |
+| `e2e_chain` | **端到端操作链**：按 HAR 请求序列生成多步骤场景（如：建表→同步→查询→清理），含 setup/teardown |
 | `crud_closure` | 完整生命周期：创建 → 查询 → 更新 → 删除 |
 | `param_validation` | 缺少必填字段、类型错误、边界值 |
 | `boundary` | 最大/最小值、空字符串、null、超大载荷 |
@@ -74,8 +100,19 @@ model: opus
 - `type`：上表中的场景类型
 - `description`：一句话的人类可读描述
 - `source_evidence`：追踪所得的 file:line 引用
-- `setup_steps`：所需前置 API 调用列表
+- `setup_steps`：所需前置 API 调用列表（含轮询逻辑）
 - `teardown_steps`：所需清理 API 调用列表
+- **`steps`（新增，仅 e2e_chain 类型）**：多步骤编排列表
+  ```json
+  [
+    {"step": 1, "method": "POST", "path": "/syncDirect", "description": "触发元数据同步", "async": true, "poll_path": "/syncTask/pageTask", "poll_field": "syncStatus", "poll_target": 2},
+    {"step": 2, "method": "POST", "path": "/datamap/queryDetail", "description": "查询同步结果"}
+  ]
+  ```
+- **`async_info`（新增，仅 async 端点）**：
+  ```json
+  {"poll_endpoint": {"method": "POST", "path": "/syncTask/pageTask"}, "poll_field": "syncStatus", "poll_target": 2, "timeout_seconds": 300}
+  ```
 
 ## 阶段三：断言规划
 
@@ -89,18 +126,51 @@ model: opus
 | L4 | 数据库状态验证（行的插入/更新/删除） |
 | L5 | 跨服务 / 副作用验证 |
 
-为每个场景生成 `assertion_plan`：
+为每个场景生成 `assertion_plan`，**必须填充具体的预期值**（不仅仅是字段名）：
+
 ```json
 {
   "L1": {"expected_status": 200},
   "L2": {"required_fields": ["id", "name"], "schema_ref": "UserResponse"},
-  "L3": [{"field": "status", "expected": "ACTIVE", "source": "UserService.java:42"}],
-  "L4": [{"table": "users", "operation": "INSERT", "verify_field": "email"}],
+  "L3": [
+    {"field": "code", "expected": 1, "source": "统一响应格式"},
+    {"field": "data.tableName", "expected": "包含于TARGET_TABLES", "source": "业务规则"}
+  ],
+  "L4": [
+    {"table": "information_schema.TABLES", "operation": "SELECT", "verify": "建表语句中包含CREATE TABLE", "sql_hint": "CREATE TABLE in response.data"}
+  ],
   "L5": []
 }
 ```
 
+**断言填充规则**：
+- **L1**：固定为 `{"expected_status": 200}`（项目统一 200 返回）
+- **L2**：从 HAR 响应体提取实际字段名，从源码 DTO 类提取必填字段
+- **L3**：从 HAR 响应体提取实际值，从源码提取业务规则
+  - `code == 1` 表示业务成功（统一响应格式）
+  - `success == True` 表示操作成功字段
+- **L4**：从源码 DAO/Mapper 层提取 `tables_touched`；若无源码访问，从响应体推断断言
+- **L5**：从源码提取副作用证据；若无则将数组置空
+
 仅包含适用的层级。若未找到数据库/副作用证据，则省略 L4/L5。
+
+**参数校验/异常断言的具象值**：
+从阶段一提取的 `concrete_boundaries` 和 `exception_params` 填充：
+```json
+{
+  "param_validation": [
+    {"param": {"tableId": null}, "expected_code": "!= 1"},
+    {"param": {"tableId": 0}, "expected_code": 1}
+  ],
+  "boundary_tests": [
+    {"param": {"current": 0, "size": 10}, "expected_code": 1},
+    {"param": {"current": 1, "size": 999}, "expected_code": 1}
+  ],
+  "exception_tests": [
+    {"param": {"dataSourceId": 99999999}, "expected_code": 0, "expected_message_contains": "不存在"}
+  ]
+}
+```
 
 ## 阶段四：写出输出
 

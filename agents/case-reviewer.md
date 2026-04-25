@@ -136,6 +136,82 @@ uv run pytest <generation_plan 中所有 output_file 的父目录> -x -v --tb=sh
 - 在无源码证据的情况下修改预期 HTTP 状态码
 - 删除测试方法
 
+## 阶段三-B：失败语义分析（新增）
+
+在自动修复循环结束后，对 **仍然失败** 的测试用例执行失败语义分析。分析每个失败的 response body，按以下规则分类：
+
+### 失败分类规则
+
+| 类别 | 标识特征 | 处理方式 |
+|------|---------|---------|
+| `TEST_BUG` | 请求参数格式错、必填字段缺失、URL 拼写错、断言值与环境返回不一致 | 自动修复（修正参数/断言值） |
+| `ENV_ISSUE` | 响应 body 含 "服务不可用"、"502"、"Connection refused"、"timeout"、"数据不存在"、"没有找到"、"空列表" | 标记为环境问题，**不阻断流水线**，在报告中降级为 WARNING |
+| `BUSINESS_BUG` | code=0（业务错误）但非参数校验失败（即参数正确但业务处理失败），响应 message 含业务错误描述 | 标记为 **疑似业务缺陷**，在报告中置为 HIGH 严重度 |
+| `ASSERTION_BUG` | 测试断言值与实际响应 body 中的值不一致（如预期 code==1 但实际 code==0） | 自动修正断言值，添加注释说明修正原因 |
+
+### 分类流程
+
+```python
+def classify_failure(test_result):
+    status_code = test_result.status_code
+    response_body = test_result.response_body  # 尝试从 fixture 或日志获取
+    
+    # 1. 检查网络/环境问题
+    if status_code in (502, 503, 504) or "timeout" in str(response_body).lower():
+        return "ENV_ISSUE"
+    
+    # 2. 解析业务响应
+    if response_body and isinstance(response_body, dict):
+        code = response_body.get("code")
+        message = response_body.get("message", "")
+        
+        if code != 1 and message:
+            # 参数校验失败 vs 业务失败
+            if any(kw in message for kw in ["不能为空", "不能为null", "不存在", "not null", "NotNull"]):
+                return "TEST_BUG"  # 测试传参有问题
+            else:
+                return "BUSINESS_BUG"  # 疑似业务缺陷
+    
+    # 3. 断言值不匹配
+    if test_result.failure_message and "AssertionError" in test_result.failure_message:
+        return "ASSERTION_BUG"
+    
+    return "UNKNOWN"
+```
+
+### 失败分类报告
+
+在 `execution-report.json` 中添加 `failure_classification` 字段：
+
+```json
+{
+  "failure_classification": {
+    "TEST_BUG": [
+      {"test": "test_create_user_missing_email", "detail": "参数格式不正确", "auto_fixed": true}
+    ],
+    "ENV_ISSUE": [
+      {"test": "test_sync_direct", "detail": "服务返回502，环境不可用", "auto_fixed": false}
+    ],
+    "BUSINESS_BUG": [
+      {"test": "test_create_datasource_invalid", "detail": "数据源不存在但code=0非1", "severity": "HIGH"}
+    ],
+    "ASSERTION_BUG": [
+      {"test": "test_query_detail", "detail": "预期code==1但实际code==0，已修正", "auto_fixed": true}
+    ]
+  }
+}
+```
+
+### 失败数的最终统计
+
+最终呈现给用户的失败数，排除 `ENV_ISSUE` 类（环境问题不算测试失败）：
+
+```
+真实失败: 3（TEST_BUG 1 + BUSINESS_BUG 1 + ASSERTION_BUG 1）
+环境问题: 1（不计入失败率）
+通过: 15/18
+```
+
 ## 阶段四：写出输出
 
 ### `.tide/review-report.json`
@@ -188,6 +264,15 @@ uv run pytest <generation_plan 中所有 output_file 的父目录> -x -v --tb=sh
     }
   ],
   "remaining_failures": [],
+  "failure_classification": {
+    "TEST_BUG": [{"test": "...", "detail": "...", "auto_fixed": true}],
+    "ENV_ISSUE": [{"test": "...", "detail": "...", "auto_fixed": false}],
+    "BUSINESS_BUG": [{"test": "...", "detail": "...", "severity": "HIGH"}],
+    "ASSERTION_BUG": [{"test": "...", "detail": "...", "auto_fixed": true}],
+    "UNKNOWN": []
+  },
+  "real_failures": 3,
+  "env_issues": 1,
   "verification_steps": [
     { "step": "py_compile", "files": 19, "passed": 19, "failed": 0 },
     { "step": "import_check", "files": 19, "passed": 17, "failed": 2 },
@@ -217,6 +302,7 @@ uv run pytest <generation_plan 中所有 output_file 的父目录> -x -v --tb=sh
   执行结果:
     收集:      成功 | 失败
     测试通过:  <通过数>/<总数>
+    失败归类:  测试本身问题 <N>，环境问题 <N>，疑似缺陷 <N>
     修复轮数:  已应用 <N> 轮
 
   输出文件:

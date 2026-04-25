@@ -30,11 +30,11 @@ class TestInitSession:
         assert state.session_id.startswith("af_")
 
     def test_initial_wave_is_zero(self, tmp_path: Path) -> None:
-        """current_wave == 0 且全部 4 个波次均为 PENDING 状态。"""
+        """current_wave == 0 且全部波次均为 PENDING 状态（默认 5：意图采集→解析→分析→生成→评审）。"""
         state = init_session(tmp_path, "test.har")
         assert state.current_wave == 0
-        assert len(state.waves) == 4
-        for key in ("1", "2", "3", "4"):
+        assert len(state.waves) == 5
+        for key in ("1", "2", "3", "4", "5"):
             assert key in state.waves
             assert state.waves[key].status == WaveStatus.PENDING
 
@@ -75,9 +75,9 @@ class TestAdvanceWave:
             advance_wave(tmp_path, 2)
 
     def test_sequential_wave_progression(self, tmp_path: Path) -> None:
-        """按顺序推进全部 4 个波次。"""
+        """按顺序推进全部 5 个波次。"""
         init_session(tmp_path, "test.har")
-        for wave in range(1, 5):
+        for wave in range(1, 6):
             state = advance_wave(tmp_path, wave)
             assert state.current_wave == wave
             assert state.waves[str(wave)].status == WaveStatus.COMPLETED
@@ -120,7 +120,7 @@ class TestArchiveSession:
         state = init_session(tmp_path, "test.har")
         session_id = state.session_id
 
-        for wave_num in range(1, 5):
+        for wave_num in range(1, 6):
             advance_wave(tmp_path, wave_num)
 
         history_dir = archive_session(tmp_path)
