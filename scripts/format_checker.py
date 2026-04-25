@@ -149,6 +149,86 @@ def _check_line_length(content: str, filepath: str) -> list[Violation]:
     return violations
 
 
+def _check_unused_imports(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC03: 无未使用的 import（排除 __future__ 和 typing.TYPE_CHECKING）。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC03"]
+    imports: dict[int, str] = {}
+    used_names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.asname or alias.name.split(".")[0]
+                imports[node.lineno] = name
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.module == "__future__":
+                continue
+            for alias in node.names:
+                name = alias.asname or alias.name
+                imports[node.lineno] = name
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            used_names.add(node.id)
+    for lineno, name in imports.items():
+        if name not in used_names:
+            violations.append(Violation(rule=rule, file=filepath, line=lineno, detail=f"未使用的 import: {name}"))
+    return violations
+
+
+_CRITICAL_URL_PATTERNS = ("/api/", "/v1/", "/v2/")
+
+
+def _check_hardcoded_data(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC04: 无硬编码测试数据（URL、长数字 ID）。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC04"]
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, str) and any(p in node.value for p in _CRITICAL_URL_PATTERNS):
+                violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail=f"可能的硬编码 URL: {node.value[:60]}"))
+            elif isinstance(node.value, int) and node.value > 99999:
+                violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail=f"可能的硬编码 ID: {node.value}"))
+    return violations
+
+
+def _check_assert_message(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC05: 断言消息必须描述性（assert 含 msg 参数）。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC05"]
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assert) and node.msg is None:
+            violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail="assert 语句缺少描述消息"))
+    return violations
+
+
+def _check_pydantic_description(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC06: Pydantic 模型字段必须有 description。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC06"]
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "Field":
+            has_description = any(kw.arg == "description" for kw in node.keywords)
+            if not has_description:
+                violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail="Field() 调用缺少 description 参数"))
+    return violations
+
+
+_NESTED_PARENTS = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.Try, ast.With, ast.AsyncWith)
+
+
+def _check_nesting_depth(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC10: 嵌套深度不超过 3 层。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC10"]
+    def _walk(node: ast.AST, depth: int = 0) -> None:
+        if depth > 3:
+            violations.append(Violation(rule=rule, file=filepath, line=getattr(node, 'lineno', 0), detail=f"嵌套深度超过 3 层（当前 {depth} 层）"))
+            return
+        for child in ast.iter_child_nodes(node):
+            _walk(child, depth + (1 if isinstance(child, _NESTED_PARENTS) else 0))
+    _walk(tree)
+    return violations
+
+
 def check_file(filepath: str) -> list[Violation]:
     """对单个 Python 文件执行所有格式检查。"""
     path = Path(filepath)
@@ -173,6 +253,11 @@ def check_file(filepath: str) -> list[Violation]:
     violations.extend(_check_class_docstrings(tree, filepath))
     violations.extend(_check_no_print(tree, filepath))
     violations.extend(_check_line_length(content, filepath))
+    violations.extend(_check_unused_imports(tree, filepath))
+    violations.extend(_check_hardcoded_data(tree, filepath))
+    violations.extend(_check_assert_message(tree, filepath))
+    violations.extend(_check_pydantic_description(tree, filepath))
+    violations.extend(_check_nesting_depth(tree, filepath))
 
     return violations
 

@@ -13,7 +13,7 @@ class TestFormatChecker:
             '"""Clean test."""\n\n\nclass TestClean:\n'
             '    """Clean."""\n\n'
             "    def test_ok(self) -> None:\n"
-            "        assert True\n"
+            '        assert True, "should be True"\n'
         )
         violations = check_file(str(clean))
         assert len(violations) == 0
