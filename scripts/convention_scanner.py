@@ -544,6 +544,41 @@ def detect_module_structure(project_root: Path) -> dict[str, Any]:
     }
 
 
+def detect_module_dependencies(project_root: Path) -> dict[str, Any]:
+    """检测服务模块间依赖关系（api/utils/dao/test 映射）。"""
+    api_dir = project_root / "api"
+    if not api_dir.is_dir():
+        return {"modules": [], "count": 0}
+
+    modules: list[dict[str, Any]] = []
+    for d in sorted(api_dir.iterdir()):
+        if not d.is_dir() or d.name.startswith("__"):
+            continue
+        module_info: dict[str, Any] = {"name": d.name}
+        # 检测对应的 utils
+        utils_path = project_root / "utils" / d.name
+        if utils_path.is_dir():
+            module_info["has_utils"] = True
+        # 检测对应的 dao
+        dao_path = project_root / "dao" / d.name
+        if dao_path.is_dir():
+            module_info["has_dao"] = True
+        # 检测对应的 test
+        test_path = project_root / "testcases" / "scenariotest" / d.name
+        if test_path.is_dir():
+            module_info["has_tests"] = True
+        # 检测对应的 conftest
+        module_conftest = test_path / "conftest.py"
+        if module_conftest.exists():
+            module_info["has_conftest"] = True
+        modules.append(module_info)
+
+    return {
+        "modules": modules,
+        "count": len(modules),
+    }
+
+
 def detect_env_management(project_root: Path) -> dict[str, Any]:
     """检测多环境管理模式。
 
@@ -724,10 +759,11 @@ def detect_monitoring(project_root: Path) -> dict[str, Any]:
 
         # 检测性能监控装饰器
         if "calc_request_time_and_alarm" in text or "request_time" in text:
-            result["perf_monitor"] = {"pattern": "decorator"}
+            pm: dict[str, Any] = {"pattern": "decorator"}
             m = re.search(r"cost_time\s*>\s*(\d+)", text)
             if m:
-                result["perf_monitor"]["threshold_ms"] = int(m.group(1)) * 1000
+                pm["threshold_ms"] = int(m.group(1)) * 1000
+            result["perf_monitor"] = pm
 
         # 检测告警通道
         if "send_ding_talk" in text or "dingtalk" in text.lower():
@@ -762,6 +798,11 @@ def scan_project(project_root: Path) -> dict[str, Any]:
         "test_data": detect_test_data_pattern(project_root),
         "test_style": detect_test_style(project_root),
         "module_structure": detect_module_structure(project_root),
+        "env_management": detect_env_management(project_root),
+        "test_runner": detect_test_runner(project_root),
+        "conftest": detect_conftest_chain(project_root),
+        "monitoring": detect_monitoring(project_root),
+        "modules": detect_module_dependencies(project_root),
     }
 
 

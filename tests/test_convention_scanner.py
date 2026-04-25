@@ -8,6 +8,7 @@ from scripts.convention_scanner import (
     detect_conftest_chain,
     detect_env_management,
     detect_http_client,
+    detect_module_dependencies,
     detect_monitoring,
     detect_test_runner,
 )
@@ -304,3 +305,18 @@ from config.env_config import ENV_CONF
         result = detect_auth_flow(tmp_path)
         assert result["method"] == "none"
         assert result["flow"] is None
+
+
+class TestDetectModuleDependencies:
+    def test_detect_module_dependencies(self, tmp_path: Path) -> None:
+        for mod in ["batch", "dataapi", "uic"]:
+            (tmp_path / "api" / mod).mkdir(parents=True)
+            (tmp_path / "api" / mod / "__init__.py").write_text("")
+        result = detect_module_dependencies(tmp_path)
+        assert result["count"] == 3
+        names = [m["name"] for m in result["modules"]]
+        assert "batch" in names
+
+    def test_detect_module_dependencies_none(self, tmp_path: Path) -> None:
+        result = detect_module_dependencies(tmp_path)
+        assert result["count"] == 0
