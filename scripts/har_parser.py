@@ -17,6 +17,8 @@ from urllib.parse import urlparse
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from scripts.repo_profiles import NormalizedRepoProfile, load_repo_profiles
+
 # ---------------------------------------------------------------------------
 # 从解析结果中剔除的敏感请求头
 # ---------------------------------------------------------------------------
@@ -141,18 +143,6 @@ class HarEntry(BaseModel):
 # ---------------------------------------------------------------------------
 # 解析结果输出模型
 # ---------------------------------------------------------------------------
-
-
-class RepoProfile(BaseModel):
-    name: str
-    url: str = ""
-    branch: str = "main"
-    path: str = ""
-    url_prefixes: list[str] = []
-
-
-class RepoProfilesConfig(BaseModel):
-    profiles: list[RepoProfile] = []
 
 
 class ParsedEndpoint(BaseModel):
@@ -301,7 +291,7 @@ def scan_auth_headers(har_path: Path) -> dict[str, int]:
 
 
 def match_repo(
-    path: str, profiles: list[RepoProfile]
+    path: str, profiles: list
 ) -> tuple[str | None, str | None]:
     """将 *path* 与 profiles 中的 url_prefixes 进行匹配；返回 (name, branch) 或 (None, None)。"""
     for profile in profiles:
@@ -518,14 +508,11 @@ def parse_har(
     total_raw = len(entries)
 
     # --- 加载 profiles ---
-    profiles: list[RepoProfile] = []
+    profiles: list[NormalizedRepoProfile] = []
     if profiles_path is not None:
         try:
-            profiles_data = yaml.safe_load(profiles_path.read_text())
-            if profiles_data is None:
-                profiles_data = {}
-            validated = RepoProfilesConfig.model_validate(profiles_data)
-            profiles = validated.profiles
+            project_root = profiles_path.parent.parent if profiles_path.parent.name == ".tide" else profiles_path.parent
+            profiles = load_repo_profiles(profiles_path, project_root)
         except Exception as exc:
             import sys
             print(f"[har-parser] Warning: failed to parse profiles: {exc}", file=sys.stderr)

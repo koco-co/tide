@@ -11,12 +11,12 @@ from scripts.har_parser import (
     HarRequest,
     HarResponse,
     ParsedResult,
-    RepoProfilesConfig,
     dedup_entries,
     filter_entries,
     match_repo,
     parse_har,
 )
+from scripts.repo_profiles import load_repo_profiles
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -245,22 +245,18 @@ class TestDedupEntries:
 
 class TestMatchRepo:
     def test_matches_dassets_prefix(self, sample_repo_profiles_path: Path) -> None:
-        import yaml
-
-        profiles_data = yaml.safe_load(sample_repo_profiles_path.read_text())
-        validated = RepoProfilesConfig.model_validate(profiles_data)
-        profiles = validated.profiles
+        profiles = load_repo_profiles(
+            sample_repo_profiles_path, sample_repo_profiles_path.parent.parent
+        )
 
         name, branch = match_repo("/dassets/v1/datamap/recentQuery", profiles)
         assert name == "dt-center-assets"
         assert branch == "release_6.2.x"
 
     def test_matches_dmetadata_prefix(self, sample_repo_profiles_path: Path) -> None:
-        import yaml
-
-        profiles_data = yaml.safe_load(sample_repo_profiles_path.read_text())
-        validated = RepoProfilesConfig.model_validate(profiles_data)
-        profiles = validated.profiles
+        profiles = load_repo_profiles(
+            sample_repo_profiles_path, sample_repo_profiles_path.parent.parent
+        )
 
         name, branch = match_repo("/dmetadata/v1/syncTask/pageTask", profiles)
         assert name == "dt-center-metadata"
@@ -269,11 +265,9 @@ class TestMatchRepo:
     def test_returns_none_for_unknown_prefix(
         self, sample_repo_profiles_path: Path
     ) -> None:
-        import yaml
-
-        profiles_data = yaml.safe_load(sample_repo_profiles_path.read_text())
-        validated = RepoProfilesConfig.model_validate(profiles_data)
-        profiles = validated.profiles
+        profiles = load_repo_profiles(
+            sample_repo_profiles_path, sample_repo_profiles_path.parent.parent
+        )
 
         name, branch = match_repo("/unknown/v1/something", profiles)
         assert name is None
