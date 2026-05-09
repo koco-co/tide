@@ -1,7 +1,7 @@
 ---
 name: scenario-analyzer
 description: "分析源代码，为测试场景补充 CRUD 闭环、边界条件和 L1-L5 断言计划。"
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Write
 model: opus
 ---
 

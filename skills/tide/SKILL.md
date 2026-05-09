@@ -221,6 +221,17 @@ Task 3 → in_progress
    - **`async_mode`**（新增）— 自动检测：若端点中有异步接口（返回 taskId 后轮询），标记为 async
 2. 启动 scenario-analyzer Agent（opus）
 3. 读取 .tide/scenarios.json
+
+   读取 `.tide/scenarios.json` 与 `.tide/generation-plan.json` 后，必须执行：
+
+   ```bash
+   uv run python3 -m scripts.scenario_validator \
+     --parsed "$PROJECT_ROOT/.tide/parsed.json" \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
+   ```
+
+   若校验失败，返回 scenario-analyzer 修复一次；第二次仍失败则停止并写入 `.tide/final-report.md`。
 4. 若非 `--quick`，展示确认清单供用户确认
 
 **[Hook]** 若配置了 hook，执行 `uv run python3 scripts/hooks.py run wave2:analyze:after`
