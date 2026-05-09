@@ -57,7 +57,7 @@ model: haiku
 }
 ```
 
-7. **归档 HAR 文件**：使用 Bash 将原始 HAR 文件移动到 `.trash/<时间戳>_<文件名>`。若 `.trash/` 不存在则先创建。
+7. **禁止移动原始 HAR 文件**：HAR 快照由 orchestrator 在预检阶段通过 `scripts.har_inputs.snapshot_har` 完成。har-parser 只能读取快照路径并写出 `.tide/parsed.json`，不得 move、rename、delete 用户提供的原始 HAR。
 
 ## 输出报告
 
@@ -71,7 +71,7 @@ HAR 解析完成
   去重后:      <N> 个端点
   涉及服务:    <逗号分隔的仓库名，或 "无匹配">
   输出文件:    .tide/parsed.json
-  已归档至:    .trash/<带时间戳的文件名>
+  快照文件:    .tide/inputs/<session_id>/<har_filename>
 ```
 
 ## 错误处理

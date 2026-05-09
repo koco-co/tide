@@ -592,3 +592,30 @@ def parse_har(
         ),
         sequences=sequences,
     )
+
+
+def write_parsed_result(har_path: Path, profiles_path: Path | None, output_path: Path) -> ParsedResult:
+    result = parse_har(har_path, profiles_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    return result
+
+
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Parse HAR into Tide parsed.json")
+    parser.add_argument("har_path", type=Path)
+    parser.add_argument("--profiles", type=Path)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+
+    result = write_parsed_result(args.har_path, args.profiles, args.output)
+    print(
+        f"HAR parsed: raw={result.summary.total_raw}, "
+        f"dedup={result.summary.after_dedup}, output={args.output}"
+    )
+
+
+if __name__ == "__main__":
+    main()
