@@ -1,0 +1,15 @@
+profiles:
+  - name: dt-center-metadata
+    url: https://git.example.com/CustomItem/dt-center-metadata.git
+    branch: develop
+    url_prefixes:
+      - /api/rdos/metadata/
+    url_aliases:
+      - /dmetadata/v1/
+  - name: dt-center-assets
+    url: https://git.example.com/CustomItem/dt-center-assets.git
+    branch: develop
+    url_prefixes:
+      - /api/rdos/assets/
+    url_aliases:
+      - /dassets/v1/
