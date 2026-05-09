@@ -1,7 +1,7 @@
 ---
 name: tide
 description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/tide <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
-argument-hint: "<har-file-path> [--quick] [--resume] [--wave N]"
+argument-hint: "<har-file-path> [--quick] [--yes] [--non-interactive] [--resume] [--wave N]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList
 ---
@@ -37,8 +37,46 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
 
 1. 标记 task 1 为 in_progress
 2. 设置 `PLUGIN_DIR="${CLAUDE_SKILL_DIR}/../.."`
-3. 解析 `$ARGUMENTS`：`har_path`（必填）、`--quick`、`--resume`、`--wave N`
-4. **环境检查**：`test -f repo-profiles.yaml`，若缺失则打印带修复命令的错误信息并终止
+3. **固定运行边界**：
+
+   ```bash
+   export PROJECT_ROOT="$(pwd -P)"
+   export PLUGIN_DIR="$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)"
+   mkdir -p "$PROJECT_ROOT/.tide"
+   uv run python3 - <<'PY' > "$PROJECT_ROOT/.tide/run-context.json"
+   import json
+   import os
+   from pathlib import Path
+   from scripts.run_context import resolve_run_context
+
+   ctx = resolve_run_context(
+       argument_text=os.environ.get("ARGUMENTS", ""),
+       project_root=Path(os.environ["PROJECT_ROOT"]),
+       plugin_dir=Path(os.environ["PLUGIN_DIR"]),
+   )
+   print(json.dumps({
+       "project_root": str(ctx.project_root),
+       "plugin_dir": str(ctx.plugin_dir),
+       "tide_dir": str(ctx.tide_dir),
+       "har_path": str(ctx.har_path),
+       "requires_confirmation": ctx.args.requires_confirmation,
+       "quick": ctx.args.quick,
+       "yes": ctx.args.yes,
+       "non_interactive": ctx.args.non_interactive,
+       "resume": ctx.args.resume,
+       "wave": ctx.args.wave,
+   }, ensure_ascii=False, indent=2))
+   PY
+   ```
+
+4. **无头执行策略**：
+   - 若 `.tide/run-context.json` 中 `requires_confirmation=false`，不得调用 AskUserQuestion。
+   - 所有"是否继续 / 是否进入下一阶段 / 是否确认场景"的问题默认选择继续。
+   - 将默认决策写入 `.tide/state.json` 的 metadata，例如 `{"headless_decisions":["continue_after_wave1","continue_after_wave2"]}`。
+   - 若 `requires_confirmation=true`，保留现有 AskUserQuestion 交互。
+
+5. 解析 `$ARGUMENTS`：`har_path`（必填）、`--quick`、`--yes`、`--non-interactive`、`--resume`、`--wave N`
+6. **环境检查**：`test -f repo-profiles.yaml`，若缺失则打印带修复命令的错误信息并终止
 5. **读取配置**：读取 `repo-profiles.yaml` 和 `tide-config.yaml`，提取 repos、test_dir、test_types、industry 等
 6. **无源码降级**：repos 为空时设置 `no_source_mode=true`
 7. **惯例指纹加载 + 按需 Prompt 组装**：
@@ -123,10 +161,14 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
 Task 2 → in_progress
 
 1. `uv run python3 ${CLAUDE_SKILL_DIR}/../../scripts/state_manager.py init --har "${har_path}"`
-2. **并行**启动 har-parser、repo-syncer 和 project-asset-scanner 三个 Agent，prompt 分别见：
-   - `agents/har-parser.md`
-   - `agents/repo-syncer.md`（仅在 `no_source_mode=false` 时启动）
-   - `agents/project-asset-scanner.md`（新增）— 扫描项目 utils/ 下已有的 Service/Request 工具类，生成可复用方法清单（仅在 `fingerprint_mode=true` 时启动）
+2. **确定性脚本优先**：
+   - HAR 快照：
+     `uv run python3 -m scripts.har_inputs "$HAR_PATH" --project-root "$PROJECT_ROOT"` 若 CLI 尚未实现，则用 Python snippet 调用 `snapshot_har`。
+   - HAR 解析：
+     `uv run python3 -m scripts.har_parser "$HAR_SNAPSHOT" --profiles "$PROJECT_ROOT/.tide/repo-profiles.yaml" --output "$PROJECT_ROOT/.tide/parsed.json"`
+   - repo 同步：
+     `uv run python3 -m scripts.repo_sync --root "$PROJECT_ROOT" --profiles "$PROJECT_ROOT/.tide/repo-profiles.yaml" sync`
+   - project-asset-scanner 仍可作为 Agent，因为它需要语义摘要，但它只能写 `$PROJECT_ROOT/.tide/project-assets.json`。
 3. 读取验证输出：
    - `.tide/parsed.json` — 解析后的端点列表
    - `.tide/repo-status.json` — 仓库同步状态
