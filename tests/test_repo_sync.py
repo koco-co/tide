@@ -91,3 +91,46 @@ class TestSyncAll:
 
         assert mock_sync.call_count == 2
         assert len(results) == 2
+
+
+def test_sync_all_defaults_clone_path_under_tide_repos(tmp_path: Path) -> None:
+    profiles = tmp_path / ".tide" / "repo-profiles.yaml"
+    profiles.parent.mkdir()
+    profiles.write_text(
+        """
+repos:
+  - name: dt-center-assets
+    remote_url: https://git.example.com/CustomItem/dt-center-assets.git
+    branch: develop
+    url_prefixes:
+      - /dassets/v1/
+""",
+        encoding="utf-8",
+    )
+    mock_result = MagicMock()
+    mock_result.stdout = "abc1234\n"
+
+    with patch("scripts.repo_sync.subprocess.run") as mock_run:
+        mock_run.return_value = mock_result
+        results = sync_all(profiles, tmp_path)
+
+    assert results[0].success is True
+    clone_args = mock_run.call_args_list[0][0][0]
+    assert str(tmp_path / ".tide" / "repos" / "CustomItem" / "dt-center-assets") in clone_args
+
+
+def test_sync_all_rejects_external_path_without_allow_flag(tmp_path: Path) -> None:
+    profiles = tmp_path / ".tide" / "repo-profiles.yaml"
+    profiles.parent.mkdir()
+    profiles.write_text(
+        f"""
+profiles:
+  - name: external
+    url: https://git.example.com/org/external.git
+    path: {tmp_path.parent / "external"}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="outside project .tide/repos"):
+        sync_all(profiles, tmp_path)

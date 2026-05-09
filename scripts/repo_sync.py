@@ -6,8 +6,12 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
+
+if TYPE_CHECKING:
+    from scripts.repo_profiles import NormalizedRepoProfile
 
 
 @dataclass(frozen=True)
@@ -124,19 +128,35 @@ def sync_repo(repo_path: Path, repo_url: str = "", branch: str = "main") -> Repo
         return RepoStatus(name=name, success=False, error=error_msg)
 
 
+def _ensure_safe_repo_path(profile: "NormalizedRepoProfile", project_root: Path) -> None:
+    repos_root = (project_root / ".tide" / "repos").resolve()
+    local_path = profile.local_path.resolve()
+    if profile.allow_external:
+        return
+    if local_path != repos_root and repos_root not in local_path.parents:
+        raise ValueError(
+            f"{profile.name}: local_path {local_path} is outside project .tide/repos; "
+            "set allow_external_repos: true to allow it explicitly"
+        )
+
+
 def sync_all(profiles_path: Path, project_root: Path) -> list[RepoStatus]:
     """同步 profiles YAML 中定义的所有仓库。
 
     返回每个 profile 对应的 RepoStatus 列表。
     """
-    profiles = load_profiles(profiles_path)
+    from scripts.repo_profiles import load_repo_profiles
+
+    profiles = load_repo_profiles(profiles_path, project_root)
     results: list[RepoStatus] = []
 
     for profile in profiles:
-        repo_path = project_root / profile.get("path", "")
-        repo_url = profile.get("url", "")
-        branch = profile.get("branch", "main")
-        status = sync_repo(repo_path, repo_url=repo_url, branch=branch)
+        _ensure_safe_repo_path(profile, project_root)
+        status = sync_repo(
+            profile.local_path,
+            repo_url=profile.remote_url,
+            branch=profile.branch,
+        )
         results.append(status)
 
     return results

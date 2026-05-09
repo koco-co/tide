@@ -9,23 +9,17 @@ model: haiku
 
 ## 输入
 
-- `repo-profiles.yaml` — 包含 local_path、remote_url 和 branch 的仓库列表
+- `.tide/repo-profiles.yaml` — 支持 `profiles` 或 `repos` 顶层字段；每条记录会被 `scripts.repo_profiles.load_repo_profiles` 归一化。
 
 ## 步骤
 
-1. **读取 `repo-profiles.yaml`**，获取所有已配置的仓库条目。每条条目包含：
+1. **读取 `.tide/repo-profiles.yaml`**，获取所有已配置的仓库条目。每条条目包含：
    - `name` — 简短标识符（例如：`user-service`）
    - `local_path` — 仓库已检出（或应检出）的绝对路径
    - `remote_url` — 克隆时使用的 git 远端 URL
    - `branch` — 需要同步的分支（例如：`main`、`develop`）
 
-2. **对每个仓库**，判断是否已克隆：
-   - 若 `local_path` 存在且包含 `.git` 目录：就地同步
-     - `git fetch origin`
-     - `git checkout <branch>`
-     - `git pull origin <branch>`
-   - 若 `local_path` 不存在：克隆仓库
-     - `git clone --branch <branch> <remote_url> <local_path>`
+2. **执行同步**：必须通过 `uv run python3 -m scripts.repo_sync --root "$PROJECT_ROOT" --profiles "$PROJECT_ROOT/.tide/repo-profiles.yaml" sync` 执行同步。禁止 agent 自行拼接 clone 目标目录。默认 clone 目录只能是 `$PROJECT_ROOT/.tide/repos/...`。
 
 3. **记录每个仓库的结果**：
    - `success`：true/false

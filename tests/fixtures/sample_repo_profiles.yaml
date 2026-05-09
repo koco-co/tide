@@ -1,6 +1,6 @@
 profiles:
   - name: dt-center-assets
-    path: .repos/CustomItem/dt-center-assets
+    path: .tide/repos/CustomItem/dt-center-assets
     branch: release_6.2.x
     url_prefixes:
       - /dassets/v1/
@@ -11,7 +11,7 @@ profiles:
         description: "Service layer"
 
   - name: dt-center-metadata
-    path: .repos/CustomItem/dt-center-metadata
+    path: .tide/repos/CustomItem/dt-center-metadata
     branch: release_6.2.x
     url_prefixes:
       - /dmetadata/v1/
