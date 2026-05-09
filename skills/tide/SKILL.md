@@ -302,6 +302,39 @@ Task 6 → in_progress
 1. 显示最终摘要（测试通过数/失败数/断言覆盖率/失败归类）
 2. 打印验收命令（pytest collect-only / pytest run / allure serve）
 3. 归档会话
+4. 生成 artifact manifest：
+
+   ```bash
+   uv run python3 - <<'PY'
+   from pathlib import Path
+   from scripts.artifact_manifest import collect_artifact, write_manifest
+
+   project = Path("$PROJECT_ROOT")
+   artifacts = []
+   for rel, kind in [
+       (".tide/run-context.json", "run_context"),
+       (".tide/parsed.json", "parsed"),
+       (".tide/repo-status.json", "repo_status"),
+       (".tide/project-assets.json", "project_assets"),
+       (".tide/scenarios.json", "scenarios"),
+       (".tide/generation-plan.json", "generation_plan"),
+       (".tide/review-report.json", "review"),
+       (".tide/execution-report.json", "execution"),
+   ]:
+       path = project / rel
+       if path.exists():
+           artifacts.append(collect_artifact(project, path, kind))
+   write_manifest(project, artifacts)
+   PY
+   ```
+
+5. 生成 `.tide/final-report.md`，必须包含：
+   - 本次 run 的无头/交互模式。
+   - HAR 原路径、快照路径、sha256。
+   - 解析端点数、匹配 repo 数、未匹配路径列表。
+   - 生成文件列表。
+   - pytest collect-only 和执行结果。
+   - 未完成阶段与失败原因。
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run output:notify`
 
