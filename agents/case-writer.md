@@ -77,6 +77,12 @@ model: sonnet
 
 ## 文件结构
 
+### ⚠️ 必须创建新文件（严禁覆写已有文件）
+
+必须按照 `output_file` 指定路径创建**新的测试文件**。如果该路径已有同名文件，**必须先删除旧文件再创建新文件**。
+- 严禁覆写/追加到已有测试文件（如 `meta_data_sync_test.py`, `assets_datamap_v2_test.py`）
+- 如果目标目录不存在，自动创建目录
+
 每个生成的测试文件必须严格遵循以下结构（**优先匹配项目已有测试的风格**，读取 `test_dir` 下 2-3 个已有测试文件作为参考）：
 
 ```python
@@ -99,11 +105,11 @@ log = Logger('模块名')()
 class TestFeatureName:
     """类描述"""
 
-    def setup_class(self):
+    def setup_method(self):
         self.req = AssetsBaseRequest()
         # 动态获取引用 ID
 
-    def teardown_class(self):
+    def teardown_method(self):
         """清理"""
         pass
 
@@ -119,9 +125,10 @@ class TestFeatureName:
 
 ### 文件结构规则
 
-1. 若项目使用 `setup_class` + `allure.step()` 模式（如 DTStack 系），遵循上述结构
-   - **⚠️ 重要：严禁使用 `@classmethod def setup_class(cls)` 模式**
-   - 必须使用实例方法 `def setup_class(self)` + `self.req`，禁止类方法风格
+1. 若项目使用 `setup_method` + `allure.step()` 模式（如 DTStack 系），遵循上述结构
+   - **⚠️ 严禁使用 `@classmethod def setup_class(cls)` 模式**
+   - **⚠️ 严禁使用 `def setup_class(self)` 模式（不会被 pytest 自动调用）**
+   - 必须使用实例方法 `def setup_method(self)` + `self.req`
 2. 若项目使用 pytest fixture + conftest 模式，使用 fixture 注入
 3. 日志使用项目已有的 `Logger('模块名')()` 模式，而非标准 logging
 4. 使用 `self.req.result.status_code` 获取 HTTP 状态码（若项目 Request 类有此属性）
@@ -208,9 +215,11 @@ def setup_class(self):
 
 ## Setup/Teardown 模式
 
-测试类必须包含 setup_class 和 teardown_class 管理生命周期。
+测试类必须包含 setup_method 和 teardown_method 管理生命周期。
 
-**⚠️ 严禁使用 `@classmethod def setup_class(cls)`** — 必须使用实例方法 `def setup_class(self)` 和 `self.req`，不可使用 `cls.req`。这是因为 fixture/request 实例需要绑定到测试类实例，类方法会导致上下文隔离问题。
+**⚠️ 严禁使用 `@classmethod def setup_class(cls)`** — 必须使用实例方法 `def setup_method(self)` 和 `self.req`，不可使用 `cls.req`。这是因为 fixture/request 实例需要绑定到测试类实例，类方法会导致上下文隔离问题。
+
+**⚠️ 严禁使用 `def setup_class(self)`** — `setup_class` 不是 pytest 标准 hook，不会被自动调用。必须使用 `def setup_method(self)`（每个测试方法前自动调用）。
 
 ```python
 @allure.epic("数据资产")
@@ -218,20 +227,16 @@ def setup_class(self):
 class TestFeature:
     """类描述"""
 
-    def setup_class(self):
+    def setup_method(self):
         self.req = AssetsBaseRequest()  # 或项目对应的 Request 类
         self.log = Logger('模块名')()
         # 1. 创建测试数据
         # 2. 获取动态 ID 引用
 
-    def teardown_class(self):
+    def teardown_method(self):
         """清理：删除测试数据"""
         # 删除创建的测试资源
         # 清理数据库测试数据
-
-    def setup_method(self):
-        """每个测试方法前的准备"""
-        pass
 ```
 
 ## 异步任务轮询模式（新增）

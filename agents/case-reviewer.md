@@ -71,7 +71,16 @@ model: opus
 
 标记：缺失导入、未定义 fixture、模型字段不匹配。
 
-### 6. 行业合规（仅在 tide-config.yaml 中存在 industry 段时评估）
+### 6. Setup 模式检查（⚠️ 硬性阻断条件）
+
+对每个测试文件中每个类的 setup/teardown 方法，检查是否使用正确的 pytest hook：
+
+- **严禁 `@classmethod def setup_class(cls)`** — 发现即设置 issue_rate=100%，阻断流水线
+- **严禁 `def setup_class(self)`** — 不会被 pytest 自动调用，发现即阻断
+- **必须使用 `def setup_method(self)`** — 正确的每个测试方法前自动调用的 hook
+- **必须使用 `def teardown_method(self)`** — 正确的每个测试方法后自动调用的 hook
+
+### 7. 行业合规（仅在 tide-config.yaml 中存在 industry 段时评估）
 
 读取 `tide-config.yaml` 中的 `industry.domain`，并读取 `prompts/industry-assertions.md`。
 
