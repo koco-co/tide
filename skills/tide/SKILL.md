@@ -37,7 +37,19 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
 
 1. 标记 task 1 为 in_progress
 2. 设置 `PLUGIN_DIR="${CLAUDE_SKILL_DIR}/../.."`
-3. **固定运行边界**：
+3. **Python 解释器自动检测**：
+   ```bash
+   # 优先使用项目虚拟环境 (pydantic v1 / jaydebeapi 等)
+   if [ -f "$(pwd -P)/.venv/bin/python3" ]; then
+       export PYTHON_BIN="$(pwd -P)/.venv/bin/python3"
+   elif [ -f "$(pwd -P)/venv/bin/python3" ]; then
+       export PYTHON_BIN="$(pwd -P)/venv/bin/python3"
+   else
+       export PYTHON_BIN="python3"
+   fi
+   echo "Using Python: $($PYTHON_BIN --version 2>&1) at $PYTHON_BIN"
+   ```
+4. **固定运行边界**：
 
    ```bash
    export PROJECT_ROOT="$(pwd -P)"
@@ -311,7 +323,7 @@ Task 4 → in_progress
 Task 5 → in_progress
 
 1. 启动 case-reviewer Agent，prompt 见 `agents/case-reviewer.md`
-   - case-reviewer 会依次完成：静态审查 → 自动修复 → 测试执行（pytest collect-only + pytest -x -v --tb=short）→ **失败语义分析（新增）** → 最多 2 轮修复循环 → 输出 review-report.json 和 execution-report.json
+   - case-reviewer 会依次完成：静态审查 → 自动修复 → 测试执行（`${PYTHON_BIN:-python3} -m pytest --collect-only -q` + `${PYTHON_BIN:-python3} -m pytest -x -v --tb=short`）→ **失败语义分析（新增）** → 最多 2 轮修复循环 → 输出 review-report.json 和 execution-report.json
    - **失败语义分析**：当测试失败时，解析 response body 的错误信息，判断失败根因类别：
      - `TEST_BUG` — 测试写错了（参数不对、断言值错）→ 自动修复
      - `ENV_ISSUE` — 环境问题（服务不可用、数据不存在）→ 标记为环境问题，调整预期
