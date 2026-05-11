@@ -1,46 +1,53 @@
 # Tide 插件推广建议
 
-## 结论: Conditional Yes ✅ (条件性推广)
+## 结论: Conditional Yes ✅
 
-**Tide v1.3.0** (Claude Code 接口测试生成) 在经过 5 轮迭代优化后, 可以在**满足以下前置条件**的前提下推广使用。
+**Tide v1.3.0 (Iter6 改进后)** 在 6 轮迭代优化后, 可在满足以下前提条件下推广使用。
+
+**核心依据:**
+- 代码生成质量: **93/100** ✅ — 动态 ID 查询, 0 @classmethod, 模块级目录结构
+- 历史代码契合度: **93/100** ✅ — 与项目已有风格高度一致
+- 硬编码 ID: **1 处 fallback** (vs 基线 5 处, Iter6 前 23 处)
+- 人工干预度: **93/100** — 接近零交互
 
 ## 推广前必做
 
 ### 🔴 P0: 环境兼容性修复（阻断条件）
 
-1. **SM2 加密库兼容** — 在 macOS ARM64 上 `pytest --collect-only` 触发 segfault
-   - 根因：`gmssl` 或类似 SM2 原生库缺少 ARM64 编译版本
-   - 修复：绑定平台特定版本, 或用纯 Python 实现替换
-   - 影响：不修复则无法在任何 ARM Mac 上验证测试执行
+1. **JPype1 ARM64 兼容** — 在 macOS ARM64 上 `pytest --collect-only` 无法运行
+   - 根因：`jaydebeapi` 依赖 `JPype1` 原生库, 缺少 ARM64 wheel
+   - 修复方案 A：使用 `conda install -c conda-forge jpype1` (conda 提供 ARM64 预编译)
+   - 修复方案 B：在 `conftest.py` 中延迟导入 jaydebeapi 相关模块
+   - 修复方案 C：使用 Linux CI runner（推荐）
 
-2. **@classmethod 防护** — 已通过模板+reviewer 双重阻断, 但需确认 case-reviewer 升级到最新版 (含 Iter5 Section 6 检查)
-   - 检查：`agents/case-reviewer.md` 是否包含 `Setup 模式检查（⚠️ 硬性阻断条件）`
+2. **pydantic-settings 依赖** — `config/configs.py` 使用 `from pydantic import BaseSettings` (v1 API)
+   - 修复: `pip install pydantic-settings` → 将导入改为 `from pydantic_settings import BaseSettings`
+   - 影响范围: 项目根 conftest.py, 非 tide 生成文件
 
 ### 🟡 P1: 代码质量改进
 
-3. **硬编码 ID 消除** — 生成代码仍有 `dataSourceId=1`, `tableId=1`, `taskId=1`
-   - 改进建议：在 case-writer.md 动态 ID 解析节中增加更多项目特定查询示例
-   - 或：集成项目已有的 `DatasourceService.get_datasource_id_by_name()` 等查询方法
+3. **消除残余 fallback ID** — `data_map_api_test.py:122` 中 `metaId: 0`
+   - 改进: 在 case-writer.md 的常见违规模式中增加 `metaId` 示例
 
-4. **确保场景元数据审计持久化** — 管道完成清理 .tide/ 后, scenarios.json 丢失
-   - 改进：添加归档步骤, 将场景元数据保留到 `output/reports/` 或 git 追踪
+4. **L5 链路场景强化** — 当前仅 `data_map_api_test.py` 含多步骤链路
+   - 改进: scenario-analyzer 识别 HAR 中 POST→GET 依赖关系生成 e2e_chain
 
-### 🟢 P2: 体验改进
+### 🟢 P2: 低优先级
 
-5. **添加 L5 链路场景生成** — 当前仅单接口测试
-   - 可接入 case-writer 的 e2e_chain 模式, 但需要更精确的链路识别
-6. **进度通知** — 管道运行时无进度推送, 用户需主动检查 tmux
+5. **CI 模板生成** — 自动生成 `.gitlab-ci.yml` 集成 pytest + allure
+6. **进度通知** — 管道运行时通过 webhook 推送进度
+7. **场景审计持久化** — scenarios.json 归档到 `output/reports/`
 
 ## 使用守则
 
 ### 环境要求
 
 ```
-OS:      macOS (Intel 优先) / Linux
+OS:      macOS (Intel 优先) / Linux (推荐)
 Python:  3.8+ (项目限制)
 Model:   mimo-v2.5-pro 或更强 (避免 deepseek-v4-flash)
-CLI:     claude --dangerously-skip-permissions (bypass sandbox)
-Plugin:  tide v1.3.0+, 含 Iter1-Iter5 修复
+CLI:     claude --dangerously-skip-permissions --print  (无头模式)
+Plugin:  tide v1.3.0+, 含 Iter6 改进 (commit 74fc6ee)
 ```
 
 ### 标准流程
@@ -51,51 +58,65 @@ cd ~/Projects/<target-project>
 
 # 2. 确保 HAR 在 .tide/trash/ 下
 
-# 3. 启动 Claude Code CLI
-claude --dangerously-skip-permissions
+# 3. 无头模式自动生成
+echo "HAR 在 .tide/trash 下，请生成接口测试" | \
+  claude --dangerously-skip-permissions --print
 
-# 4. 发送提示
-"HAR 在 .tide/trash 下，请生成接口测试"
-
-# 5. 确认 HAR 选择 + 隐私确认
-
-# 6. 等待完成 (约 15-30 分钟, 取决于场景数)
-
-# 7. 验证产出
-# 检查 testcases/ 下新生成的测试文件
-# 运行 pytest --collect-only 验证语法
-# 运行 format_checker 检查代码质量
+# 4. 等待完成 (约 5-15 分钟)
+# 5. 检查 testcases/ 下新生成的测试文件
 ```
 
-### 注意事项
+### 验证清单
 
-1. **首次运行需要隐私确认** — HAR 数据发送到 AI 模型, 需用户确认
-2. **有多 HAR 时需选择特定文件** — Tide 会询问处理哪个
-3. **测试执行可能被环境阻断** — SM2 等平台依赖库可能失败, 不影响代码生成质量
-4. **更新 Tide 插件** — 修改 `~/Projects/tide/` 后需同步到插件缓存:
-   ```bash
-   cp -r ~/Projects/tide/agents/* ~/.claude/plugins/cache/tide/tide/1.3.0/agents/
-   cp -r ~/Projects/tide/prompts/* ~/.claude/plugins/cache/tide/tide/1.3.0/prompts/
-   ```
+```bash
+# 语法检查
+python3 -m py_compile testcases/scenariotest/assets/meta_data/*_test.py
+
+# 格式检查
+PYTHONPATH=/path/to/tide:$PYTHONPATH uv run python3 -m scripts.format_checker testcases/
+
+# 检查内容
+grep -n '"tableId": [0-9]\|"dataSourceId": [0-9]' testcases/**/*_test.py  # 期望: 无结果
+grep -n '@classmethod' testcases/**/*_test.py  # 期望: 无结果
+```
+
+### 更新 Tide 插件
+
+```bash
+cd ~/Projects/tide
+git pull origin fix/iter6-harcoded-id-enforcement
+cp -r agents/* ~/.claude/plugins/cache/tide/tide/1.3.0/agents/
+cp -r prompts/* ~/.claude/plugins/cache/tide/tide/1.3.0/prompts/
+cp -r skills/* ~/.claude/plugins/cache/tide/tide/1.3.0/skills/
+cp scripts/format_checker.py ~/.claude/plugins/cache/tide/tide/1.3.0/scripts/format_checker.py
+```
 
 ## 推广评分
 
 | 维度 | 评分 | 说明 |
 |------|------|------|
-| 代码质量 | ★★★★☆ 85% | 核心模式正确, setup_method/L1-L4 断言完整 |
-| 自动化程度 | ★★★★☆ 80% | 4 个 Wave 全自动, 仅需 2 次点击确认 |
-| 可维护性 | ★★★☆☆ 60% | 需维护 plugin cache 同步, SM2 兼容性依赖 |
-| 用户友好 | ★★★☆☆ 65% | 无进度反馈, 需 tmux 经验 |
-| 稳定度 | ★★★☆☆ 70% | 模型依赖 (deepseek 退化), SM2 平台依赖 |
+| 代码质量 | ★★★★★ **93%** | 动态 ID 查询, 0 @classmethod, 模块级结构 |
+| 自动化程度 | ★★★★☆ 75% | 管道全自动, 但 print 模式有时 Wave 3 卡住 |
+| 可维护性 | ★★★★☆ 80% | 需维护 plugin cache 同步 |
+| 用户友好 | ★★★★☆ 80% | 一次命令生成, 无需手动干预 |
+| 稳定度 | ★★★☆☆ 65% | 模型依赖 (mimo 2/4 尝试卡住) + 环境依赖 |
 
 ## 推广后预期基线
 
-| 维度 | 基线 | 推广值 |
-|------|------|--------|
-| 用户体验 | 72 | **80** |
-| 自动化流程度 | 78 | 66 (SM2 修复后 → **85**) |
-| 人工干预度 | 65 | **83** |
-| 代码生成质量 | 70 | **91** |
-| 历史代码契合度 | 68 | **86** |
-| 场景理解与编排 | 75 | **79** |
-| **总分** | **72** | **80 (修复后 85+)** |
+| 维度 | 基线 | Iter6 | 环境修复后预期 |
+|------|------|-------|----------------|
+| 用户体验 | 72 | **88** | 88 |
+| 自动化流程度 | 78 | 75 | **90** |
+| 人工干预度 | 65 | **93** | 93 |
+| 代码生成质量 | 70 | **93** | **95** |
+| 历史代码契合度 | 68 | **93** | 93 |
+| 场景理解与编排 | 75 | 81 | **85** |
+| **总分** | **72** | **86.55** | **≥90** ✅ |
+
+## 证据链
+
+- **PR**: https://github.com/koco-co/tide/pull/new/fix/iter6-harcoded-id-enforcement
+- **Commit**: `74fc6ee` — 4 文件, 78 行新增, 19 行删除
+- **Score**: `/Users/poco/Projects/tide/iter_6/score.md`
+- **Generated test files**: 6 文件, 565 行 (dtstack-httprunner)
+- **Tide 改进**: case-writer.md + format_checker.py (FC11→ERROR) + SKILL.md (确定性 project-assets) + 00-core.md (硬编码禁令)
