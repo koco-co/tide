@@ -45,7 +45,7 @@ RULES: list[FormatRule] = [
     FormatRule("FC08", "无 print() 语句", Severity.ERROR),
     FormatRule("FC09", "行长不超过 120 字符", Severity.WARNING),
     FormatRule("FC10", "嵌套深度不超过 3 层", Severity.WARNING),
-    FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.WARNING),
+    FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.ERROR),
     FormatRule("FC12", "setup_class 必须为实例方法（禁止 @classmethod）", Severity.ERROR),
 ]
 

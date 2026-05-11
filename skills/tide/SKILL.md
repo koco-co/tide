@@ -168,7 +168,45 @@ Task 2 → in_progress
      `uv run python3 -m scripts.har_parser "$HAR_SNAPSHOT" --profiles "$PROJECT_ROOT/.tide/repo-profiles.yaml" --output "$PROJECT_ROOT/.tide/parsed.json"`
    - repo 同步：
      `uv run python3 -m scripts.repo_sync --root "$PROJECT_ROOT" --profiles "$PROJECT_ROOT/.tide/repo-profiles.yaml" sync`
-   - project-asset-scanner 仍可作为 Agent，因为它需要语义摘要，但它只能写 `$PROJECT_ROOT/.tide/project-assets.json`。
+   - project-asset-scanner 仍可作为 Agent（如可用），但它只能写 `$PROJECT_ROOT/.tide/project-assets.json`。
+   - **确定性回退**：若 Agent 未产生 `project-assets.json`（如无头/print 模式），立即执行确定性扫描：
+     ```bash
+     PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY'
+     import os, json, importlib.util, inspect
+     from pathlib import Path
+     root = Path(os.environ["PROJECT_ROOT"])
+     utils_dir = root / "utils"
+     if utils_dir.exists():
+         modules = {"modules": {}}
+         for svc_dir in sorted(utils_dir.rglob("*")):
+             if svc_dir.is_dir() and (svc_dir / "__init__.py").exists():
+                 rel = svc_dir.relative_to(root)
+                 for py_file in sorted(svc_dir.glob("*.py")):
+                     if py_file.name == "__init__.py":
+                         continue
+                     try:
+                         mod_name = str(py_file.relative_to(root)).replace("/", ".").replace(".py", "")
+                         spec = importlib.util.spec_from_file_location(mod_name, py_file)
+                         if spec and spec.loader:
+                             mod = importlib.util.module_from_spec(spec)
+                             spec.loader.exec_module(mod)
+                             for name, cls in inspect.getmembers(mod, inspect.isclass):
+                                 if hasattr(cls, "__module__") and cls.__module__ == mod_name:
+                                     methods = [m for m in dir(cls) if not m.startswith("_") and callable(getattr(cls, m))]
+                                     modules["modules"].setdefault(str(svc_dir.relative_to(root)), {"services": []})
+                                     modules["modules"][str(svc_dir.relative_to(root))]["services"].append({
+                                         "class": name, "module": mod_name, "file": str(py_file.relative_to(root)),
+                                         "methods": [{"name": m} for m in methods[:20]]
+                                     })
+                     except Exception:
+                         pass
+         with open(root / ".tide" / "project-assets.json", "w") as f:
+             json.dump(modules, f, indent=2, ensure_ascii=False)
+         print(f"project-assets.json generated ({len(modules.get('modules', {}))} modules)")
+     else:
+         print("No utils/ directory found, skipping project-assets generation")
+     PY
+     ```
 3. 读取验证输出：
    - `.tide/parsed.json` — 解析后的端点列表
    - `.tide/repo-status.json` — 仓库同步状态
@@ -257,7 +295,8 @@ Task 4 → in_progress
    ```bash
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
    ```
-   - 对 FC04（硬编码 URL）和 FC11（硬编码业务 ID）的 WARNING 级别违规，自动提取并尝试修复
+   - 对 FC04（硬编码 URL）的 WARNING 级别违规，自动提取并尝试修复
+   - 对 FC11（硬编码业务 ID）的 ERROR 级别违规：自动将 `dataSourceId: 1` 等替换为 `self.ds_id` / `self.table_id` 变量引用，若无法修复则阻断流水线
    - 对 FC08（print 语句）的 ERROR 级别违规，自动移除
    - 记录问题到 `.tide/format-report.json`
 

@@ -186,32 +186,51 @@ assert notification_queue.count() == 1
 - **无深层嵌套**：测试方法内最多 3 层缩进
 - **导入规范**：只导入实际使用的内容，禁止通配符导入
 
-## 动态 ID 解析（新增，重要）
+## 动态 ID 解析（重要，Iter6 强化）
 
-**绝不硬编码 ID 值**。所有 ID 必须通过运行时查询获取：
+**⚠️ 严禁任何硬编码 ID 值**。所有业务 ID 必须通过运行时查询获取。
+
+### 常见违规模式（禁止）
 
 ```python
-# ❌ 错误：硬编码 ID
+# ❌ 严禁：硬编码 dataSourceId=1
+payload = {"dataSourceId": 1, "taskType": 1}
+
+# ❌ 严禁：硬编码 tableId=1
 payload = {"tableId": 1}
 
-# ✅ 正确：在 setup_class 中通过名称查询 ID
-def setup_class(self):
-    self.req = AssetsBaseRequest()
-    # 通过名称查数据源 ID
-    resp = self.req.post(AssetsApi.dataSource_page_query.value, "查数据源",
-                        json={"current": 1, "size": 10, "search": "MySQL_for_assets"})
-    ds_list = resp.get("data", {}).get("contentList", [])
-    if ds_list:
-        self.ds_id = int(ds_list[0].get("id"))
+# ❌ 严禁：硬编码 metaId=1
+payload = {"metaId": 1, "metaType": "TABLE"}
+```
 
-    # 或复用项目已有 Service
-    # self.ds_id = DatasourceService().get_datasource_id_by_name("MySQL_for_assets")
+### 正确做法：在 setup_method 中动态查询
+
+```python
+# ✅ 正确：在 setup_method 中通过名称查询 ID
+def setup_method(self):
+    self.req = AssetsBaseRequest()
+    # 查数据源 ID（通过项目已有方法或通用查询）
+    if hasattr(self.req, 'get_datasource_id_by_name'):
+        self.ds_id = self.req.get_datasource_id_by_name("MySQL_for_assets")
+    else:
+        resp = self.req.post(AssetsApi.dataSource_page_query.value, "查数据源",
+                            json={"current": 1, "size": 10, "search": "MySQL_for_assets"})
+        ds_list = resp.get("data", {}).get("contentList", [])
+        self.ds_id = int(ds_list[0].get("id")) if ds_list else 0
+
+# ✅ 正确：查 tableId 后再使用
+with allure.step("获取有效 tableId"):
+    search_resp = self.req.post(AssetsApi.dataSearch_db_list.value, "查表",
+                                json={"current": 1, "size": 1})
+    table_id = search_resp.get("data", [{}])[0].get("id", 0)
+with allure.step("使用动态 tableId 查询"):
+    resp = self.req.post(..., json={"tableId": table_id})
 ```
 
 **动态 ID 解析优先级**：
-1. 项目已有方法（如 `DatasourceService.get_datasource_id_by_name()`）
+1. 项目已有方法（如 `DatasourceService.get_datasource_id_by_name()`）— 优先复用
 2. 通用查询 API（如 `dataSource/pageQuery` 按名称搜索）
-3. 仅在确实无法动态获取时，使用 `tableId: 0` 作为 fallback（需注释说明）
+3. 仅在所有方法都不可用时，使用 `0` 作为 fallback（需注释 `# fallback: 动态查询不可用`）
 
 ## Setup/Teardown 模式
 
