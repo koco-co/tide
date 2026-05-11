@@ -99,13 +99,11 @@ log = Logger('模块名')()
 class TestFeatureName:
     """类描述"""
 
-    @classmethod
-    def setup_class(cls):
-        cls.req = AssetsBaseRequest()
+    def setup_class(self):
+        self.req = AssetsBaseRequest()
         # 动态获取引用 ID
 
-    @classmethod
-    def teardown_class(cls):
+    def teardown_class(self):
         """清理"""
         pass
 
@@ -188,18 +186,17 @@ assert notification_queue.count() == 1
 payload = {"tableId": 1}
 
 # ✅ 正确：在 setup_class 中通过名称查询 ID
-@classmethod
-def setup_class(cls):
-    cls.req = AssetsBaseRequest()
+def setup_class(self):
+    self.req = AssetsBaseRequest()
     # 通过名称查数据源 ID
-    resp = cls.req.post(AssetsApi.dataSource_page_query.value, "查数据源",
+    resp = self.req.post(AssetsApi.dataSource_page_query.value, "查数据源",
                         json={"current": 1, "size": 10, "search": "MySQL_for_assets"})
     ds_list = resp.get("data", {}).get("contentList", [])
     if ds_list:
-        cls.ds_id = int(ds_list[0].get("id"))
+        self.ds_id = int(ds_list[0].get("id"))
 
     # 或复用项目已有 Service
-    # cls.ds_id = DatasourceService().get_datasource_id_by_name("MySQL_for_assets")
+    # self.ds_id = DatasourceService().get_datasource_id_by_name("MySQL_for_assets")
 ```
 
 **动态 ID 解析优先级**：
@@ -217,15 +214,13 @@ def setup_class(cls):
 class TestFeature:
     """类描述"""
 
-    @classmethod
-    def setup_class(cls):
-        cls.req = AssetsBaseRequest()  # 或项目对应的 Request 类
-        cls.log = Logger('模块名')()
+    def setup_class(self):
+        self.req = AssetsBaseRequest()  # 或项目对应的 Request 类
+        self.log = Logger('模块名')()
         # 1. 创建测试数据
         # 2. 获取动态 ID 引用
 
-    @classmethod
-    def teardown_class(cls):
+    def teardown_class(self):
         """清理：删除测试数据"""
         # 删除创建的测试资源
         # 清理数据库测试数据

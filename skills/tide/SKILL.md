@@ -43,7 +43,7 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
    export PROJECT_ROOT="$(pwd -P)"
    export PLUGIN_DIR="$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)"
    mkdir -p "$PROJECT_ROOT/.tide"
-   uv run python3 - <<'PY' > "$PROJECT_ROOT/.tide/run-context.json"
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY' > "$PROJECT_ROOT/.tide/run-context.json"
    import json
    import os
    from pathlib import Path
@@ -225,7 +225,7 @@ Task 3 → in_progress
    读取 `.tide/scenarios.json` 与 `.tide/generation-plan.json` 后，必须执行：
 
    ```bash
-   uv run python3 -m scripts.scenario_validator \
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.scenario_validator \
      --parsed "$PROJECT_ROOT/.tide/parsed.json" \
      --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
      --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
@@ -255,7 +255,7 @@ Task 4 → in_progress
 4. 全部完成后，对每个生成文件执行 py_compile + AST 检查
 5. **格式检查**（新增）：对所有生成文件执行 format_checker：
    ```bash
-   uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
    ```
    - 对 FC04（硬编码 URL）和 FC11（硬编码业务 ID）的 WARNING 级别违规，自动提取并尝试修复
    - 对 FC08（print 语句）的 ERROR 级别违规，自动移除
@@ -305,7 +305,7 @@ Task 6 → in_progress
 4. 生成 artifact manifest：
 
    ```bash
-   uv run python3 - <<'PY'
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY'
    from pathlib import Path
    from scripts.artifact_manifest import collect_artifact, write_manifest
 
