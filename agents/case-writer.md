@@ -120,6 +120,8 @@ class TestFeatureName:
 ### 文件结构规则
 
 1. 若项目使用 `setup_class` + `allure.step()` 模式（如 DTStack 系），遵循上述结构
+   - **⚠️ 重要：严禁使用 `@classmethod def setup_class(cls)` 模式**
+   - 必须使用实例方法 `def setup_class(self)` + `self.req`，禁止类方法风格
 2. 若项目使用 pytest fixture + conftest 模式，使用 fixture 注入
 3. 日志使用项目已有的 `Logger('模块名')()` 模式，而非标准 logging
 4. 使用 `self.req.result.status_code` 获取 HTTP 状态码（若项目 Request 类有此属性）
@@ -206,7 +208,9 @@ def setup_class(self):
 
 ## Setup/Teardown 模式
 
-测试类必须包含 setup_class 和 teardown_class 管理生命周期：
+测试类必须包含 setup_class 和 teardown_class 管理生命周期。
+
+**⚠️ 严禁使用 `@classmethod def setup_class(cls)`** — 必须使用实例方法 `def setup_class(self)` 和 `self.req`，不可使用 `cls.req`。这是因为 fixture/request 实例需要绑定到测试类实例，类方法会导致上下文隔离问题。
 
 ```python
 @allure.epic("数据资产")

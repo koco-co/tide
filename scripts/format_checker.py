@@ -46,6 +46,7 @@ RULES: list[FormatRule] = [
     FormatRule("FC09", "行长不超过 120 字符", Severity.WARNING),
     FormatRule("FC10", "嵌套深度不超过 3 层", Severity.WARNING),
     FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.WARNING),
+    FormatRule("FC12", "setup_class 必须为实例方法（禁止 @classmethod）", Severity.ERROR),
 ]
 
 _RULE_MAP = {r.id: r for r in RULES}
@@ -197,20 +198,32 @@ def _is_within_enum_class(tree: ast.Module, node: ast.AST) -> bool:
 
 def _check_hardcoded_data(tree: ast.Module, filepath: str) -> list[Violation]:
     """FC04: 无硬编码测试数据（URL、长数字 ID）。
-
     豁免 API Enum 定义中的路径字符串（如 AssetsApi 枚举值）。
     """
     violations: list[Violation] = []
     rule = _RULE_MAP["FC04"]
     for node in ast.walk(tree):
+        # Check string constants containing URL patterns (standalone)
         if isinstance(node, ast.Constant):
             if isinstance(node.value, str) and any(p in node.value for p in _CRITICAL_URL_PATTERNS):
                 # 跳过 Enum 类中的 API 路径定义
                 if _is_within_enum_class(tree, node):
                     continue
-                violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail=f"可能的硬编码 URL: {node.value[:60]}"))
+                violations.append(Violation(rule=rule, file=filepath, line=node.lineno,
+                    detail=f"可能的硬编码 URL: {node.value[:60]}"))
             elif isinstance(node.value, int) and node.value > 99999:
-                violations.append(Violation(rule=rule, file=filepath, line=node.lineno, detail=f"可能的硬编码 ID: {node.value}"))
+                violations.append(Violation(rule=rule, file=filepath, line=node.lineno,
+                    detail=f"可能的硬编码 ID: {node.value}"))
+    # Also check: self.req.post("/literal/url/..."...) — URL as direct call arg
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            method_name = node.func.attr if isinstance(node.func, ast.Attribute) else ""
+            if method_name in ("post", "get", "put", "delete") and node.args:
+                first_arg = node.args[0]
+                if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+                    if any(p in first_arg.value for p in ("/api/", "/v1/", "/v2/")):
+                        violations.append(Violation(rule=rule, file=filepath, line=first_arg.lineno,
+                            detail=f"直接路径URL（应使用 AssetsApi 枚举）: {first_arg.value[:60]}"))
     return violations
 
 
@@ -286,6 +299,65 @@ def _check_hardcoded_business_ids(tree: ast.Module, filepath: str) -> list[Viola
     return violations
 
 
+def _check_classmethod_setup(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC12: setup_class 必须为实例方法（禁止 @classmethod）。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC12"]
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "setup_class":
+            # Check for @classmethod decorator
+            has_classmethod = any(
+                isinstance(d, ast.Name) and d.id == "classmethod"
+                or isinstance(d, ast.Attribute) and d.attr == "classmethod"
+                for d in node.decorator_list
+            )
+            if has_classmethod:
+                violations.append(Violation(
+                    rule=rule, file=filepath, line=node.lineno,
+                    detail="setup_class 使用了 @classmethod，必须改为 def setup_class(self) 实例方法模式",
+                ))
+            # Check for 'cls' as first param name (indicates classmethod-like usage even without decorator)
+            args = node.args
+            if args.args and args.args[0].arg == "cls" and not has_classmethod:
+                violations.append(Violation(
+                    rule=rule, file=filepath, line=node.lineno,
+                    detail="setup_class 第一个参数为 cls（类方法风格），应使用 self",
+                ))
+    return violations
+
+
+def _check_scenario_id_uniqueness(files: list[str]) -> list[Violation]:
+    """FC13 (跨文件): scenario_id 在生成文件间必须唯一。
+    在 check_directory 中调用，接收完整文件列表。
+    """
+    import re
+    rule = FormatRule("FC13", "scenario_id 跨文件唯一性", Severity.ERROR)
+    violations: list[Violation] = []
+    seen: dict[str, list[str]] = {}
+
+    for filepath in files:
+        path = Path(filepath)
+        if not path.exists() or path.suffix != ".py":
+            continue
+        content = path.read_text()
+        # Extract scenario_ids from docstrings: """dmetadata_xxx_yyy_zzz"""
+        for m in re.finditer(r'"""([a-z]+_[a-z_]+_[a-z]+_[a-z]+)"""', content):
+            sid = m.group(1)
+            if sid not in seen:
+                seen[sid] = []
+            seen[sid].append(filepath)
+
+    for sid, locations in seen.items():
+        if len(locations) > 1:
+            violations.append(Violation(
+                rule=rule, file="(cross-file)", line=0,
+                detail=f"scenario_id '{sid}' 在 {len(locations)} 个文件中重复: {', '.join(locations)}",
+            ))
+
+    return violations
+
+
 def check_file(filepath: str) -> list[Violation]:
     """对单个 Python 文件执行所有格式检查。"""
     path = Path(filepath)
@@ -316,6 +388,7 @@ def check_file(filepath: str) -> list[Violation]:
     violations.extend(_check_pydantic_description(tree, filepath))
     violations.extend(_check_nesting_depth(tree, filepath))
     violations.extend(_check_hardcoded_business_ids(tree, filepath))
+    violations.extend(_check_classmethod_setup(tree, filepath))
 
     return violations
 
@@ -323,8 +396,11 @@ def check_file(filepath: str) -> list[Violation]:
 def check_directory(dirpath: str) -> list[Violation]:
     """递归检查目录下所有 Python 文件。"""
     violations: list[Violation] = []
+    py_files = []
     for py_file in Path(dirpath).rglob("*.py"):
+        py_files.append(str(py_file))
         violations.extend(check_file(str(py_file)))
+    violations.extend(_check_scenario_id_uniqueness(py_files))
     return violations
 
 
