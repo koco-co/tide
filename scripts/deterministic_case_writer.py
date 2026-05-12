@@ -56,6 +56,17 @@ def _class_name(output_path: Path) -> str:
     return "Test" + "".join(part.capitalize() for part in _safe_name(stem).split("_"))
 
 
+def _camel_name(value: str) -> str:
+    return "".join(part.capitalize() for part in _safe_name(value).split("_"))
+
+
+def _endpoint_class_name(base_name: str, endpoint: dict[str, Any], fallback: str) -> str:
+    method = str(endpoint.get("method") or "")
+    path = str(endpoint.get("path") or "")
+    suffix = _camel_name(f"{method}_{path}" if method or path else fallback)
+    return f"{base_name}{suffix}" if suffix else base_name
+
+
 def _endpoint_map(parsed: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {
         str(endpoint["id"]): endpoint
@@ -225,16 +236,30 @@ def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoint
         "",
     ])
 
-    for class_index, start in enumerate(range(0, len(scenarios), 15)):
-        chunk = scenarios[start:start + 15]
-        generated_class_name = class_name if class_index == 0 else f"{class_name}{class_index + 1}"
+    scenarios_by_endpoint: dict[str, list[dict[str, Any]]] = {}
+    for scenario in scenarios:
+        endpoint_id = str(scenario.get("endpoint_id") or scenario.get("scenario_id") or "generated")
+        scenarios_by_endpoint.setdefault(endpoint_id, []).append(scenario)
+
+    used_class_names: dict[str, int] = {}
+    for endpoint_id, endpoint_scenarios in scenarios_by_endpoint.items():
+        endpoint = endpoints.get(endpoint_id, {})
+        generated_class_name = _endpoint_class_name(
+            class_name,
+            endpoint,
+            str(endpoint_scenarios[0].get("scenario_id") or endpoint_id),
+        )
+        used_class_names[generated_class_name] = used_class_names.get(generated_class_name, 0) + 1
+        if used_class_names[generated_class_name] > 1:
+            generated_class_name = f"{generated_class_name}{used_class_names[generated_class_name]}"
+
         lines.extend([
             f"class {generated_class_name}:",
             "    \"\"\"Generated from Tide normalized scenarios.\"\"\"",
             "",
         ])
 
-        for scenario in chunk:
+        for scenario in endpoint_scenarios:
             endpoint = endpoints.get(str(scenario.get("endpoint_id")), {})
             lines.extend(_scenario_lines(scenario, endpoint))
 

@@ -158,18 +158,28 @@ def test_write_deterministic_cases_merges_workers_with_same_fallback_output(tmp_
     assert "def test_assets_case" in output
 
 
-def test_write_deterministic_cases_splits_large_generated_classes(tmp_path: Path) -> None:
+def test_write_deterministic_cases_writes_one_test_class_per_endpoint(tmp_path: Path) -> None:
     parsed = tmp_path / ".tide" / "parsed.json"
     scenarios = tmp_path / ".tide" / "scenarios.json"
     plan = tmp_path / ".tide" / "generation-plan.json"
     parsed.parent.mkdir()
 
     parsed.write_text(
-        json.dumps({"endpoints": [{"id": "ep1", "response": {"status": 200, "body": {"code": 1}}}]}),
+        json.dumps({
+            "endpoints": [
+                {
+                    "id": f"ep{index}",
+                    "method": "POST",
+                    "path": f"/dmetadata/v1/table/query{index}",
+                    "response": {"status": 200, "body": {"code": 1}},
+                }
+                for index in range(16)
+            ]
+        }),
         encoding="utf-8",
     )
     scenario_docs = [
-        {"scenario_id": f"metadata_case_{index}", "endpoint_id": "ep1", "type": "har_direct"}
+        {"scenario_id": f"metadata_case_{index}", "endpoint_id": f"ep{index}", "type": "har_direct"}
         for index in range(16)
     ]
     scenarios.write_text(json.dumps({"scenarios": scenario_docs}), encoding="utf-8")
@@ -189,6 +199,8 @@ def test_write_deterministic_cases_splits_large_generated_classes(tmp_path: Path
     generated = write_deterministic_cases(tmp_path, parsed, scenarios, plan)
     output = generated[0].read_text(encoding="utf-8")
 
-    assert "class TestTideGeneratedMetadata:" in output
-    assert "class TestTideGeneratedMetadata2:" in output
+    assert output.count("class TestTideGeneratedMetadata") == 16
+    assert "class TestTideGeneratedMetadataPostDmetadataV1TableQuery0:" in output
+    assert "class TestTideGeneratedMetadataPostDmetadataV1TableQuery15:" in output
+    assert "class TestTideGeneratedMetadata2:" not in output
     assert not any(violation.rule.id == "FC02" for violation in check_file(str(generated[0])))
