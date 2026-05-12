@@ -1,0 +1,170 @@
+diff --git a/utils/assets/requests/meta_data_requests.py b/utils/assets/requests/meta_data_requests.py
+index 0bd58ee2d..a86029f50 100644
+--- a/utils/assets/requests/meta_data_requests.py
++++ b/utils/assets/requests/meta_data_requests.py
+@@ -118,3 +118,165 @@ class MetaDataRequest(AssetsBaseRequest):
+         """
+         _json = {"tableId": params}
+         return self.post(url=AssetsApi.has_partition.value, desc='判断表是否有分区', json=_json)
++
++    # ── 数据地图 (Data Map) ──────────────────────────────────────────────
++
++    def datamap_recent_query(self):
++        """
++        数据地图-最近查询
++        :return:
++        """
++        return self.post(url=AssetsApi.datamap_recent_query.value, desc='数据地图-最近查询')
++
++    def datamap_asset_statistics(self):
++        """
++        数据地图-资产统计信息
++        :return:
++        """
++        return self.post(url=AssetsApi.datamap_asset_statistics.value, desc='数据地图-资产统计信息')
++
++    def datamap_query_detail(self, params):
++        """
++        数据地图-搜索结果（搜索表）
++        :param params: 搜索参数，包含 current, size, metaType, search, field, asc
++        :return:
++        """
++        _json = {
++            "current": params.get("current", 1),
++            "size": params.get("size", 10),
++            "metaType": params.get("metaType", 1),
++            "search": params.get("search", ""),
++            "field": params.get("field", "hot"),
++            "asc": params.get("asc", False)
++        }
++        return self.post(url=AssetsApi.datamap_query_detail.value, desc='数据地图-搜索结果', json=_json)
++
++    def datamap_hotword_list(self):
++        """
++        数据地图-热门搜索词
++        :return:
++        """
++        return self.post(url=AssetsApi.datamap_hotword_list.value, desc='数据地图-热门搜索词')
++
++    def datamap_hotlabel_list(self):
++        """
++        数据地图-热门标签
++        :return:
++        """
++        return self.post(url=AssetsApi.datamap_hotlabel_list.value, desc='数据地图-热门标签')
++
++    def datamap_list_users(self, params=None):
++        """
++        数据地图-获取负责人列表
++        :param params: 可选参数，如 {"metaType": 1}
++        :return:
++        """
++        _json = params or {}
++        return self.post(url=AssetsApi.datamap_list_users.value, desc='数据地图-获取负责人列表', json=_json)
++
++    def datamap_label_list(self, params=None):
++        """
++        数据地图-获取标签列表
++        :param params: 可选参数，如 {"metaType": 1}
++        :return:
++        """
++        _json = params or {}
++        return self.post(url=AssetsApi.datamap_lable_list.value, desc='数据地图-获取标签列表', json=_json)
++
++    def data_inventory_count_datasource(self):
++        """
++        资产盘点-已接入数据源统计
++        :return:
++        """
++        return self.post(url=AssetsApi.dataInventory_count_datasource.value, desc='资产盘点-已接入数据源统计')
++
++    def resource_catalog_list_catalog_by_query(self, params=None):
++        """
++        获取资源目录列表
++        :param params: 可选过滤参数
++        :return:
++        """
++        _json = params or {}
++        return self.post(url=AssetsApi.resourceCatalog_list_catalog_by_query.value, desc='获取资源目录列表', json=_json)
++
++    def user_page_users(self, params=None):
++        """
++        分页查询用户列表
++        :param params: 分页参数 {"currentPage": 1, "pageSize": 20}
++        :return:
++        """
++        _json = params or {"currentPage": 1, "pageSize": 20}
++        return self.post(url=AssetsApi.user_page_users.value, desc='分页查询用户列表', json=_json)
++
++    # ── 元数据同步 (Metadata Sync) ───────────────────────────────────────
++
++    def list_metadata_datasource(self, params=None):
++        """
++        查询引入资产并支持元数据的数据源
++        :param params: 查询参数，如 {"type": 0}
++        :return:
++        """
++        _json = params or {"type": 0}
++        return self.post(url=AssetsApi.datasource_list_metadata_datasource.value, desc='查询元数据数据源', json=_json)
++
++    def real_time_db_list(self, params):
++        """
++        获取当前数据源下可连接的数据库列表
++        :param params: {"dataSourceId": "xxx", "useStatus": 1}
++        :return:
++        """
++        _json = {
++            "dataSourceId": params.get("dataSourceId"),
++            "useStatus": params.get("useStatus", 1)
++        }
++        return self.post(url=AssetsApi.dataDb_real_time_db_list.value, desc='获取可连接数据库列表', json=_json)
++
++    def sync_task_real_time_table_list(self, params):
++        """
++        获取当前数据源下可同步的数据表列表
++        :param params: {"size": 200, "dbNames": [...], "dataSourceId": "xxx"}
++        :return:
++        """
++        _json = {
++            "size": params.get("size", 200),
++            "dbNames": params.get("dbNames", []),
++            "dataSourceId": params.get("dataSourceId")
++        }
++        return self.post(url=AssetsApi.syncTask_real_time_table_list.value, desc='获取可同步数据表列表', json=_json)
++
++    def sync_task_page(self, params=None):
++        """
++        分页查询元数据同步任务列表
++        :param params: 分页参数 {"pageNow": 1, "pageSize": 20, "realTime": false}
++        :return:
++        """
++        _json = params or {"pageNow": 1, "pageSize": 20, "realTime": False}
++        return self.post(url=AssetsApi.syncTask_page_task.value, desc='分页查询元数据同步任务', json=_json)
++
++    def sync_task_add(self, params):
++        """
++        新增周期同步任务
++        :param params: 同步任务参数
++        :return:
++        """
++        return self.post(url=AssetsApi.syncTask_add.value, desc='新增周期同步任务', json=params)
++
++    def sync_job_page(self, params):
++        """
++        分页查询同步任务实例
++        :param params: {"taskId": "xxx", "current": 1, "size": 20}
++        :return:
++        """
++        _json = {
++            "taskId": params.get("taskId"),
++            "current": params.get("current", 1),
++            "size": params.get("size", 20)
++        }
++        return self.post(url=AssetsApi.syncJob_page_query.value, desc='分页查询同步任务实例', json=_json)
++
++    def is_super_user(self):
++        """
++        查询当前用户是否为超级管理员
++        :return:
++        """
++        return self.post(url=AssetsApi.metadataApply_is_super_user.value, desc='是否为超级管理员', json={})
