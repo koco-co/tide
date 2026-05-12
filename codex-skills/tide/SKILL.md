@@ -121,25 +121,41 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
 ### 3. Generate Test Code
 
 1. Read `.tide/generation-plan.json`, `.tide/scenarios.json`, `.tide/project-assets.json`, and selected style prompt modules.
-2. Use `agents/case-writer.md` to generate each planned pytest file, preserving the target project's conventions.
-3. Run `py_compile` on generated Python files.
-4. Run the format checker:
+2. Before any generated file is written, snapshot the target write scope:
+   ```bash
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard snapshot \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   Only `.tide/` and `testcases/` are writable. Do not create or edit `api/`, `dao/`, `utils/`, `config/`, `testdata/`, or `resource/`.
+3. Use `agents/case-writer.md` to generate each planned pytest file, preserving the target project's conventions.
+4. Immediately verify the target write scope:
+   ```bash
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   If verification fails, stop and report the forbidden paths. Do not continue to pytest or a success summary.
+5. Run `py_compile` on generated Python files.
+6. Run the format checker:
    ```bash
    PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generated-test-dir>
    ```
-5. Fix blocking generated-code issues once, then rerun checks.
+7. Fix blocking generated-code issues once, then rerun checks.
+8. Re-run write-scope verification after any fix.
 
 ### 4. Review, Execute, and Deliver
 
 1. Use `agents/case-reviewer.md` and `prompts/review-checklist.md` for static review.
-2. Run collection before execution:
+2. Re-run write-scope verification after case-reviewer changes. If verification fails, stop and report forbidden paths.
+3. Run collection before execution:
    ```bash
    "${PYTHON_BIN:-python3}" -m pytest --collect-only -q
    ```
-3. Run the narrow generated test scope first, then broaden only when useful.
-4. Classify failures as test defect, environment issue, or suspected business defect.
-5. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
-6. After the final narrow pytest run, rewrite `.tide/execution-report.json` from the final pytest output so it cannot contain stale intermediate counts:
+4. Run the narrow generated test scope first, then broaden only when useful.
+5. Classify failures as test defect, environment issue, or suspected business defect.
+6. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
+7. After the final narrow pytest run, rewrite `.tide/execution-report.json` from the final pytest output so it cannot contain stale intermediate counts:
    ```bash
    set +e
    "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
@@ -152,4 +168,4 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
      --total-tests <collect-only generated test count> \
      --command "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q
    ```
-7. Summarize generated files, validation results, commands run, and remaining manual actions.
+8. Summarize generated files, validation results, commands run, and remaining manual actions.

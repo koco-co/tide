@@ -317,14 +317,28 @@ Task 4 → in_progress
 
 1. 读取 `.tide/scenarios.json` → `generation_plan`
 2. 读取 `.tide/project-assets.json`（若存在）— 项目已有工具类清单
-3. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入：
+3. 在任何 case-writer 写文件之前创建目标写范围快照：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard snapshot \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   只允许写 `.tide/` 和 `testcases/`。禁止新增或修改 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/`。
+4. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入：
    - `detected_auth_type` — 认证方式
    - **`project_assets`**（新增）— 项目已有工具类方法清单，要求优先复用
    - **`test_granularity`**（新增）— 测试粒度
    - **`business_context`**（新增）— 业务场景描述
    - 按需加载的 code-style-python prompt 模块（来自 fingerprint 组装）
-4. 全部完成后，对每个生成文件执行 py_compile + AST 检查
-5. **格式检查**（新增）：对所有生成文件执行 format_checker：
+5. 全部完成后立刻校验目标写范围：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
+6. 对每个生成文件执行 py_compile + AST 检查
+7. **格式检查**（新增）：对所有生成文件执行 format_checker：
    ```bash
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
    ```
@@ -350,7 +364,14 @@ Task 5 → in_progress
      - `ENV_ISSUE` — 环境问题（服务不可用、数据不存在）→ 标记为环境问题，调整预期
      - `BUSINESS_BUG` — 业务 bug（code≠1 但非参数问题）→ 标记为疑似缺陷
    - **等待 case-reviewer 全部完成再继续下一步**
-2. 用最终 pytest 输出重写 `.tide/execution-report.json`，确保报告与最后一次实际执行一致：
+2. case-reviewer 结束后再次校验目标写范围：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
+3. 用最终 pytest 输出重写 `.tide/execution-report.json`，确保报告与最后一次实际执行一致：
 
    ```bash
    set +e
@@ -366,7 +387,7 @@ Task 5 → in_progress
    ```
 
    若 `.tide/execution-report.json` 中的 `passed/failed/errors/total_tests` 与最终 pytest 输出不一致，必须以此命令重写后的 JSON 为准。
-3. 读取 `.tide/execution-report.json`，向用户报告执行结果：
+4. 读取 `.tide/execution-report.json`，向用户报告执行结果：
 
    ```
    测试执行完成
@@ -377,7 +398,7 @@ Task 5 → in_progress
    - 修复轮数：1
    ```
 
-4. 生成验收报告
+5. 生成验收报告
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run wave4:review:after` 和 `uv run python3 scripts/hooks.py run output:notify`
 
