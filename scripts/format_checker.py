@@ -47,6 +47,7 @@ RULES: list[FormatRule] = [
     FormatRule("FC10", "嵌套深度不超过 3 层", Severity.WARNING),
     FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.ERROR),
     FormatRule("FC12", "setup_class 必须为实例方法（禁止 @classmethod）", Severity.ERROR),
+    FormatRule("FC14", "包含测试方法的类名必须以 Test 开头", Severity.ERROR),
 ]
 
 _RULE_MAP = {r.id: r for r in RULES}
@@ -347,6 +348,29 @@ def _check_classmethod_setup(tree: ast.Module, filepath: str) -> list[Violation]
     return violations
 
 
+def _check_collectable_test_class_names(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC14: 包含 test_* 方法的类名必须以 Test 开头，确保 pytest 会收集。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC14"]
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef) or node.name.startswith("Test"):
+            continue
+        has_test_method = any(
+            isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and item.name.startswith("test_")
+            for item in node.body
+        )
+        if has_test_method:
+            violations.append(Violation(
+                rule=rule,
+                file=filepath,
+                line=node.lineno,
+                detail=f"类 {node.name} 包含 test_* 方法但类名不以 Test 开头，pytest 不会收集",
+            ))
+    return violations
+
+
 def _check_scenario_id_uniqueness(files: list[str]) -> list[Violation]:
     """FC13 (跨文件): scenario_id 在生成文件间必须唯一。
     在 check_directory 中调用，接收完整文件列表。
@@ -409,6 +433,7 @@ def check_file(filepath: str) -> list[Violation]:
     violations.extend(_check_nesting_depth(tree, filepath))
     violations.extend(_check_hardcoded_business_ids(tree, filepath))
     violations.extend(_check_classmethod_setup(tree, filepath))
+    violations.extend(_check_collectable_test_class_names(tree, filepath))
 
     return violations
 

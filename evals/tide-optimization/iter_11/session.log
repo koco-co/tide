@@ -1,0 +1,32 @@
+## 生成完成 — 汇总
+
+从 `.tide/trash/` 的 HAR 文件生成了 2 个测试文件，覆盖 **28 个端点**、**49 个测试场景**。
+
+### HAR 解析结果
+- 原始条目: 31 → 过滤去重后: **28 个端点**
+- 匹配仓库: `dt-center-assets`（17 个）、`dt-center-metadata`（11 个）
+- 涉及服务: `dassets/v1/*`（数据地图、数据表、标签等）、`dmetadata/v1/*`（同步任务、数据源、元数据申请等）
+
+### 生成文件
+
+| 文件 | 测试类 | 测试方法 | 行数 |
+|------|--------|---------|------|
+| `assets_datamap_v2_test.py` | 2 (TestDatamapQuery, TestDataTableOperations) | 28 | 305 |
+| `metadata_direct_test.py` | 4 (SyncTaskTest, DataSourceTest, JobQueryTest, TableQueryTest) | 21 | 338 |
+
+### 测试方法类型
+- **har_direct**: 28 个 — 直接回放 HAR 请求，含 L1+L2+L3 断言
+- **param_validation**: 21 个 — 缺参请求，验证业务错误码
+
+### 遵循的项目规范
+- 使用 `AssetsBaseRequest` / `MetaDataRequest` 封装类
+- 使用 `AssetsApi` 枚举定义 API 路径
+- `setup_method` 实例方法 + `allure.step()` 模式
+- 动态 ID 解析（无硬编码业务 ID）
+- L1(status_code) → L2(field presence) → L3(code+data) 断言顺序
+- `@allure.epic`/`feature`/`story`/`title` 装饰器
+
+### 验证结果
+- py_compile: ✅ 通过
+- 格式检查: ✅ 通过（0 errors）
+- API 引用: ✅ 全部有效

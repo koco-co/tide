@@ -2,30 +2,33 @@
 
 ## 2026-05-12 Iter9 审计更新
 
-推广结论从 **Conditional Yes** 调整为 **Conditional / Hold**，直到完成一次用户明确授权的 fresh Claude Code + Tide 生成验证。
+推广结论从 **Conditional Yes** 调整为 **Conditional / Hold**，直到完成一次 fresh Claude Code + Tide 生成并通过所有硬性质量门。
 
 原因：
 - Iter9 发现原 FC11 未拦截字符串数字业务 ID，现已修复 validator/prompt，但尚未重新跑 Claude 生成验证。
 - 全量目标项目 `pytest --collect-only` 当前不是绿色；scoped generated tests collect-only 通过，但不能替代目标里写明的全量命令。
 - Iter10 在用户授权后完成 fresh Claude 运行，但 `.tide/trash` 多 HAR 场景下静默选择了 `batch_orchestration_rules.har`，不是目标 SparkThrift HAR。
+- Iter11 选中了正确 SparkThrift HAR，但 `metadata_direct_test.py` 生成的 21 个 `test_*` 方法位于非 `Test*` 类中，pytest 收集为 0。
 
 推广前新增必做项：
 1. 重新运行时必须传入精确 HAR 路径，例如 `.tide/trash/20260509_152002_20260509_150847_172.16.122.52.har`，不得只说 `.tide/trash`。
 2. 新增的 `resolve_har_input` no-guess 规则必须随插件发布并重载。
 3. 新生成文件必须通过 FC11：不得出现数字或数字字符串业务 ID，包括负向场景的不存在 ID。
+4. 新生成文件必须通过 FC14：任何包含 `test_*` 方法的类名都必须以 `Test` 开头，并且每个文件都要单独跑 scoped `pytest --collect-only`。
 
 Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/koco-co/tide/pull/1
 
 ## 结论: Conditional / Hold
 
-**Tide v1.3.0 (Iter9/Iter10 审计后)** — 暂不建议推广。Iter7 的 **92.95/100** 只能作为历史局部验证记录，不能作为硬性质量门全过的结论；Iter9 发现 FC11 漏检字符串数字业务 ID，Iter10 fresh run 准备阶段因目标仓清理和外部 Claude 运行缺少明确授权而阻塞。
+**Tide v1.3.0 (Iter9/Iter10/Iter11 审计后)** — 暂不建议推广。Iter7 的 **92.95/100** 只能作为历史局部验证记录，不能作为硬性质量门全过的结论；Iter10 暴露多 HAR 静默误选，Iter11 暴露 pytest 类名收集漏检。
 
 **当前阻断依据:**
 - Iter9 audited score: **83.75/100**，未达 `>=90`。
 - Iter7 生成文件存在 `dataSourceId: "43"`、`dataSourceId: "99999999"`、`tableId: "99999999"` 等 FC11 违规，现有 checker 已能检出。
 - 全量目标项目 `pytest --collect-only` 当前失败，scoped collect 不能直接替代原始硬门。
-- Iter10 需要用户明确批准目标仓清理和 Claude Code 外部服务调用；证据见 `evals/tide-optimization/iter_10/blockers.md`。
+- Iter10 的初始审批阻塞已被用户授权解除；原审批边界证据保留在 `evals/tide-optimization/iter_10/blockers.md`。
 - Iter10 授权后 fresh run 分数为 **65.0/100**，因为生成了 batch orchestration suite 而非 SparkThrift metadata-sync suite；证据见 `evals/tide-optimization/iter_10/score.md`。
+- Iter11 授权后 fresh run 分数为 **78.9/100**，正确 HAR 但 metadata 文件 0 tests collected；证据见 `evals/tide-optimization/iter_11/score.md`。
 
 ## 推广前必做
 

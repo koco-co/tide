@@ -15,9 +15,9 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 
 ## 当前结论
 
-**Conditional / Hold.** Iter9 已修复本地 validator/prompt 的 FC11 漏检，但目标 `>=90` 不能按硬性质量门宣称达成。Iter10 准备继续 fresh run 时，目标仓清理审批因“dirty repo + broad destructive cleanup”被拒绝；阻塞证据见 `evals/tide-optimization/iter_10/blockers.md`。
+**Conditional / Hold.** 用户已授权清理旧 Tide 生成物并运行 Claude Code fresh generation；Iter11 已选中正确 SparkThrift HAR，但硬性质量门仍未通过。`metadata_direct_test.py` 生成了 21 个 `test_*` 方法，但所在类名为 `SyncTaskTest`、`DataSourceTest`、`JobQueryTest`、`TableQueryTest`，pytest 不会收集这些类。
 
-恢复评估前必须完成一次用户明确授权的 Claude Code + Tide 重新生成，并重新跑硬门：全量或经用户确认范围内的 `pytest --collect-only`、FC11、L1-L5、scenario_id 唯一、confidence>=medium 比例、风格契合度抽查。
+恢复 `>=90` 评估前必须重新运行并确认：每个生成文件 scoped `pytest --collect-only` 的节点数符合预期、format checker 0 ERROR、L1-L5 证据完整、scenario_id 唯一、confidence>=medium 比例达标、风格契合度抽查通过。
 
 ## 2026-05-12 Iter10 Fresh Run 附录
 
@@ -28,6 +28,17 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 - Scoped generated collect 通过 30 tests，但全量 `pytest --collect-only` 仍因既有目标项目问题失败 75 errors。
 - Iter10 分数为 **65.0/100**，主要扣分来自“自然语言说 HAR 在 trash 下时，多个 HAR 候选被静默猜错”。
 - 已新增修复：`scripts.har_inputs.resolve_har_input()` 和 skill no-guess 规则。未来传目录或自然语言指向 `.tide/trash` 且存在多个 HAR 时，Tide 必须询问或在无头模式失败，不得猜测。
+
+## 2026-05-12 Iter11 Fresh Run 附录
+
+Iter11 在清理旧生成物并只保留目标 HAR 后完成 fresh run，结论仍为 **Conditional / Hold**：
+
+- 正确 HAR 已选中：`.tide/parsed.json` 指向 `20260509_152002_20260509_150847_172.16.122.52.har`，生成 28 endpoints / 49 scenarios。
+- 输出文件为 `testcases/scenariotest/assets/assets_datamap_v2_test.py` 与 `testcases/scenariotest/assets/meta_data_sync/metadata_direct_test.py`。
+- 场景质量门部分通过：`scenario_id total=49 unique=49`，confidence 为 `high=28`、`medium=21`。
+- 收集质量门失败：combined scoped collect 只列出 28 个 datamap tests；metadata-only collect 退出 5，输出 `no tests ran`。
+- 已新增修复：`scripts/format_checker.py` 增加 FC14，凡包含 `test_*` 方法但类名不以 `Test` 开头即 ERROR；`agents/case-writer.md` 明确禁止 `SyncTaskTest` 这类 pytest 不收集的类名。
+- Iter11 分数为 **78.9/100**；正确 HAR 和场景理解恢复，但 21 个 metadata tests 不可见，不能宣称达成。
 
 ## 历史迭代概述 (7 轮)
 
@@ -42,6 +53,7 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 | **Iter6** | 86.55 | 硬编码 ID 23→1 (-96%), PYTHON_BIN 检测, 确定性 project-assets | 质量接近目标 |
 | **Iter7** | **92.95 (历史 claim，Iter9 已降级)** | **--yes --non-interactive 无头验证、36/36 scoped collect 通过、0 人工干预** | **不能替代硬门全过** |
 | **Iter10** | **65.0** | **暴露多 HAR 静默误选；新增 no-guess resolver** | **fresh run 未达标** |
+| **Iter11** | **78.9** | **正确 HAR；新增 FC14 pytest 类名收集门** | **metadata 文件 0 tests collected** |
 
 ## 7 轮评分趋势
 

@@ -147,6 +147,7 @@ class TestFeatureName:
      - `TestXxxXxx` → PascalCase（如 `TestMetadataSyncTemplate`）
   4. 以 fingerprint 或已有文件中发现的模式为准生成测试类名；若都未发现，回退到 PascalCase 默认
   5. 类名逻辑：`Test{Module}_{Feature}`（snake_case 模式时用下划线分隔），`Test{Module}{Feature}`（PascalCase 模式时使用大驼峰）
+  6. **硬性要求：每个包含 `test_*` 方法的类名必须以 `Test` 开头**；禁止生成 `SyncTaskTest`、`DataSourceTest`、`JobQueryTest` 这类 pytest 不会自动收集的类名。
 - 方法：`test_{feature}_{scenario}` — 下划线命名，例如：`test_create_user_missing_email`
 - Pydantic 模型：`{Resource}Response`、`{Resource}CreateRequest`
 
