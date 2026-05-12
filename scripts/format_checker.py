@@ -269,31 +269,51 @@ def _check_nesting_depth(tree: ast.Module, filepath: str) -> list[Violation]:
 _HARDCODED_ID_KEYS = frozenset({
     "tableId", "dataSourceId", "sourceId", "projectId",
     "tenantId", "catalogueId", "taskId", "userId", "roleId",
-    "dsId", "dbId", "clusterId", "engineId",
+    "dsId", "dbId", "clusterId", "engineId", "metaId", "apiId",
 })
+
+
+def _is_business_id_key(key: str) -> bool:
+    """Return whether a JSON key represents a runtime business ID."""
+    return key in _HARDCODED_ID_KEYS or key.endswith(("Id", "Ids"))
+
+
+def _literal_business_id(value: ast.AST) -> str | None:
+    """Return the hardcoded ID literal if the AST node is a business ID value."""
+    if isinstance(value, ast.Constant):
+        if isinstance(value.value, int) and value.value != 0:
+            return str(value.value)
+        if isinstance(value.value, str) and value.value.isdigit() and int(value.value) != 0:
+            return value.value
+    if isinstance(value, (ast.List, ast.Tuple)):
+        for item in value.elts:
+            literal = _literal_business_id(item)
+            if literal is not None:
+                return literal
+    return None
 
 
 def _check_hardcoded_business_ids(tree: ast.Module, filepath: str) -> list[Violation]:
     """FC11: 无硬编码业务ID（tableId、dataSourceId等）。
 
-    检测字典 JSON payload 中数值类型的硬编码业务 ID，要求通过
+    检测字典 JSON payload 中数值/数字字符串类型的硬编码业务 ID，要求通过
     运行时查询获取而非写死。
     """
     violations: list[Violation] = []
     rule = _RULE_MAP["FC11"]
 
     for node in ast.walk(tree):
-        # 匹配 {"tableId": 1} 或 {"dataSourceId": 99999999} 这种模式
+        # 匹配 {"tableId": 1}、{"dataSourceId": "99999999"} 或 {"roleIds": [1]}。
         if isinstance(node, ast.Dict):
             for key, value in zip(node.keys, node.values):
                 if (isinstance(key, ast.Constant) and isinstance(key.value, str)
-                        and key.value in _HARDCODED_ID_KEYS
-                        and isinstance(value, ast.Constant)
-                        and isinstance(value.value, (int,))
-                        and value.value != 0):  # 允许 tableId: 0 作为 fallback
+                        and _is_business_id_key(key.value)):
+                    hardcoded_value = _literal_business_id(value)
+                    if hardcoded_value is None:
+                        continue
                     violations.append(Violation(
                         rule=rule, file=filepath, line=node.lineno,
-                        detail=f"硬编码业务ID: {key.value}={value.value}，应通过运行时查询获取",
+                        detail=f"硬编码业务ID: {key.value}={hardcoded_value}，应通过运行时查询获取",
                     ))
 
     return violations

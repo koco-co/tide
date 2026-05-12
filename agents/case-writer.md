@@ -205,11 +205,17 @@ assert notification_queue.count() == 1
 # ❌ 严禁：硬编码 dataSourceId=1
 payload = {"dataSourceId": 1, "taskType": 1}
 
+# ❌ 严禁：字符串数字同样是硬编码 ID
+payload = {"dataSourceId": "43", "taskType": 1}
+
 # ❌ 严禁：硬编码 tableId=1
 payload = {"tableId": 1}
 
 # ❌ 严禁：硬编码 metaId=1
 payload = {"metaId": 1, "metaType": "TABLE"}
+
+# ❌ 严禁：用固定超大数字作为"不存在 ID"
+payload = {"tableId": "99999999"}
 ```
 
 ### 正确做法：在 setup_method 中动态查询
@@ -234,6 +240,27 @@ with allure.step("获取有效 tableId"):
     table_id = search_resp.get("data", [{}])[0].get("id", 0)
 with allure.step("使用动态 tableId 查询"):
     resp = self.req.post(..., json={"tableId": table_id})
+```
+
+### 参数校验/不存在 ID 的正确写法
+
+负向场景也不得写死 `"43"`、`99999999`、`-1` 等 ID。必须基于运行时查询到的真实 ID 计算一个当前环境中不存在的值，或用辅助方法封装：
+
+```python
+def _build_missing_id(self, existing_ids: list[int]) -> str:
+    """基于运行时查询结果构造不存在的业务 ID。"""
+    assert existing_ids, "无法构造不存在ID：没有可参考的动态ID"
+    return str(max(existing_ids) + 999999)
+
+with allure.step("构造不存在的数据源 ID"):
+    ds_resp = self.req.post(AssetsApi.dataSource_page_query.value, "查数据源",
+                            json={"current": 1, "size": 20})
+    ds_list = ds_resp.get("data", {}).get("data", [])
+    missing_ds_id = self._build_missing_id([int(item["id"]) for item in ds_list if item.get("id")])
+
+with allure.step("不存在的数据源参数校验"):
+    resp = self.req.post(AssetsApi.syncTask_add.value, "不存在的数据源",
+                         json={"dataSourceId": missing_ds_id, "taskType": 1})
 ```
 
 **动态 ID 解析优先级**：

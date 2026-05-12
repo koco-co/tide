@@ -1,5 +1,19 @@
 # Tide 插件推广建议
 
+## 2026-05-12 Iter9 审计更新
+
+推广结论从 **Conditional Yes** 调整为 **Conditional / Hold**，直到完成一次用户明确授权的 fresh Claude Code + Tide 生成验证。
+
+原因：
+- Iter9 发现原 FC11 未拦截字符串数字业务 ID，现已修复 validator/prompt，但尚未重新跑 Claude 生成验证。
+- 全量目标项目 `pytest --collect-only` 当前不是绿色；scoped generated tests collect-only 通过，但不能替代目标里写明的全量命令。
+- Fresh Claude 运行涉及外部数据传输，当前审批被拒绝，需要用户明确同意后再执行。
+
+推广前新增必做项：
+1. 用户明确批准 Claude Code 读取目标项目/HAR 并调用外部服务生成测试。
+2. 用 Iter9 后的 Tide 重新生成测试，并归档 `evals/tide-optimization/iter_9/session.log`。
+3. 新生成文件必须通过 FC11：不得出现数字或数字字符串业务 ID，包括负向场景的不存在 ID。
+
 ## 结论: Conditional Yes ✅ (Iter7 已达目标)
 
 **Tide v1.3.0 (Iter7 验证后)** — 总分 **92.95/100**，7 轮迭代从基线 72 提升至 **≥90**，满足推广条件。

@@ -1,5 +1,16 @@
 # Tide 插件优化 — 最终报告
 
+## 2026-05-12 Iter9 审计附录
+
+Codex 复核 Iter7 结论时发现：原报告的 92.95/100 对生成文件局部质量成立，但不能作为“硬性质量门全过”的最终结论。
+
+- 全量目标项目 `pytest --collect-only` 当前失败：`.venv/bin/python3 -m pytest --collect-only` 命中 75 个既有收集错误，主要是目标项目缺 `cx_Oracle` 和 stream/testdata import 问题；该命令还会在 collect 阶段执行目标项目 API 初始化代码。
+- 生成文件局部收集通过：`tests/interface/test_metadata_sync.py` 与 `test_assets_datamap.py` scoped collect 仍为 36/36。
+- 原 FC11 漏检字符串数字业务 ID：Iter7 生成的 `test_metadata_sync.py` 仍包含 `dataSourceId: "43"`、`dataSourceId: "99999999"`、`tableId: "99999999"`。Iter9 已修复 `scripts/format_checker.py`，现在会将这些识别为 ERROR。
+- Iter9 无法完成 fresh Claude/Tide 生成：运行 Claude Code 会向外部服务发送目标项目数据并改写目标文件，审批因缺少明确用户同意而被拒绝。
+
+**当前审计结论：暂不应宣称硬性质量门全过。** Iter9 本地修复已通过 Tide 自测 `159 passed`，但需要用户明确批准外部 Claude Code 运行后，才能重新生成、重新评分并判断是否恢复 ≥90。
+
 ## 迭代概述 (7 轮)
 
 | 迭代 | 总分 | 关键改进 | 关键时刻 |

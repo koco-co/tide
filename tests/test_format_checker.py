@@ -45,3 +45,27 @@ class TestFormatChecker:
         bad.write_text("def broken(\n")
         violations = check_file(str(bad))
         assert any(v.rule.id == "FC00" for v in violations)
+
+    def test_detects_string_numeric_business_ids(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_hardcoded_string_ids.py"
+        bad.write_text(
+            "class TestHardcodedIds:\n"
+            '    """Hardcoded IDs."""\n\n'
+            "    def test_bad(self):\n"
+            '        payload = {"dataSourceId": "43", "taskType": 1}\n'
+            '        assert payload["dataSourceId"] == "43", "uses hardcoded id"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC11" for v in violations)
+
+    def test_detects_meta_id_business_ids(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_hardcoded_meta_id.py"
+        bad.write_text(
+            "class TestHardcodedMetaId:\n"
+            '    """Hardcoded metaId."""\n\n'
+            "    def test_bad(self):\n"
+            '        payload = {"metaId": 12345, "metaType": 1}\n'
+            '        assert payload["metaId"] == 12345, "uses hardcoded meta id"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC11" for v in violations)
