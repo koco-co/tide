@@ -14,6 +14,8 @@
 2. 用 Iter9 后的 Tide 重新生成测试，并归档 `evals/tide-optimization/iter_9/session.log`。
 3. 新生成文件必须通过 FC11：不得出现数字或数字字符串业务 ID，包括负向场景的不存在 ID。
 
+Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/koco-co/tide/pull/1
+
 ## 结论: Conditional Yes ✅ (Iter7 已达目标)
 
 **Tide v1.3.0 (Iter7 验证后)** — 总分 **92.95/100**，7 轮迭代从基线 72 提升至 **≥90**，满足推广条件。
