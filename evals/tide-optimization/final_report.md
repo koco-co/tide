@@ -16,6 +16,7 @@ PR: https://github.com/koco-co/tide/pull/1
 | Iter 16 | 82.0 | Autonomous run failed before tests due budget/resume issues. |
 | Iter 17 | 86.0 | Deterministic fallback produced passing tests after budget exhaustion. |
 | Iter 18 | 90.0 | Guarded fallback produced 28 passing tests with clean format/write-scope gates. |
+| Iter 19 | 90.55 | Scoped fallback remediation: one `Test*` class per endpoint, still blocked by L4/L5 and CLI termination. |
 
 ## Improvements Delivered
 
@@ -26,14 +27,14 @@ PR: https://github.com/koco-co/tide/pull/1
 - Scenario validator enforces endpoint coverage, scenario uniqueness, confidence ratio, and generation-plan references.
 - Deterministic fallback writer emits sanitized, collectable pytest files with no HAR host/token/business-ID leakage.
 - Iter 18 target evidence shows 28 generated tests passing and no forbidden business-code changes.
+- Iter 19 deterministic fallback output uses one `Test*` class per endpoint for the current 28-endpoint target run.
 
 ## Residual Risks
 
 - Claude CLI still did not terminate cleanly after generating artifacts in Iter 18.
 - Fallback tests are L1-L3 contract tests; L4 DB persistence and L5 cross-endpoint runtime assertions are not implemented.
-- Current fallback class structure is grouped by generated file, not one TestClass per endpoint.
 - The target repo has pre-existing unrelated dirty/untracked files; Tide write-scope verification covers forbidden-path changes but does not clean the whole target repo.
 
 ## Conclusion
 
-The plugin improved materially from the 72/100 baseline and reached a conditional 90/100 in Iter 18 for safe fallback generation. It should not be declared fully complete against the strict hard-gate objective because L4/L5 runtime assertions, per-endpoint class granularity, and hands-free Claude process completion remain unresolved.
+The plugin improved materially from the 72/100 baseline and reached a conditional 90.55/100 in Iter 19 for safe fallback generation. It should not be declared fully complete against the strict hard-gate objective because L4/L5 runtime assertions and hands-free Claude process completion remain unresolved.

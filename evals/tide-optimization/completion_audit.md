@@ -21,7 +21,7 @@ PR: https://github.com/koco-co/tide/pull/1
 | Each interface has L1+L2+L3 assertions | `tide_generated_metadata_test.py` and `tide_generated_assets_test.py` include L1/L2/L3 sections for all 28 generated tests. | PASS |
 | Write operations include L4 assertions | Scenario plans contain `L4: null`; generated tests do not include runtime L4 checks. | FAIL |
 | Linkage scenarios include L5 assertions | Scenario plans contain `L5: null`; generated tests do not include runtime L5 checks. | FAIL |
-| Class granularity matches project rule: one TestClass per endpoint | Iter 18 output has grouped generated classes, not one class per endpoint. | FAIL |
+| Class granularity matches project rule: one TestClass per endpoint | Iter 19 regenerated fallback output has 28 `Test*` classes for 28 tests; see `iter_19/class_granularity.txt`. | PASS for fallback; not fresh Claude-run verified |
 | Progress feedback / session log | `iter18d-session.log` is empty and Claude CLI required manual termination. | FAIL |
 | Summary report per iteration | `iter_18/quality_gate.md`, `iter_18/score.md`, and `iter_18/blockers.md`. | PASS |
 | Final report and recommendation | `final_report.md`, `recommendation.md`. | PASS after this audit |
@@ -31,11 +31,10 @@ PR: https://github.com/koco-co/tide/pull/1
 
 Do not mark the active goal complete.
 
-Iter 18 reaches a scored 90/100 for guarded fallback generation and passes the practical collect/format/pytest/write-scope gates. It does not satisfy the user's stricter hard gates for L4/L5 runtime assertions, per-endpoint TestClass granularity, and hands-free Claude CLI completion.
+Iter 19 reaches a scored 90.55/100 for guarded fallback generation and passes the practical collect/format/pytest/write-scope gates. It does not satisfy the user's stricter hard gates for L4/L5 runtime assertions and hands-free Claude CLI completion.
 
 ## Next Required Work
 
 1. Make scenario generation produce real write/linkage scenarios with non-null L4/L5 plans.
 2. Generate project-native tests that wire those L4/L5 plans to existing target fixtures/services.
-3. Change deterministic fallback to one TestClass per endpoint or update the accepted class-granularity rule.
-4. Fix the Claude CLI non-termination path so the user flow completes without manual kill.
+3. Fix the Claude CLI non-termination path so the user flow completes without manual kill.
