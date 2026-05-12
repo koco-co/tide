@@ -16,17 +16,15 @@
 
 Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/koco-co/tide/pull/1
 
-## 结论: Conditional Yes ✅ (Iter7 已达目标)
+## 结论: Conditional / Hold
 
-**Tide v1.3.0 (Iter7 验证后)** — 总分 **92.95/100**，7 轮迭代从基线 72 提升至 **≥90**，满足推广条件。
+**Tide v1.3.0 (Iter9/Iter10 审计后)** — 暂不建议推广。Iter7 的 **92.95/100** 只能作为历史局部验证记录，不能作为硬性质量门全过的结论；Iter9 发现 FC11 漏检字符串数字业务 ID，Iter10 fresh run 准备阶段因目标仓清理和外部 Claude 运行缺少明确授权而阻塞。
 
-**核心依据:**
-- 总分: **92.95/100** ✅ — 超过 ≥90 目标
-- 代码生成质量: **92/100** ✅ — 动态 ID 查询、Allure 注解、param/boundary/error tests
-- 历史代码契合度: **93/100** ✅ — AssetsApi 枚举模式、MetaDataRequest、setup_method
-- 硬编码 ID: **0 处** ✅ — 全部动态发现 (`self.ds_id` / `_resolve_table_id_helper()`)
-- 零人工干预: **95/100** — `--yes --non-interactive` 全自动流水线
-- 无头模式: **36/36 pytest collect-only 通过** ✅
+**当前阻断依据:**
+- Iter9 audited score: **83.75/100**，未达 `>=90`。
+- Iter7 生成文件存在 `dataSourceId: "43"`、`dataSourceId: "99999999"`、`tableId: "99999999"` 等 FC11 违规，现有 checker 已能检出。
+- 全量目标项目 `pytest --collect-only` 当前失败，scoped collect 不能直接替代原始硬门。
+- Iter10 需要用户明确批准目标仓清理和 Claude Code 外部服务调用；证据见 `evals/tide-optimization/iter_10/blockers.md`。
 
 ## 推广前必做
 
@@ -119,10 +117,10 @@ rsync -av --exclude=".venv" --exclude=".git" --exclude="__pycache__" \
 
 | 维度 | 评分 | 说明 |
 |------|------|------|
-| 代码质量 | ★★★★★ **92%** | 动态 ID 查询、Allure 注释、param/boundary/error |
-| 自动化程度 | ★★★★★ **94%** | --yes --non-interactive 全自动，无需交互 |
+| 代码质量 | ★★★★☆ **84%** | Iter9 审计发现字符串数字业务 ID 漏检，validator 已修复但未 fresh run 验证 |
+| 自动化程度 | ★★★★☆ **80%** | Claude fresh run 需要外部服务和目标仓写入审批 |
 | 可维护性 | ★★★★☆ **80%** | 需定期 rsync 插件缓存 |
-| 用户友好 | ★★★★★ **92%** | 一句"HAR在trash下"得36个测试 |
+| 用户友好 | ★★★★☆ **86%** | 历史上可一句话生成，但当前授权/清理流程仍有摩擦 |
 | 稳定度 | ★★★☆☆ **65%** | 模型依赖 + SM2 ARM64 环境兼容 |
 
 ## 证据链
