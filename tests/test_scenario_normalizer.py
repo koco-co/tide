@@ -34,7 +34,6 @@ def test_normalize_scenario_artifacts_repairs_duplicate_ids_and_plan(tmp_path: P
                 {
                     "scenario_id": "syncTask_pageTask_boundary",
                     "endpoint": {"method": "POST", "path": "/dmetadata/v1/syncTask/pageTask"},
-                    "type": "boundary",
                 },
             ]
         }),
@@ -66,6 +65,8 @@ def test_normalize_scenario_artifacts_repairs_duplicate_ids_and_plan(tmp_path: P
     assert [item["endpoint_id"] for item in updated_scenarios["scenarios"]] == ["ep1", "ep1"]
     assert [item["confidence"] for item in updated_scenarios["scenarios"]] == ["high", "medium"]
     assert "confidence_reason" in updated_scenarios["scenarios"][1]
+    assert [item["type"] for item in updated_scenarios["scenarios"]] == ["har_direct", "har_direct"]
+    assert "type_reason" in updated_scenarios["scenarios"][1]
     assert updated_plan["workers"][0]["scenario_ids"] == [
         "syncTask_pageTask_boundary",
         "syncTask_pageTask_boundary_2",

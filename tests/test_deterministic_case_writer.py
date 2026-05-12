@@ -45,16 +45,16 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
         json.dumps({
             "scenarios": [
                 {
-                    "scenario_id": "sync_task_har_direct",
-                    "endpoint_id": "ep1",
-                    "type": "har_direct",
-                    "confidence": "high",
-                    "assertion_plan": {
-                        "L1": {"expected_status": 200},
-                        "L2": {"required_fields": ["pageNow", "pageSize", "total", "data"]},
-                        "L3": [{"field": "code", "expected": 1}],
+                        "scenario_id": "sync_task_har_direct",
+                        "endpoint_id": "ep1",
+                        "type": "har_direct",
+                        "confidence": "high",
+                        "assertion_plan": {
+                            "L1": {"expected_status": 200},
+                            "L2": {"required_fields": ["pageNow", "pageSize", "total", "data", "success"]},
+                            "L3": [{"field": "code", "expected": 1}],
+                        },
                     },
-                },
                 {
                     "scenario_id": "sync_task_write_boundary",
                     "endpoint_id": "ep1",
@@ -111,6 +111,7 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     assert "webhook" not in output.lower()
     assert "12695" not in output
     assert "dataSourceId" not in output
+    assert "body_keys" in output
     assert (tmp_path / ".tide/artifact-manifest.json").exists()
     assert not any(violation.rule.id == "FC11" for violation in check_file(str(generated[0])))
 

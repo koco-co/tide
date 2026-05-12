@@ -10,6 +10,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+if str(PLUGIN_ROOT) not in sys.path:
+    sys.path.insert(0, str(PLUGIN_ROOT))
+
+from scripts.write_scope_guard import snapshot_write_scope
+
 
 _HAR_MARKERS = ("har", ".har", "HAR")
 _GENERATION_MARKERS = ("生成", "接口测试", "pytest", "测试", "generate")
@@ -46,6 +52,19 @@ def _decision_for_path(file_path: str, cwd: str) -> WriteScopeDecision:
         return WriteScopeDecision(
             allowed=False,
             reason=f"Tide write-scope violation: {rel_path.as_posix()} is outside .tide/ and testcases/",
+        )
+
+    if (
+        top_level == "testcases"
+        and rel_path.name.startswith("tide_generated")
+        and rel_path.suffix == ".py"
+    ):
+        return WriteScopeDecision(
+            allowed=False,
+            reason=(
+                "Tide write-scope violation: direct Claude writes to "
+                f"{rel_path.as_posix()} are blocked; run scripts.deterministic_case_writer instead."
+            ),
         )
 
     return WriteScopeDecision(allowed=True)
@@ -122,12 +141,27 @@ def build_user_prompt_context(prompt: str) -> str | None:
         "Tide hook detected a HAR-to-interface-test generation request. "
         "Use the Claude Code SlashCommand tool to invoke `/tide:tide` for this request; "
         "in plugin CLI/non-interactive contexts the reliable command form is "
-        "`/tide:tide <har-file-or-directory> --yes --non-interactive`. "
+        "`/tide:tide <har-file-or-directory> --quick --yes --non-interactive`. "
         "不要自由生成测试文件；必须执行 Tide workflow，先创建 `.tide/run-context.json` 和 "
         "`.tide/write-scope-snapshot.json`，再解析 HAR、生成场景、写测试、运行校验。"
+        "一旦 `.tide/scenarios.json` 和 `.tide/generation-plan.json` 存在，必须先运行 "
+        "`scripts.scenario_normalizer`、`scripts.scenario_validator` 和 "
+        "`scripts.deterministic_case_writer`，确保预算耗尽前已有可 collect 的 pytest 文件；"
+        "之后如仍有预算再做项目原生增强。"
         "Target writes are limited to `.tide/` and `testcases/`; do not modify "
         "`api/`, `dao/`, `utils/`, `config/`, `testdata/`, or `resource/`."
     )
+
+
+def ensure_write_scope_snapshot(cwd: str) -> bool:
+    """Create the Tide forbidden-path snapshot before Claude can write target files."""
+
+    project_root = Path(cwd).expanduser().resolve()
+    snapshot_path = project_root / ".tide" / "write-scope-snapshot.json"
+    if snapshot_path.exists():
+        return False
+    snapshot_write_scope(project_root, snapshot_path)
+    return True
 
 
 def evaluate_write_scope(tool_input: dict[str, Any], cwd: str) -> WriteScopeDecision:
@@ -172,6 +206,8 @@ def user_prompt_submit() -> int:
     payload = _read_stdin_json()
     context = build_user_prompt_context(str(payload.get("prompt", "")))
     if context:
+        cwd = str(payload.get("cwd") or Path.cwd())
+        ensure_write_scope_snapshot(cwd)
         _emit({
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",

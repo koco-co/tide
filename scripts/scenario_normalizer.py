@@ -52,6 +52,16 @@ def _ensure_confidence(scenario: dict[str, Any]) -> None:
     )
 
 
+def _ensure_type(scenario: dict[str, Any]) -> None:
+    if scenario.get("type"):
+        return
+    scenario["type"] = "har_direct"
+    scenario.setdefault(
+        "type_reason",
+        "Deterministic fallback assigned har_direct because source scenario omitted type.",
+    )
+
+
 def _rewrite_duplicate_ids(scenarios: list[dict[str, Any]]) -> tuple[dict[str, deque[str]], dict[str, list[str]]]:
     seen: defaultdict[str, int] = defaultdict(int)
     replacement_queues: dict[str, deque[str]] = defaultdict(deque)
@@ -106,6 +116,7 @@ def normalize_scenario_artifacts(
         if isinstance(scenario, dict):
             _attach_endpoint_id(scenario, lookup)
             _ensure_confidence(scenario)
+            _ensure_type(scenario)
 
     replacement_queues, renamed = _rewrite_duplicate_ids(scenarios)
     _rewrite_generation_plan(plan, replacement_queues)

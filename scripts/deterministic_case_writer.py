@@ -81,6 +81,7 @@ def _response_contract(endpoint: dict[str, Any]) -> dict[str, Any]:
         body = {}
 
     body_contract: dict[str, Any] = {}
+    body_contract["body_keys"] = _public_keys(body)
     if isinstance(body.get("code"), int):
         body_contract["code"] = body["code"]
     if isinstance(body.get("success"), bool):
@@ -162,6 +163,7 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 
     if required_fields:
         lines.append("        available_fields = set(body)")
+        lines.append("        available_fields.update(body.get(\"body_keys\", []))")
         lines.append("        available_fields.update(body.get(\"data_keys\", []))")
         lines.append("        available_fields.update(body.get(\"data_item_keys\", []))")
         lines.append(f"        for field in {required_fields!r}:")
