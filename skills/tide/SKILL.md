@@ -296,13 +296,18 @@ Task 3 → in_progress
    读取 `.tide/scenarios.json` 与 `.tide/generation-plan.json` 后，必须执行：
 
    ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.scenario_normalizer \
+     --parsed "$PROJECT_ROOT/.tide/parsed.json" \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
+
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.scenario_validator \
      --parsed "$PROJECT_ROOT/.tide/parsed.json" \
      --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
      --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
    ```
 
-   若校验失败，返回 scenario-analyzer 修复一次；第二次仍失败则停止并写入 `.tide/final-report.md`。
+   若 normalizer 仍无法消除重复 `scenario_id` 或补齐 generation-plan 引用，返回 scenario-analyzer 修复一次；第二次仍失败则停止并写入 `.tide/final-report.md`。
    **不得跳过此校验**：缺失 `.tide/scenarios.json`、重复 `scenario_id`、或 `confidence>=medium` 比例低于 60% 都是阻断错误，不能继续生成代码。
 4. 若非 `--quick`，展示确认清单供用户确认
 
@@ -331,15 +336,25 @@ Task 4 → in_progress
    - **`test_granularity`**（新增）— 测试粒度
    - **`business_context`**（新增）— 业务场景描述
    - 按需加载的 code-style-python prompt 模块（来自 fingerprint 组装）
-5. 全部完成后立刻校验目标写范围：
+5. **确定性 fallback（无头/非交互必跑）**：
+   若 case-writer 在预算内没有产出任何 `testcases/**/*.py`，或 `.tide/scenarios.json` 已存在但还没有可 collect 的生成测试文件，必须立即运行：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.deterministic_case_writer \
+     --project-root "$PROJECT_ROOT" \
+     --parsed "$PROJECT_ROOT/.tide/parsed.json" \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
+   ```
+   fallback 只允许写 `testcases/` 和 `.tide/artifact-manifest.json`，不得改 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/`。
+6. 全部完成后立刻校验目标写范围：
    ```bash
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
      --project-root "$PROJECT_ROOT" \
      --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
    ```
    若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
-6. 对每个生成文件执行 py_compile + AST 检查
-7. **格式检查**（新增）：对所有生成文件执行 format_checker：
+7. 对每个生成文件执行 py_compile + AST 检查
+8. **格式检查**（新增）：对所有生成文件执行 format_checker：
    ```bash
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
    ```

@@ -39,3 +39,12 @@ def test_claude_plugin_docs_include_namespaced_tide_command() -> None:
 
     assert "/tide:tide" in skill_text
     assert "/tide:tide" in command_text
+
+
+def test_claude_plugin_docs_include_deterministic_fallback_steps() -> None:
+    skill_text = SKILL.read_text(encoding="utf-8")
+    command_text = COMMAND.read_text(encoding="utf-8")
+
+    for text in (skill_text, command_text):
+        assert "scripts.scenario_normalizer" in text
+        assert "scripts.deterministic_case_writer" in text
