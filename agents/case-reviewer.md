@@ -254,6 +254,23 @@ def classify_failure(test_result):
 
 ### `.tide/execution-report.json`
 
+必须由最终一次 pytest 输出生成或重写，禁止沿用中间执行结果。最终 narrow generated-test pytest 命令完成后，执行：
+
+```bash
+set +e
+"${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+PYTEST_RC=$?
+set -e
+PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
+  --report "$PROJECT_ROOT/.tide/execution-report.json" \
+  --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
+  --return-code "$PYTEST_RC" \
+  --total-tests <collect-only 收集到的生成测试数> \
+  --command "${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q
+```
+
+若此前已经写过 `.tide/execution-report.json`，必须覆盖为最终 pytest 结果。用户可见总结必须与该 JSON 的 `passed/failed/errors/total_tests` 一致。
+
 ```json
 {
   "generated_at": "<ISO 时间戳>",

@@ -302,6 +302,7 @@ Task 3 → in_progress
    ```
 
    若校验失败，返回 scenario-analyzer 修复一次；第二次仍失败则停止并写入 `.tide/final-report.md`。
+   **不得跳过此校验**：缺失 `.tide/scenarios.json`、重复 `scenario_id`、或 `confidence>=medium` 比例低于 60% 都是阻断错误，不能继续生成代码。
 4. 若非 `--quick`，展示确认清单供用户确认
 
 **[Hook]** 若配置了 hook，执行 `uv run python3 scripts/hooks.py run wave2:analyze:after`
@@ -349,7 +350,23 @@ Task 5 → in_progress
      - `ENV_ISSUE` — 环境问题（服务不可用、数据不存在）→ 标记为环境问题，调整预期
      - `BUSINESS_BUG` — 业务 bug（code≠1 但非参数问题）→ 标记为疑似缺陷
    - **等待 case-reviewer 全部完成再继续下一步**
-2. 读取 `.tide/execution-report.json`，向用户报告执行结果：
+2. 用最终 pytest 输出重写 `.tide/execution-report.json`，确保报告与最后一次实际执行一致：
+
+   ```bash
+   set +e
+   "${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+   PYTEST_RC=$?
+   set -e
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
+     --report "$PROJECT_ROOT/.tide/execution-report.json" \
+     --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
+     --return-code "$PYTEST_RC" \
+     --total-tests <collect-only 收集到的生成测试数> \
+     --command "${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q
+   ```
+
+   若 `.tide/execution-report.json` 中的 `passed/failed/errors/total_tests` 与最终 pytest 输出不一致，必须以此命令重写后的 JSON 为准。
+3. 读取 `.tide/execution-report.json`，向用户报告执行结果：
 
    ```
    测试执行完成
@@ -360,7 +377,7 @@ Task 5 → in_progress
    - 修复轮数：1
    ```
 
-3. 生成验收报告
+4. 生成验收报告
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run wave4:review:after` 和 `uv run python3 scripts/hooks.py run output:notify`
 

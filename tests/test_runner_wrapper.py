@@ -1,8 +1,17 @@
 """Tests for test runner wrapper — TDD (write first, implement second)."""
+import json
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from scripts.test_runner import build_pytest_command, parse_pytest_output, run_tests
+from scripts.test_runner import (
+    TestResult as PytestRunResult,
+    build_pytest_command,
+    parse_pytest_output,
+    run_tests,
+    write_execution_report,
+)
 
 
 class TestBuildCommand:
@@ -70,3 +79,68 @@ class TestRunTests:
 
         assert result.passed == 5
         assert result.success is True
+
+
+class TestWriteExecutionReport:
+    def test_overwrites_stale_counts_with_final_pytest_result(self, tmp_path: Path) -> None:
+        report_path = tmp_path / "execution-report.json"
+        report_path.write_text('{"passed": 17, "failed": 10}')
+
+        result = PytestRunResult(
+            passed=27,
+            failed=0,
+            skipped=0,
+            errors=0,
+            success=True,
+            output="================ 27 passed in 71.45s ================",
+        )
+        write_execution_report(
+            report_path,
+            result,
+            total_tests=27,
+            command=["python", "-m", "pytest", "tests/generated"],
+        )
+
+        doc = json.loads(report_path.read_text())
+        assert doc["overall_status"] == "PASS"
+        assert doc["total_tests"] == 27
+        assert doc["passed"] == 27
+        assert doc["failed"] == 0
+        assert doc["errors"] == 0
+        assert doc["command"] == ["python", "-m", "pytest", "tests/generated"]
+
+    def test_cli_accepts_pytest_command_with_dash_args(self, tmp_path: Path) -> None:
+        report_path = tmp_path / "execution-report.json"
+        output_path = tmp_path / "pytest-output.txt"
+        output_path.write_text("================ 2 passed in 1.00s ================")
+
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "scripts.test_runner",
+                "report",
+                "--report",
+                str(report_path),
+                "--output-file",
+                str(output_path),
+                "--return-code",
+                "0",
+                "--total-tests",
+                "2",
+                "--command",
+                "python",
+                "-m",
+                "pytest",
+                "tests/generated",
+                "-q",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert proc.returncode == 0, proc.stderr
+        doc = json.loads(report_path.read_text())
+        assert doc["passed"] == 2
+        assert doc["command"] == ["python", "-m", "pytest", "tests/generated", "-q"]

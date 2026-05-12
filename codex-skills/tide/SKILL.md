@@ -115,7 +115,8 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
      --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
      --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
    ```
-4. If validation fails, repair once using the same analyzer prompt. If it still fails, stop and write `.tide/final-report.md`.
+4. Do not skip this validation. Missing `.tide/scenarios.json`, duplicate `scenario_id`, or a `confidence>=medium` ratio below 60% is a blocking error.
+5. If validation fails, repair once using the same analyzer prompt. If it still fails, stop and write `.tide/final-report.md`.
 
 ### 3. Generate Test Code
 
@@ -138,4 +139,17 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
 3. Run the narrow generated test scope first, then broaden only when useful.
 4. Classify failures as test defect, environment issue, or suspected business defect.
 5. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
-6. Summarize generated files, validation results, commands run, and remaining manual actions.
+6. After the final narrow pytest run, rewrite `.tide/execution-report.json` from the final pytest output so it cannot contain stale intermediate counts:
+   ```bash
+   set +e
+   "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+   PYTEST_RC=$?
+   set -e
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
+     --report "$PROJECT_ROOT/.tide/execution-report.json" \
+     --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
+     --return-code "$PYTEST_RC" \
+     --total-tests <collect-only generated test count> \
+     --command "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q
+   ```
+7. Summarize generated files, validation results, commands run, and remaining manual actions.
