@@ -63,7 +63,12 @@ model: opus
 ## 阶段二：场景生成
 
 根据主管（orchestrator）在任务 prompt 中传递的上下文动态调整行为：
-- 若上下文包含 `no_source_mode = true`：跳过阶段一（源代码追踪），所有场景标记 confidence: 'low'
+- 若上下文包含 `no_source_mode = true`：跳过阶段一（源代码追踪）。基于场景特征估算置信度：
+  - **e2e_chain** 类型且 steps >= 5 → confidence: 'medium'（多步链路表示业务场景完整）
+  - 写操作端点（POST/PUT/DELETE 且有请求体）→ confidence: 'medium'
+  - **har_direct** 单接口回放 → confidence: 'low'
+  - **param_validation / boundary** → confidence: 'low'
+  - 估算依据记录在场景对象的 `confidence_reason` 字段（如 `"e2e chain with 12 steps"`）
 - 若上下文包含 `test_types`：仅生成 test_types 中指定的类型
 - 若上下文包含 `industry_mode = true`：同时读取 prompts/industry-assertions.md，为写入类接口追加行业特有场景
 - **若上下文包含 `test_granularity`**（新增）：
@@ -99,6 +104,8 @@ model: opus
 - `endpoint`：method + path
 - `type`：上表中的场景类型
 - `description`：一句话的人类可读描述
+- `confidence`：`high | medium | low`。有源码证据时按证据质量评估；`no_source_mode=true` 时按场景特征启发式评估
+- `confidence_reason`：置信度依据，例如 `"source evidence from UserService.java:38"` 或 `"e2e chain with 12 steps"`
 - `source_evidence`：追踪所得的 file:line 引用
 - `setup_steps`：所需前置 API 调用列表（含轮询逻辑）
 - `teardown_steps`：所需清理 API 调用列表
@@ -150,9 +157,17 @@ model: opus
   - `code == 1` 表示业务成功（统一响应格式）
   - `success == True` 表示操作成功字段
 - **L4**：从源码 DAO/Mapper 层提取 `tables_touched`；若无源码访问，从响应体推断断言
+  - **no_source_mode 下的 L4 启发式**：若端点是写操作（POST/PUT/DELETE）且 request_body 非空，自动规划 L4 断言
+  - L4 内容：请求执行后，通过相关查询端点验证写操作生效（如创建后查询详情、更新后对比字段）
 - **L5**：从源码提取副作用证据；若无则将数组置空
+  - **no_source_mode 下的 L5 启发式**：若场景类型为 e2e_chain 且 steps >= 2，对链式端点间的数据传递规划 L5 断言
+  - L5 内容：前一步骤的响应字段被后一步骤正确使用（如前一创建的 taskId 在后一查询中出现）
 
-仅包含适用的层级。若未找到数据库/副作用证据，则省略 L4/L5。
+**no_source_mode 下 L4/L5 激活条件**：
+- L4：端点 method 为 POST/PUT/DELETE 且 request_body 非空
+- L5：场景类型为 e2e_chain 且步骤间有 depends_on 依赖关系
+
+仅包含适用的层级。若非 no_source_mode 且未找到数据库/副作用证据，则省略 L4/L5。
 
 **参数校验/异常断言的具象值**：
 从阶段一提取的 `concrete_boundaries` 和 `exception_params` 填充：

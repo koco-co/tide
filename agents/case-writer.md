@@ -17,10 +17,12 @@ model: sonnet
 同时读取：
 - `.tide/scenarios.json` — 完整场景详情与断言计划（含 `steps`、`async_info` 等新字段）
 - **`.tide/project-assets.json`（新增）** — 项目已有 Service/Request 工具类清单，**必须优先使用这些已有封装而非从零实现**
+- `.tide/convention-fingerprint.yaml`（若存在）— 项目规范指纹，优先读取其中的 `test_style.naming_convention_type` 和 `test_style.naming_class_pattern`
 - 每个已分配场景的 `source_evidence` 所引用的源代码文件
 - `prompts/assertion-layers.md` — 层级定义与断言模式
 - `prompts/code-style-python/00-core.md`（以及根据 convention-fingerprint.yaml 条件加载的其他模块）— 强制性代码风格与结构规范
 - `tests/conftest.py` — 可用的 fixture（不得重新定义，直接使用）
+- 任务 prompt 中可能传入 `no_source_mode=true`，表示不能依赖源码追踪，只能基于 HAR、项目资产和已有测试风格生成
 
 ### 项目资产复用规则（新增，重要）
 
@@ -137,7 +139,14 @@ class TestFeatureName:
 ## 命名规范
 
 - 文件：`test_{module}.py`（由 `output_file` 派生）
-- 类：`Test{Module}{Feature}` — 大驼峰命名，例如：`TestUserServiceCrud`
+- **类命名规范（自适应）**：
+  1. 生成代码前，读取项目已有测试文件中与当前输出文件同目录的 1-3 个 `.py` 文件（排除 `conftest.py` 和 `__init__.py`）
+  2. 优先读取 `.tide/convention-fingerprint.yaml` 的 `test_style.naming_convention_type` 与 `test_style.naming_class_pattern`
+  3. 从已有文件中提取所有以 `Test` 开头的类名，检测命名模式：
+     - `Test_xxx_xxx` → snake_case（如 `Test_metadata_sync_template`）
+     - `TestXxxXxx` → PascalCase（如 `TestMetadataSyncTemplate`）
+  4. 以 fingerprint 或已有文件中发现的模式为准生成测试类名；若都未发现，回退到 PascalCase 默认
+  5. 类名逻辑：`Test{Module}_{Feature}`（snake_case 模式时用下划线分隔），`Test{Module}{Feature}`（PascalCase 模式时使用大驼峰）
 - 方法：`test_{feature}_{scenario}` — 下划线命名，例如：`test_create_user_missing_email`
 - Pydantic 模型：`{Resource}Response`、`{Resource}CreateRequest`
 
@@ -231,6 +240,28 @@ with allure.step("使用动态 tableId 查询"):
 1. 项目已有方法（如 `DatasourceService.get_datasource_id_by_name()`）— 优先复用
 2. 通用查询 API（如 `dataSource/pageQuery` 按名称搜索）
 3. 仅在所有方法都不可用时，使用 `0` 作为 fallback（需注释 `# fallback: 动态查询不可用`）
+
+### no_source_mode 下的动态 ID 回退
+
+当 `no_source_mode = true` 时，无法通过源码追踪找到查询方法。改用以下策略：
+
+1. **从 HAR 中识别查询型端点**：扫描 `.tide/parsed.json` 中符合以下任一条件的端点：
+   - GET 方法
+   - POST 方法且 path 包含 `list`、`query`、`page`、`search`、`get`、`find` 关键词
+2. **在测试类中自动生成 `_get_xxx_id()` 辅助方法**。例如：
+   ```python
+   def _get_project_id(self) -> int:
+       """从 HAR 查询端点获取有效的 projectId"""
+       resp = self.req.post(BatchApi.list_projects.value, "查询项目列表", json={"page": 1, "size": 20})
+       assert resp.get("code") == 1, "查询项目列表失败"
+       project_list = resp.get("data", {}).get("data", [])
+       assert len(project_list) > 0, "无可用项目"
+       return int(project_list[0].get("id", 0))
+   ```
+3. **对每个硬编码风险字段**（projectId, taskId, sourceId, tableId 等 `xxxId` 模式），检查 HAR 中是否有对应查询端点；若有则生成辅助方法替换硬编码值
+4. **若无任何查询端点可用**，维持 HAR 原始值但添加注释 `# no_source_mode: 无查询端点可用，使用 HAR 原始值`
+
+无源码模式下的优先级仍是：项目已有方法 > HAR 查询端点辅助方法 > 带注释的 HAR 原始值。
 
 ## Setup/Teardown 模式
 

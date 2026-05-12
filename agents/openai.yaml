@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tide"
+  short_description: "HAR-driven pytest API test generation"
+  default_prompt: "Use $tide to generate pytest API tests from a HAR recording, or $using-tide to initialize this automation project."
