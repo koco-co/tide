@@ -62,7 +62,10 @@ git diff --name-only <last_commit>..HEAD
 
 3. **断言风格**：从测试文件中提取前 5 个 `assert` 语句，记录原始模式
 
-4. **命名规范**：检查测试类和方法的命名模式
+4. **命名规范**：读取 2-3 个测试文件的类定义，检测：
+   - 类名是否以 `Test` 开头
+   - 采用 snake_case 还是 PascalCase（如 `Test_metadata_sync_template` vs `TestMetadataSync`）
+   - 方法名命名模式
 
 输出格式：
 ```json
@@ -73,9 +76,15 @@ git diff --name-only <last_commit>..HEAD
   "request_class_path": "utils/common/BaseRequests.py",
   "assertion_style": "resp['code'] == 1",
   "assertion_examples": ["assert resp['code'] == 1", "assert resp['success'] is True"],
-  "naming_convention": "test_{module}_{feature}"
+  "naming_convention": "Test_{module}_{feature}",
+  "naming_convention_type": "snake_case"
 }
 ```
+
+`naming_convention_type` 只能取：
+- `snake_case`：类名形如 `Test_metadata_sync_template`
+- `pascal_case`：类名形如 `TestMetadataSyncTemplate`
+- `unknown`：样本不足或没有测试类
 
 ### 维度 3：鉴权方式
 
@@ -183,7 +192,16 @@ git diff --name-only <last_commit>..HEAD
   "project_root": "<路径>",
   "dimensions": {
     "architecture": { ... },
-    "code_style": { ... },
+    "code_style": {
+      "api_pattern": "enum",
+      "api_pattern_path": "api/xxx/xxx_api.py",
+      "request_class": "BaseRequests",
+      "request_class_path": "utils/common/BaseRequests.py",
+      "assertion_style": "resp['code'] == 1",
+      "assertion_examples": ["assert resp['code'] == 1", "assert resp['success'] is True"],
+      "naming_convention_type": "snake_case",
+      "naming_convention": "Test_{module}_{feature}"
+    },
     "auth": { ... },
     "toolchain": { ... },
     "allure": { ... },
@@ -220,6 +238,14 @@ git diff --name-only <last_commit>..HEAD
 写入 `.tide/convention-fingerprint.yaml`，格式参见 `prompts/code-style-python/00-core.md`。
 
 同时更新 `tide-config.yaml` 的 `project.code_style` 段，写入 key 字段供下游 Agent 使用。
+
+`convention-fingerprint.yaml` 的 `test_style` 段必须包含命名规范：
+
+```yaml
+test_style:
+  naming_convention_type: snake_case  # 或 pascal_case / unknown
+  naming_class_pattern: "Test_{module}_{feature}"  # PascalCase 时为 "Test{Module}{Feature}"
+```
 
 ## 错误处理
 

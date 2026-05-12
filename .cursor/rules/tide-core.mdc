@@ -1,0 +1,53 @@
+---
+description: Tide HAR-driven pytest generation workflow
+alwaysApply: false
+---
+
+# Tide HAR to Pytest Workflow
+
+Use this rule when the user asks Cursor to generate API automation tests from a HAR recording with Tide, especially for prompts like `tide <har-file>`, `generate tests from this HAR`, or `从 HAR 生成接口自动化用例`.
+
+## Runtime Boundaries
+
+- Treat the current workspace as `PROJECT_ROOT="$(pwd -P)"`.
+- Set `TIDE_PLUGIN_DIR` to the Tide repository root, the directory containing `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `scripts/`, `agents/`, and `prompts/`.
+- Run deterministic Tide scripts with `PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH"`.
+- Keep generated state under `$PROJECT_ROOT/.tide/`.
+- Do not rewrite existing pytest configuration, runners, fixtures, or API clients unless the user explicitly approves the reason and scope.
+- Preserve existing uncommitted files. Never revert unrelated changes.
+- Do not assume background or parallel agent support in Cursor; run the workflow locally and sequentially unless the user explicitly requests a different orchestration style.
+
+## Required Inputs
+
+- A HAR file path, or an existing `.tide/run-context.json` when resuming.
+- `repo-profiles.yaml` and `tide-config.yaml` when source-aware generation is enabled.
+- If no backend repository is configured, use no-source mode and rely on HAR evidence plus target-project conventions.
+
+## Workflow
+
+1. Resolve arguments and write `.tide/run-context.json` with `scripts.run_context`.
+2. Snapshot and parse the HAR:
+   ```bash
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.har_inputs "$HAR_PATH" --project-root "$PROJECT_ROOT"
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.har_parser "$PROJECT_ROOT/.tide/har-snapshot.har" --profiles "$PROJECT_ROOT/repo-profiles.yaml" --output "$PROJECT_ROOT/.tide/parsed.json"
+   ```
+3. Sync source repositories with `scripts.repo_sync` only when configured.
+4. Read `agents/scenario-analyzer.md`, `prompts/scenario-enrich.md`, and `prompts/assertion-layers.md`; generate `.tide/scenarios.json` and `.tide/generation-plan.json`.
+5. Validate scenarios before writing tests:
+   ```bash
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.scenario_validator \
+     --parsed "$PROJECT_ROOT/.tide/parsed.json" \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
+   ```
+6. Read `agents/case-writer.md` plus selected files from `prompts/code-style-python/`; generate pytest files from `.tide/generation-plan.json`.
+7. Run `py_compile` and `scripts.format_checker` on generated files.
+8. Read `agents/case-reviewer.md` and `prompts/review-checklist.md`; review, run collect-only, then run the narrow generated test scope.
+9. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
+10. Summarize generated files, validation commands, test results, and any environment or business failures.
+
+## Generation Preferences
+
+- Reuse project services, request wrappers, auth fixtures, Allure style, naming style, and runner conventions detected in `.tide/convention-fingerprint.yaml`.
+- Prefer dynamic ID lookup helpers over hardcoded business IDs when query endpoints or existing service utilities exist.
+- In no-source mode, mark inferred assertions with appropriate confidence and include `confidence_reason`.

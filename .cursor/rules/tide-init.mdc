@@ -1,0 +1,46 @@
+---
+description: Tide initialization workflow
+alwaysApply: false
+---
+
+# Tide Initialization Workflow
+
+Use this rule when the user asks Cursor to initialize Tide in an API automation project, especially for prompts like `using-tide`, `initialize tide`, or `初始化 Tide`.
+
+## Runtime Boundaries
+
+- Treat the current workspace as `PROJECT_ROOT="$(pwd -P)"`.
+- Set `TIDE_PLUGIN_DIR` to the Tide repository root, the directory containing `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `scripts/`, `agents/`, and `prompts/`.
+- Run deterministic Tide scripts with `PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH"`.
+- Keep Tide state and generated analysis under `$PROJECT_ROOT/.tide/`.
+- Preserve existing automation conventions and configuration unless the user explicitly approves a change.
+- Do not assume background or parallel agent support in Cursor; perform initialization locally and sequentially.
+
+## Workflow
+
+1. Check Python 3.12+, `uv`, and `git`.
+2. Classify the current project:
+   - `existing_auto`: at least three test files plus either `conftest.py` or pytest config.
+   - `new_project`: otherwise.
+3. For existing automation projects:
+   - Run `scripts.convention_scanner`:
+     ```bash
+     PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 "$TIDE_PLUGIN_DIR/scripts/convention_scanner.py" --project-root "$PROJECT_ROOT"
+     ```
+   - Read `agents/project-scanner.md`.
+   - Produce `.tide/project-profile.json` and `.tide/convention-fingerprint.yaml`.
+   - Confirm architecture, API wrapper style, HTTP client, auth flow, assertion style, environment config, runner strategy, and reusable service utilities.
+4. For new projects:
+   - Collect domain, system type, team size, compliance constraints, auth complexity, and reporting preference.
+   - Use `agents/industry-researcher.md` only when fresh web research is needed.
+   - Recommend two or three pytest stack options before scaffolding.
+5. Configure `repo-profiles.yaml` for backend source repositories under `.tide/repos/` when source-aware analysis is desired.
+6. Configure `tide-config.yaml`, `.env`, base URL, auth mode, optional database settings, and optional notification hooks.
+7. Run `scripts.scaffold` in the chosen mode.
+8. Validate generated config and report the next command: `tide <har-file>`.
+
+## Initialization Preferences
+
+- Keep secrets in `.env` or external secret storage, never in generated tests.
+- Prefer existing project names, directories, fixtures, and runner scripts over Tide defaults.
+- For complex existing projects, record custom runner commands and module-level run entries in `tide-config.yaml`.
