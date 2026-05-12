@@ -42,6 +42,16 @@ def _attach_endpoint_id(scenario: dict[str, Any], lookup: dict[tuple[str, str], 
         scenario["endpoint_id"] = endpoint_id
 
 
+def _ensure_confidence(scenario: dict[str, Any]) -> None:
+    if scenario.get("confidence") in {"low", "medium", "high"}:
+        return
+    scenario["confidence"] = "medium"
+    scenario.setdefault(
+        "confidence_reason",
+        "Deterministic fallback assigned medium confidence because source scenario omitted confidence.",
+    )
+
+
 def _rewrite_duplicate_ids(scenarios: list[dict[str, Any]]) -> tuple[dict[str, deque[str]], dict[str, list[str]]]:
     seen: defaultdict[str, int] = defaultdict(int)
     replacement_queues: dict[str, deque[str]] = defaultdict(deque)
@@ -95,6 +105,7 @@ def normalize_scenario_artifacts(
     for scenario in scenarios:
         if isinstance(scenario, dict):
             _attach_endpoint_id(scenario, lookup)
+            _ensure_confidence(scenario)
 
     replacement_queues, renamed = _rewrite_duplicate_ids(scenarios)
     _rewrite_generation_plan(plan, replacement_queues)

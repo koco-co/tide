@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import pprint
 import re
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,26 @@ from scripts.artifact_manifest import collect_artifact, write_manifest
 
 
 DEFAULT_OUTPUT = "testcases/scenariotest/assets/meta_data/tide_generated_metadata_test.py"
+_BUSINESS_ID_KEYS = frozenset({
+    "apiId",
+    "attributeId",
+    "catalogueId",
+    "clusterId",
+    "columnId",
+    "dataSourceId",
+    "dbId",
+    "dsId",
+    "engineId",
+    "id",
+    "metaId",
+    "projectId",
+    "roleId",
+    "sourceId",
+    "tableId",
+    "taskId",
+    "tenantId",
+    "userId",
+})
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -58,10 +79,41 @@ def _response_contract(endpoint: dict[str, Any]) -> dict[str, Any]:
     body = response.get("body")
     if not isinstance(body, dict):
         body = {}
+
+    body_contract: dict[str, Any] = {}
+    if isinstance(body.get("code"), int):
+        body_contract["code"] = body["code"]
+    if isinstance(body.get("success"), bool):
+        body_contract["success"] = body["success"]
+
+    data = body.get("data")
+    if isinstance(data, dict):
+        body_contract["data_keys"] = _public_keys(data)
+        nested_data = data.get("data")
+        if isinstance(nested_data, list):
+            body_contract["data_item_keys"] = _public_item_keys(nested_data)
+    elif isinstance(data, list):
+        body_contract["data_item_keys"] = _public_item_keys(data)
+
     return {
         "status_code": response.get("status", 200),
-        "body": body,
+        "body": body_contract,
     }
+
+
+def _is_business_id_key(key: str) -> bool:
+    return key in _BUSINESS_ID_KEYS or key.endswith(("Id", "Ids"))
+
+
+def _public_keys(value: dict[str, Any]) -> list[str]:
+    return sorted(str(key) for key in value if not _is_business_id_key(str(key)))
+
+
+def _public_item_keys(items: list[Any]) -> list[str]:
+    for item in items:
+        if isinstance(item, dict):
+            return _public_keys(item)
+    return []
 
 
 def _required_fields(assertion_plan: dict[str, Any]) -> list[str]:
@@ -70,7 +122,7 @@ def _required_fields(assertion_plan: dict[str, Any]) -> list[str]:
     if isinstance(l2, dict):
         for key, value in l2.items():
             if key.startswith("required_fields") and isinstance(value, list):
-                fields.extend(str(item) for item in value)
+                fields.extend(str(item) for item in value if not _is_business_id_key(str(item)))
     return sorted(set(fields))
 
 
@@ -92,29 +144,37 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 
     response_contract = _response_contract(endpoint)
     required_fields = _required_fields(assertion_plan)
+    response_literal = pprint.pformat(response_contract, sort_dicts=True, width=88)
+    response_lines = response_literal.splitlines()
 
     lines = [
         f"    def {method_name}(self):",
         f"        \"\"\"{scenario_id}\"\"\"",
-        f"        response = {response_contract!r}",
+        f"        response = {response_lines[0]}",
+    ]
+    lines.extend(f"        {line}" for line in response_lines[1:])
+    lines.extend([
         "        body = response.get(\"body\", {})",
         "        # L1: transport/status contract from HAR",
-        "        assert response[\"status_code\"] == 200",
+        f"        assert response[\"status_code\"] == {response_contract['status_code']!r}, \"L1 status contract changed\"",
         "        # L2: response schema contract",
-    ]
+    ])
 
     if required_fields:
+        lines.append("        available_fields = set(body)")
+        lines.append("        available_fields.update(body.get(\"data_keys\", []))")
+        lines.append("        available_fields.update(body.get(\"data_item_keys\", []))")
         lines.append(f"        for field in {required_fields!r}:")
-        lines.append("            assert field in body.get(\"data\", body)")
+        lines.append("            assert field in available_fields, f\"L2 missing response field: {field}\"")
     else:
-        lines.append("        assert isinstance(body, dict)")
+        lines.append("        assert isinstance(body, dict), \"L2 response body contract must be a dict\"")
 
     lines.extend([
         "        # L3: business success contract",
         "        if \"code\" in body:",
-        "            assert body[\"code\"] == 1",
+        "            assert body[\"code\"] == 1, \"L3 business code contract changed\"",
         "        if \"success\" in body:",
-        "            assert body[\"success\"] is True",
+        "            assert body[\"success\"] is True, \"L3 success flag contract changed\"",
     ])
 
     if _has_assertion(assertion_plan, "L4"):
@@ -122,7 +182,7 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
             "        # L4: data persistence contract",
             "        if os.getenv(\"TIDE_ENABLE_DB_ASSERTIONS\") != \"1\":",
             "            pytest.skip(\"Set TIDE_ENABLE_DB_ASSERTIONS=1 to enable DB assertions\")",
-            f"        assert {assertion_plan.get('L4')!r}",
+            "        assert True, \"L4 DB assertion plan is present but requires project-specific wiring\"",
         ])
 
     if _has_assertion(assertion_plan, "L5"):
@@ -130,7 +190,7 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
             "        # L5: cross-endpoint linkage contract",
             "        if os.getenv(\"TIDE_ENABLE_LINKAGE_ASSERTIONS\") != \"1\":",
             "            pytest.skip(\"Set TIDE_ENABLE_LINKAGE_ASSERTIONS=1 to enable linkage assertions\")",
-            f"        assert {assertion_plan.get('L5')!r}",
+            "        assert True, \"L5 linkage assertion plan is present but requires project-specific wiring\"",
         ])
 
     lines.append("")
@@ -138,23 +198,43 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 
 
 def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoints: dict[str, dict[str, Any]]) -> str:
+    needs_optional_imports = any(
+        isinstance(scenario.get("assertion_plan"), dict)
+        and (
+            _has_assertion(scenario["assertion_plan"], "L4")
+            or _has_assertion(scenario["assertion_plan"], "L5")
+        )
+        for scenario in scenarios
+    )
     lines = [
         "# -*- coding: utf-8 -*-",
         "\"\"\"Deterministic Tide-generated metadata tests.\"\"\"",
         "",
-        "import os",
-        "",
-        "import pytest",
-        "",
-        "",
-        f"class {class_name}:",
-        "    \"\"\"Generated from Tide normalized scenarios.\"\"\"",
-        "",
     ]
+    if needs_optional_imports:
+        lines.extend([
+            "import os",
+            "",
+            "import pytest",
+            "",
+        ])
 
-    for scenario in scenarios:
-        endpoint = endpoints.get(str(scenario.get("endpoint_id")), {})
-        lines.extend(_scenario_lines(scenario, endpoint))
+    lines.extend([
+        "",
+    ])
+
+    for class_index, start in enumerate(range(0, len(scenarios), 15)):
+        chunk = scenarios[start:start + 15]
+        generated_class_name = class_name if class_index == 0 else f"{class_name}{class_index + 1}"
+        lines.extend([
+            f"class {generated_class_name}:",
+            "    \"\"\"Generated from Tide normalized scenarios.\"\"\"",
+            "",
+        ])
+
+        for scenario in chunk:
+            endpoint = endpoints.get(str(scenario.get("endpoint_id")), {})
+            lines.extend(_scenario_lines(scenario, endpoint))
 
     return "\n".join(lines)
 
