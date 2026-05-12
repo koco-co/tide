@@ -17,6 +17,6 @@ All notable changes to Tide are documented here.
 - Improved case-writer prompt guidance for existing project naming conventions and dynamic ID fallback.
 - Improved project-scanner prompt guidance for detecting snake_case vs PascalCase test class naming.
 
-### Known Issues
+### Fixed
 
-- Full test suite currently stops at `tests/test_scaffold.py::TestGenerateProject::test_creates_gitignore` because generated `.gitignore` output does not include `.repos/`.
+- Restored `.repos/` compatibility in scaffold-generated `.gitignore` files while retaining `.tide/` ignores.
