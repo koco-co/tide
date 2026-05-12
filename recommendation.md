@@ -11,6 +11,7 @@
 - Iter11 选中了正确 SparkThrift HAR，但 `metadata_direct_test.py` 生成的 21 个 `test_*` 方法位于非 `Test*` 类中，pytest 收集为 0。
 - Iter12 生成的 27 个测试已能 collect 并实际执行通过，但缺少 `.tide/scenarios.json`，且 execution report 与实测结果不一致。
 - Iter13 修复了场景/执行报告校验，但 fresh run 修改了目标项目 `utils/` 和生成 `testdata/`，触发写范围红线。
+- Iter14 修复了写范围红线并通过 guard 校验，但 Claude Code `-p` 模式下 `/tide` 返回 `Unknown command`，自然语言 prompt 也未能自主完成流程；Codex assisted recovery 仅达到 `6 passed / 4 skipped`。
 
 推广前新增必做项：
 1. 重新运行时必须传入精确 HAR 路径，例如 `.tide/trash/20260509_152002_20260509_150847_172.16.122.52.har`，不得只说 `.tide/trash`。
@@ -19,12 +20,13 @@
 4. 新生成文件必须通过 FC14：任何包含 `test_*` 方法的类名都必须以 `Test` 开头，并且每个文件都要单独跑 scoped `pytest --collect-only`。
 5. 生成后必须保留 `.tide/scenarios.json`，并校验 `execution-report.json` 与最终 pytest 结果一致。
 6. 必须增加目标写范围硬保护：除 `testcases/` 和 `.tide/` 外，禁止写入 `api/`、`dao/`、`utils/`、`config/`、`testdata/`。
+7. 必须提供可靠的 Claude Code 非交互入口；若 `-p` 模式不支持插件 slash command，应改用受测可用的 wrapper/command，并在无法激活 Tide workflow 时失败，不得自由生成。
 
 Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/koco-co/tide/pull/1
 
 ## 结论: Conditional / Hold
 
-**Tide v1.3.0 (Iter9/Iter10/Iter11/Iter12/Iter13 审计后)** — 暂不建议推广。Iter12 已接近可用，但 Iter13 证明当前插件还不能可靠约束目标写范围，存在改动业务/helper 代码的风险。
+**Tide v1.3.0 (Iter9/Iter10/Iter11/Iter12/Iter13/Iter14 审计后)** — 暂不建议推广。Iter14 已解决写范围硬保护问题，但又暴露 Claude Code 非交互入口不可用，当前仍不能稳定自主完成目标 HAR 生成。
 
 **当前阻断依据:**
 - Iter9 audited score: **83.75/100**，未达 `>=90`。
@@ -35,6 +37,7 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 - Iter11 授权后 fresh run 分数为 **78.9/100**，正确 HAR 但 metadata 文件 0 tests collected；证据见 `evals/tide-optimization/iter_11/score.md`。
 - Iter12 fresh run 分数为 **88.4/100**，27 个生成测试实测通过，但场景审计和报告一致性仍未过硬；证据见 `evals/tide-optimization/iter_12/score.md`。
 - Iter13 fresh run 触发 blocker：修改目标 `utils/assets/requests/meta_data_requests.py` 并生成 `testdata/`；证据见 `evals/tide-optimization/iter_13/blockers.md`。
+- Iter14 assisted run 分数为 **84.0/100**，写范围校验通过且产物完整，但 Claude Code `/tide` 入口不可用，最终依赖 Codex 手工修复；证据见 `evals/tide-optimization/iter_14/score.md`。
 
 ## 推广前必做
 

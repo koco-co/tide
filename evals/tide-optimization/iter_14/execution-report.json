@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-05-12T16:18:45.427866+00:00",
+  "overall_status": "PASS",
+  "collection_success": true,
+  "total_tests": 10,
+  "passed": 6,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 4,
+  "command": [
+    ".venv/bin/pytest",
+    "-q",
+    "testcases/scenariotest/assets/meta_data/tide_metadata_sync_test.py",
+    "testcases/scenariotest/assets/meta_data/tide_assets_datamap_test.py"
+  ],
+  "output_tail": "....s..sss                                                               [100%]\n=============================== warnings summary ===============================\ntestcases/scenariotest/assets/meta_data/tide_metadata_sync_test.py::TestTideMetadataSync::test_sync_task_page_and_datasource_options\n  /Users/poco/Projects/dtstack-httprunner/.venv/lib/python3.8/site-packages/jaydebeapi/__init__.py:200: DeprecationWarning: jpype._core.isThreadAttachedToJVM is deprecated, use java.lang.Thread.isAttached instead\n    if not jpype.isThreadAttachedToJVM():\n\n-- Docs: https://docs.pytest.org/en/latest/warnings.html\n6 passed, 4 skipped, 1 warning in 22.50s"
+}

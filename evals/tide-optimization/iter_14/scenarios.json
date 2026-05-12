@@ -1,0 +1,454 @@
+{
+  "generated_at": "2026-05-12T16:12:00.940495+00:00",
+  "source": ".tide/parsed.json",
+  "scenarios": [
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_syncTask_pageTask_har_direct",
+      "endpoint_id": "bbdd7072-a64a-4092-94f7-afce1ef19575",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/syncTask/pageTask HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/syncTask/pageTask",
+      "service": "dmetadata",
+      "module": "pageTask",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_dataSource_listMetadataDataSource_har_direct",
+      "endpoint_id": "a1435c99-3339-4159-9e83-d089c943a14d",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/dataSource/listMetadataDataSource HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/dataSource/listMetadataDataSource",
+      "service": "dmetadata",
+      "module": "listMetadataDataSource",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_dataDb_realTimeDbList_har_direct",
+      "endpoint_id": "7fa71096-f02c-4c05-823f-a4215bcca241",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/dataDb/realTimeDbList HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/dataDb/realTimeDbList",
+      "service": "dmetadata",
+      "module": "realTimeDbList",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_syncTask_realTimeTableList_har_direct",
+      "endpoint_id": "636bfb5a-d887-4c50-8405-995f0236fabe",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/syncTask/realTimeTableList HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/syncTask/realTimeTableList",
+      "service": "dmetadata",
+      "module": "realTimeTableList",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_user_pageUsers_har_direct",
+      "endpoint_id": "138f1289-8f07-4d61-8e1e-393b752f8f3a",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/user/pageUsers HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/user/pageUsers",
+      "service": "dassets",
+      "module": "pageUsers",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_syncTask_add_har_direct",
+      "endpoint_id": "61ad0a09-2004-45a9-9f2b-94061aa44c01",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/syncTask/add HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/syncTask/add",
+      "service": "dmetadata",
+      "module": "add",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_syncJob_pageQuery_har_direct",
+      "endpoint_id": "1af72581-627a-49f0-ac82-3299ae44d9ff",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/syncJob/pageQuery HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/syncJob/pageQuery",
+      "service": "dmetadata",
+      "module": "pageQuery",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_recentQuery_har_direct",
+      "endpoint_id": "44986953-c8dd-4f91-a091-74a80dd95429",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/recentQuery HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/recentQuery",
+      "service": "dassets",
+      "module": "recentQuery",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_assetStatistics_har_direct",
+      "endpoint_id": "565d3b9e-86b7-491d-ba7c-f914b8d68d6e",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/assetStatistics HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/assetStatistics",
+      "service": "dassets",
+      "module": "assetStatistics",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_dataInventory_countDataSource_har_direct",
+      "endpoint_id": "b4356aa8-1e33-4b17-9ca1-2cce73faf666",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/dataInventory/countDataSource HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/dataInventory/countDataSource",
+      "service": "dassets",
+      "module": "countDataSource",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_hotword_list_har_direct",
+      "endpoint_id": "3ae6db7e-1486-4363-869d-5c284815b318",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/hotword/list HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/hotword/list",
+      "service": "dassets",
+      "module": "list",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_hotLabel_list_har_direct",
+      "endpoint_id": "0c0baead-e07b-486b-8b54-3401940fc1fb",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/hotLabel/list HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/hotLabel/list",
+      "service": "dassets",
+      "module": "list",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_listUsers_har_direct",
+      "endpoint_id": "18432a58-ef41-493c-8973-417c5b442024",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/listUsers HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/listUsers",
+      "service": "dassets",
+      "module": "listUsers",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_label_list_har_direct",
+      "endpoint_id": "d4a11694-9876-437d-9014-bb1bb4776c0e",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/label/list HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/label/list",
+      "service": "dassets",
+      "module": "list",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_resourceCatalog_listCatalogByQuery_har_direct",
+      "endpoint_id": "c2834780-1399-48cd-980d-56379f9ed21e",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/resourceCatalog/listCatalogByQuery HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/resourceCatalog/listCatalogByQuery",
+      "service": "dassets",
+      "module": "listCatalogByQuery",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_metadataApply_isSuperUser_har_direct",
+      "endpoint_id": "e14189b7-0142-4c8b-962d-7588df03473a",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/metadataApply/isSuperUser HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/metadataApply/isSuperUser",
+      "service": "dmetadata",
+      "module": "isSuperUser",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_queryDetail_har_direct",
+      "endpoint_id": "7baed9d6-6e09-4ea9-8c8e-5ff9e91cdf24",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/queryDetail HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/queryDetail",
+      "service": "dassets",
+      "module": "queryDetail",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_dataTableColumn_pageTableColumn_har_direct",
+      "endpoint_id": "83e05bbb-9149-49ce-ad8b-cc7aeafaf9d9",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/dataTableColumn/pageTableColumn HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/dataTableColumn/pageTableColumn",
+      "service": "dassets",
+      "module": "pageTableColumn",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_dataTable_getTableLifeCycle_har_direct",
+      "endpoint_id": "4372ffd2-05fe-44c9-a890-75bb1e85c07d",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/dataTable/getTableLifeCycle HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/dataTable/getTableLifeCycle",
+      "service": "dmetadata",
+      "module": "getTableLifeCycle",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_dataTable_queryDetail_har_direct",
+      "endpoint_id": "6a0aeed8-0aa9-4a48-8f86-57bcdaef313d",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/dataTable/queryDetail HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/dataTable/queryDetail",
+      "service": "dassets",
+      "module": "queryDetail",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_label_listAllBindLabelByCondition_har_direct",
+      "endpoint_id": "d1784c16-9d3b-4946-8ab3-1f7cd8cc1ab6",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/label/listAllBindLabelByCondition HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/label/listAllBindLabelByCondition",
+      "service": "dassets",
+      "module": "listAllBindLabelByCondition",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_datamap_resource_bindResourceRel_har_direct",
+      "endpoint_id": "c26a2720-babe-45df-8a54-563ce63b0c49",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/datamap/resource/bindResourceRel HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/datamap/resource/bindResourceRel",
+      "service": "dassets",
+      "module": "bindResourceRel",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_dataTable_judgeIsMetaByTableId_har_direct",
+      "endpoint_id": "26c58102-4c4a-4549-ab50-62ca57102228",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/dataTable/judgeIsMetaByTableId HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/dataTable/judgeIsMetaByTableId",
+      "service": "dassets",
+      "module": "judgeIsMetaByTableId",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_dataTable_hasParition_har_direct",
+      "endpoint_id": "9099e850-9a9c-4de7-b5d0-dc5b4a11c6c0",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/dataTable/hasParition HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/dataTable/hasParition",
+      "service": "dassets",
+      "module": "hasParition",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dassets_dassets_v1_dataTable_queryCreateTableSql_har_direct",
+      "endpoint_id": "1a7da754-062b-4679-baef-b3e0d6a675ff",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dassets/v1/dataTable/queryCreateTableSql HAR replay",
+      "method": "POST",
+      "path": "/dassets/v1/dataTable/queryCreateTableSql",
+      "service": "dassets",
+      "module": "queryCreateTableSql",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_metadataApply_getApplyStatus_har_direct",
+      "endpoint_id": "1781141d-582c-4dd6-bacc-1ac3db0e0b0f",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/metadataApply/getApplyStatus HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/metadataApply/getApplyStatus",
+      "service": "dmetadata",
+      "module": "getApplyStatus",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_dataSubscribe_getSubscribeByTableId_har_direct",
+      "endpoint_id": "17c90fc6-9727-4fec-b2ab-04e7870a0bec",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/dataSubscribe/getSubscribeByTableId HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/dataSubscribe/getSubscribeByTableId",
+      "service": "dmetadata",
+      "module": "getSubscribeByTableId",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    },
+    {
+      "scenario_id": "dmetadata_dmetadata_v1_dataTable_queryTablePermission_har_direct",
+      "endpoint_id": "a84bf321-4c42-47c3-870b-8663a99013f5",
+      "type": "har_direct",
+      "confidence": "medium",
+      "name": "POST /dmetadata/v1/dataTable/queryTablePermission HAR replay",
+      "method": "POST",
+      "path": "/dmetadata/v1/dataTable/queryTablePermission",
+      "service": "dmetadata",
+      "module": "queryTablePermission",
+      "assertions": [
+        "code == 1",
+        "success is True",
+        "data key exists"
+      ]
+    }
+  ]
+}

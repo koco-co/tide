@@ -64,6 +64,27 @@ Iter13 先修复了 Iter12 暴露的两个产物问题：`scripts/scenario_valid
 
 当前状态回落为 **Blocked / Hold**。下一步必须先实现目标写范围硬保护：任何对 `api/`、`dao/`、`utils/`、`config/`、`testdata/` 的目标写入都要阻断或自动回滚，否则不能继续 fresh run。
 
+## 2026-05-12 Iter14 Assisted Run 附录
+
+Iter14 实现并验证了目标写范围硬保护：`scripts/write_scope_guard.py` 对目标项目 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/` 做快照和哈希校验，Tide 自测已在提交 `b1793c7` 中达到 `170 passed`。安装后外层校验确认本轮没有新增/删除/修改禁止目录文件。
+
+在目标项目上继续生成时发现新的入口阻塞：
+
+- `claude -p '/tide ...'` 返回 `Unknown command: /tide`；同样模式下其他插件命令也不可用。
+- 自然语言 Tide workflow prompt 只创建 `.tide/run-context.json` 后挂起；短 prompt 生成了部分 `.tide/scenarios.json` 和 `.tide/generation-plan.json`，但缺测试文件且场景产物无 `endpoint_id`、confidence 比例不合格。
+- Codex 随后接手修复产物并补齐测试，所以本轮只能算 assisted recovery，不能算 autonomous Tide pass。
+
+最终 assisted 产物：
+
+- 正确 HAR：`20260509_152002_20260509_150847_172.16.122.52.har`
+- `parsed.json`: 31 raw / 28 dedup endpoints
+- `scenarios.json`: 28 scenarios，confidence medium/high ratio 100%
+- 新增测试：`tide_metadata_sync_test.py`、`tide_assets_datamap_test.py`
+- 窄范围执行：`6 passed, 4 skipped, 1 warning in 22.50s`
+- 写范围校验：`ok=true`，禁止目录无变更
+
+Iter14 评分为 **84.0/100 — Assisted / Hold**。写范围风险已解决，但 Claude Code 非交互入口仍未可靠激活 Tide workflow，暂不能恢复 `>=90` 推广结论。
+
 ## 历史迭代概述 (7 轮)
 
 | 迭代 | 总分 | 关键改进 | 关键时刻 |
@@ -80,6 +101,7 @@ Iter13 先修复了 Iter12 暴露的两个产物问题：`scripts/scenario_valid
 | **Iter11** | **78.9** | **正确 HAR；新增 FC14 pytest 类名收集门** | **metadata 文件 0 tests collected** |
 | **Iter12** | **88.4** | **27 tests collect+execute 通过；FC14 修复生效** | **缺 scenarios.json + 报告不一致** |
 | **Iter13** | **Blocked** | **新增场景/执行报告硬化；fresh run 触发写范围红线** | **停止继续生成** |
+| **Iter14** | **84.0 assisted** | **新增写范围硬保护；assisted 输出 6 passed / 4 skipped** | **Claude Code `/tide` 入口不可用，非自主达成** |
 
 ## 7 轮评分趋势
 

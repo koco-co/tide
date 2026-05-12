@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-05-12T16:18:58.813350+00:00",
+  "artifacts": [
+    {
+      "path": ".tide/parsed.json",
+      "kind": "parsed",
+      "sha256": "dc4136e61a0cc6cab30b8c7b9aa11333c25377b826d2dec34ec976517dec891e",
+      "size_bytes": 177928
+    },
+    {
+      "path": ".tide/scenarios.json",
+      "kind": "scenarios",
+      "sha256": "61f11dbb08296fac054ef3433b3b894d5da1b1208c99940aefb5e8e23b01d50e",
+      "size_bytes": 14932
+    },
+    {
+      "path": ".tide/generation-plan.json",
+      "kind": "generation_plan",
+      "sha256": "50920bcc667bc7355abdf001d5ac7a2a111c469c920f0223e81c8c7da1857f16",
+      "size_bytes": 2394
+    },
+    {
+      "path": ".tide/execution-report.json",
+      "kind": "execution_report",
+      "sha256": "bbb2231ce774ece585b6fbb095137dc78b482c58e4f5a6be23e156bbb90e1d8c",
+      "size_bytes": 1073
+    },
+    {
+      "path": "testcases/scenariotest/assets/meta_data/tide_metadata_sync_test.py",
+      "kind": "test",
+      "sha256": "944c3865daa7a8d6b6e742e9830c4907a4eca1d343f31313034652784f3f29e6",
+      "size_bytes": 6407
+    },
+    {
+      "path": "testcases/scenariotest/assets/meta_data/tide_assets_datamap_test.py",
+      "kind": "test",
+      "sha256": "ca8c8960eb1dc01329aca87850db9eb216748b132ae89f47c6929e80a3a18d78",
+      "size_bytes": 6550
+    }
+  ]
+}
