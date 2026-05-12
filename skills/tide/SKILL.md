@@ -9,6 +9,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 # Tide：HAR 转 Pytest 测试生成
 
 > **重要：除非必要，否则不要改动已有项目中的测试配置或脚本。如需修改，先用 AskUserQuestion 向用户报告改动原因和改动范围，确认后方可执行。**
+> **HAR 选择不得猜测**：当用户只说 "HAR 在 .tide/trash 下"、"使用 trash 里的 HAR" 或传入目录路径时，不得自行按 mtime、文件大小、名称相似度或模型推断挑选某一个 `.har` 文件。必须先运行 `scripts.har_inputs.resolve_har_input`；如果有多个候选文件，交互模式列出候选并询问用户选择，无头/非交互模式直接失败并给出精确命令示例。
 
 ## 第零步：自更新
 
@@ -88,6 +89,25 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
    - 若 `requires_confirmation=true`，保留现有 AskUserQuestion 交互。
 
 5. 解析 `$ARGUMENTS`：`har_path`（必填）、`--quick`、`--yes`、`--non-interactive`、`--resume`、`--wave N`
+5a. **HAR 路径确定性解析（禁止猜测）**：
+   ```bash
+   export HAR_PATH="$(PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY'
+   import json
+   import os
+   from pathlib import Path
+   from scripts.har_inputs import resolve_har_input
+
+   run_context = Path(os.environ["PROJECT_ROOT"]) / ".tide" / "run-context.json"
+   ctx = json.loads(run_context.read_text())
+   print(resolve_har_input(ctx["har_path"], Path(os.environ["PROJECT_ROOT"])))
+   PY
+   )"
+   echo "Resolved HAR: $HAR_PATH"
+   ```
+   - 若命令报 `Multiple HAR files found; Do not guess`：
+     - 交互模式：用 AskUserQuestion 列出候选 `.har` 文件，请用户选择精确路径后重新解析。
+     - 无头/非交互模式：立即终止，输出候选清单和示例：`/tide .tide/trash/<exact-file>.har --yes --non-interactive`。
+   - 不得在多个候选中自动选择"最新"、"最大"或"看起来最相关"的 HAR。
 6. **环境检查**：`test -f repo-profiles.yaml`，若缺失则打印带修复命令的错误信息并终止
 5. **读取配置**：读取 `repo-profiles.yaml` 和 `tide-config.yaml`，提取 repos、test_dir、test_types、industry 等
 6. **无源码降级**：repos 为空时设置 `no_source_mode=true`

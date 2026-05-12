@@ -1,0 +1,37 @@
+HAR 文件 `batch_orchestration_rules.har` 的测试生成已全部完成。以下是最终总结：
+
+---
+
+## 生成总结
+
+### 解析结果
+从 HAR 解析出 **16 个唯一端点**，按业务流程分为 4 组：项目与用户查询、环境信息查询、任务编排核心流程、数据源迁移配置。
+
+### 生成文件
+
+| 文件 | 行数 | 说明 |
+|------|------|------|
+| `testcases/.../orchestration_rules/test_orchestration_rules.py` | 358 行 | 核心流程测试（8 个测试方法） |
+| `testcases/.../orchestration_rules/test_orchestration_rules_part2.py` | 253 行 | 异常/边界/校验场景（22 个参数化测试） |
+| `testdata/.../orchestration_rules/test_orchestration_rules_data.py` | 131 行 | 测试数据定义 |
+| `__init__.py` x2 | - | 包初始化文件 |
+
+### 测试覆盖（30 tests）
+
+**核心流程：**
+- 编排规则完整生命周期 — 创建上游→创建下游含依赖→验证依赖→环路检测→发布→查询实例→DAG 图验证
+- CRUD 闭环 — 创建→读取→更新→列表查询
+- 循环依赖检测 — A→B→C→A 成环检测
+- 支持性查询端点 — 任务类型、数据源、表列表、字段列表、转换配置
+
+**异常/边界场景：**
+- 参数校验（缺字段、空名称、无效类型、空调度）
+- 边界条件（超长名称、空依赖、Null 依赖）
+- 异常路径（不存在的上游、重复名称、无效引擎）
+- 分页边界（page=0、pageSize=0、超大 pageSize）
+
+### 代码质量
+- 遵循项目现有模式（`BatchSQLBase`、`AddTaskParams`、`batch_global_data` fixture）
+- 使用 Allure 分层装饰器（epic/feature/story/title/step）
+- 完备的 setup/teardown 清理逻辑（冻结→删除任务）
+- 执行测试收集验证：**30/30 通过**

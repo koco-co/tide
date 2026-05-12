@@ -2,7 +2,9 @@
 
 ## Status
 
-Iteration 10 could not start safely. The target repository is dirty and the cleanup step requires deleting prior Tide-generated artifacts outside the writable sandbox.
+This blocker was recorded before the user explicitly approved target cleanup and Claude Code execution. It is now superseded by the fresh Iter10 run captured in `quality_gate.md` and `score.md`.
+
+The original blocker remains here as evidence of the approval boundary that stopped the first Iter10 attempt.
 
 ## Evidence
 

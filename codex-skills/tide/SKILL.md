@@ -16,6 +16,7 @@ Generate pytest API tests from a browser HAR recording, reusing Tide's determini
 - In Plan Mode, use `request_user_input` for material confirmations. In Default mode, ask a concise plain-text question only when a risky decision cannot be inferred.
 - Do not default to parallel subagents. For Codex v1, perform the workflow locally and sequentially unless the user explicitly requests subagents or parallel agent work.
 - Do not change existing project test configuration unless the user has approved the reason and scope.
+- Do not guess which HAR to use. If the user says the HAR is in `.tide/trash` or provides a directory, run `scripts.har_inputs.resolve_har_input` first. When multiple `.har` files exist, ask for the exact file in interactive mode, or stop in non-interactive mode with the candidate list and an exact command example.
 
 ## Arguments
 
@@ -57,6 +58,25 @@ print(json.dumps({
 }, ensure_ascii=False, indent=2))
 PY
 ```
+
+Then resolve the HAR path deterministically before validation or parsing:
+
+```bash
+export HAR_PATH="$(PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+from scripts.har_inputs import resolve_har_input
+
+project_root = Path(os.environ["PROJECT_ROOT"])
+ctx = json.loads((project_root / ".tide" / "run-context.json").read_text())
+print(resolve_har_input(ctx["har_path"], project_root))
+PY
+)"
+echo "Resolved HAR: $HAR_PATH"
+```
+
+If this command reports `Multiple HAR files found; Do not guess`, do not select the newest or most plausible HAR. Ask the user for one exact candidate in interactive mode; in non-interactive mode, stop and print a command such as `$tide .tide/trash/<exact-file>.har --yes --non-interactive`.
 
 ## Workflow
 

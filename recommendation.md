@@ -7,11 +7,11 @@
 原因：
 - Iter9 发现原 FC11 未拦截字符串数字业务 ID，现已修复 validator/prompt，但尚未重新跑 Claude 生成验证。
 - 全量目标项目 `pytest --collect-only` 当前不是绿色；scoped generated tests collect-only 通过，但不能替代目标里写明的全量命令。
-- Fresh Claude 运行涉及外部数据传输，当前审批被拒绝，需要用户明确同意后再执行。
+- Iter10 在用户授权后完成 fresh Claude 运行，但 `.tide/trash` 多 HAR 场景下静默选择了 `batch_orchestration_rules.har`，不是目标 SparkThrift HAR。
 
 推广前新增必做项：
-1. 用户明确批准 Claude Code 读取目标项目/HAR 并调用外部服务生成测试。
-2. 用 Iter9 后的 Tide 重新生成测试，并归档 `evals/tide-optimization/iter_9/session.log`。
+1. 重新运行时必须传入精确 HAR 路径，例如 `.tide/trash/20260509_152002_20260509_150847_172.16.122.52.har`，不得只说 `.tide/trash`。
+2. 新增的 `resolve_har_input` no-guess 规则必须随插件发布并重载。
 3. 新生成文件必须通过 FC11：不得出现数字或数字字符串业务 ID，包括负向场景的不存在 ID。
 
 Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/koco-co/tide/pull/1
@@ -25,6 +25,7 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 - Iter7 生成文件存在 `dataSourceId: "43"`、`dataSourceId: "99999999"`、`tableId: "99999999"` 等 FC11 违规，现有 checker 已能检出。
 - 全量目标项目 `pytest --collect-only` 当前失败，scoped collect 不能直接替代原始硬门。
 - Iter10 需要用户明确批准目标仓清理和 Claude Code 外部服务调用；证据见 `evals/tide-optimization/iter_10/blockers.md`。
+- Iter10 授权后 fresh run 分数为 **65.0/100**，因为生成了 batch orchestration suite 而非 SparkThrift metadata-sync suite；证据见 `evals/tide-optimization/iter_10/score.md`。
 
 ## 推广前必做
 

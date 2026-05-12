@@ -19,6 +19,16 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 
 恢复评估前必须完成一次用户明确授权的 Claude Code + Tide 重新生成，并重新跑硬门：全量或经用户确认范围内的 `pytest --collect-only`、FC11、L1-L5、scenario_id 唯一、confidence>=medium 比例、风格契合度抽查。
 
+## 2026-05-12 Iter10 Fresh Run 附录
+
+用户已明确授权后，Codex 完成了一次 fresh Claude Code + Tide 运行。结论仍为 **Conditional / Hold**：
+
+- 运行完成，但选错 HAR：`evals/tide-optimization/iter_10/session.log:1` 显示生成源为 `batch_orchestration_rules.har`，不是目标 SparkThrift 元数据同步 HAR。
+- `.tide/parsed.json:3` 为 `source_har: ".tide/trash/batch_orchestration_rules.har"`；`.tide/scenarios.json:6` 为 `DAGScheduleX_POST_api_rdos_batch_batchTask_e2e_chain`。
+- Scoped generated collect 通过 30 tests，但全量 `pytest --collect-only` 仍因既有目标项目问题失败 75 errors。
+- Iter10 分数为 **65.0/100**，主要扣分来自“自然语言说 HAR 在 trash 下时，多个 HAR 候选被静默猜错”。
+- 已新增修复：`scripts.har_inputs.resolve_har_input()` 和 skill no-guess 规则。未来传目录或自然语言指向 `.tide/trash` 且存在多个 HAR 时，Tide 必须询问或在无头模式失败，不得猜测。
+
 ## 历史迭代概述 (7 轮)
 
 | 迭代 | 总分 | 关键改进 | 关键时刻 |
@@ -31,6 +41,7 @@ Iter9 分支/PR：`codex/tide-iter-9-audit-quality-gates`，https://github.com/k
 | **Iter5** | 80.35 | setup_method 0 @classmethod, 16 文件 | 代码质量突破 |
 | **Iter6** | 86.55 | 硬编码 ID 23→1 (-96%), PYTHON_BIN 检测, 确定性 project-assets | 质量接近目标 |
 | **Iter7** | **92.95 (历史 claim，Iter9 已降级)** | **--yes --non-interactive 无头验证、36/36 scoped collect 通过、0 人工干预** | **不能替代硬门全过** |
+| **Iter10** | **65.0** | **暴露多 HAR 静默误选；新增 no-guess resolver** | **fresh run 未达标** |
 
 ## 7 轮评分趋势
 
