@@ -13,7 +13,7 @@
 
 **一句话说清**：丢入浏览器 HAR 抓包，自动出生产级 pytest 测试套件。
 
-基于 **Claude Code Plugin** 构建的 AI 接口自动化测试生成引擎，5 个 Agent 协同、4 波并行编排。
+基于 **Claude Code Plugin** 构建，并提供 **Codex / Cursor** 适配入口的 AI 接口自动化测试生成引擎，5 个 Agent 协同、4 波编排。
 
 <br />
 
@@ -185,12 +185,12 @@ Tide 在流程开始时创建任务清单，实时展示当前进度：
 
 ### 前置条件
 
-- [Claude Code](https://claude.ai/code) 已安装
+- Claude Code、Codex 或 Cursor（任选其一作为 AI 编排入口）
 - Python >= 3.12
 - [uv](https://docs.astral.sh/uv/) 包管理器（推荐）或 pip
 - Git
 
-### 安装插件
+### Claude Code 安装
 
 ```bash
 # 方式一：从 marketplace 安装（推荐）
@@ -205,12 +205,23 @@ cd ~/.claude/plugins/tide && uv sync
 claude plugins list
 ```
 
-安装后，**打开新终端窗口**进入你的测试项目目录，启动 Claude Code：
+安装后，进入你的测试项目目录启动 Claude Code：
 
 ```bash
 cd /path/to/your-test-project
 claude
 ```
+
+### Codex / Cursor 适配
+
+Tide 同仓库提供 Codex 与 Cursor 的项目级适配文件：
+
+| 入口 | 文件 | 使用方式 |
+|------|------|----------|
+| Codex 插件 | `.codex-plugin/plugin.json`、`codex-skills/`、`commands/` | 安装为本地 Codex 插件后使用 `$using-tide` / `$tide`，或 `/using-tide` / `/tide` 命令 |
+| Cursor 项目规则 | `.cursor/rules/*.mdc`、`.cursor/commands/*.md` | 在 Cursor 中打开 Tide 仓库或拷贝 `.cursor/` 到项目后使用 `using-tide` / `tide` 命令 |
+
+Codex 和 Cursor 适配层复用同一套 `scripts/`、`agents/`、`prompts/` 资产，不改变 Claude Code 入口。
 
 ---
 
@@ -218,7 +229,7 @@ claude
 
 ### 第一步：初始化项目（仅首次）
 
-在 Claude Code 中输入：
+在 Claude Code、Codex 或 Cursor 中运行初始化入口：
 
 ```
 /using-tide
@@ -263,6 +274,8 @@ claude
 # 恢复中断的会话
 /tide --resume
 ```
+
+在 Codex 中也可以使用 `$tide <har-file>`；在 Cursor 中可以使用 `.cursor/commands/tide.md` 对应的 `tide <har-file>` 命令。
 
 #### 约定适配（自动）
 
@@ -421,9 +434,19 @@ solution:
 
 ```text
 tide/
+├── .codex-plugin/                   # Codex 插件元数据
+├── .cursor/                         # Cursor 项目规则与命令
+│   ├── commands/                    #   tide / using-tide 命令
+│   └── rules/                       #   Tide 工作流项目规则
 ├── skills/                          # Claude Code 技能定义
 │   ├── tide/SKILL.md            #   /tide — 主流程（4 波编排）
 │   └── using-tide/SKILL.md      #   /using-tide — 初始化向导
+├── codex-skills/                    # Codex 技能定义
+│   ├── tide/SKILL.md                #   $tide — HAR 生成 pytest
+│   └── using-tide/SKILL.md          #   $using-tide — 初始化向导
+├── commands/                        # Codex slash command 文档
+│   ├── tide.md
+│   └── using-tide.md
 ├── agents/                          # 5 个 Agent 定义
 │   ├── har-parser.md                #   HAR 解析（haiku）
 │   ├── repo-syncer.md               #   仓库同步（haiku）
@@ -458,7 +481,7 @@ tide/
 ├── templates/                       # Jinja2 模板
 ├── references/                      # 参考文档
 ├── assets/                          # 流程图资源
-├── .claude-plugin/                  # 插件元数据
+├── .claude-plugin/                  # Claude Code 插件元数据
 ├── pyproject.toml                   # 项目配置
 ├── Makefile                         # 开发命令
 └── LICENSE
@@ -488,7 +511,7 @@ make fmt        # 代码格式化
 |------|---------|
 | **v1.0** | HAR 解析 · 4 波编排 · L1-L5 断言 · DB 验证 · 检查点恢复 · 外部通知 |
 | **v1.1** | 旧项目适配 · 验证透明度 · 验收命令优化 · 路径修复 · 测试类型选择 |
-| **v1.3**（当前） | 跨项目优化 · Hook 系统 · 偏好学习 · 格式检查器 · 测试覆盖 78% |
+| **v1.3**（当前） | 跨项目优化 · Hook 系统 · 偏好学习 · 格式检查器 · Codex/Cursor 适配 · no-source mode 泛化 |
 | **v1.4**（进行中） | Convention 指纹驱动适配 · Prompt 按需加载（省 ~50% tokens）· 成本预估 · 多项目风格扩展框架 |
 | v1.4 | OpenAPI / Swagger spec 作为补充输入源 |
 | v2.0 | UI 自动化集成（Playwright）· 性能测试 |
