@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +14,7 @@ from typing import Any
 _HAR_MARKERS = ("har", ".har", "HAR")
 _GENERATION_MARKERS = ("生成", "接口测试", "pytest", "测试", "generate")
 _DENIED_PREFIXES = frozenset({"api", "dao", "utils", "config", "testdata", "resource"})
+_SHELL_SEPARATORS = frozenset({";", "&&", "||", "|"})
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,77 @@ def _as_project_relative(file_path: str, cwd: str) -> Path | None:
         return candidate.resolve().relative_to(root)
     except ValueError:
         return None
+
+
+def _decision_for_path(file_path: str, cwd: str) -> WriteScopeDecision:
+    rel_path = _as_project_relative(file_path, cwd)
+    if rel_path is None or not rel_path.parts:
+        return WriteScopeDecision(allowed=True)
+
+    top_level = rel_path.parts[0]
+    if top_level in _DENIED_PREFIXES:
+        return WriteScopeDecision(
+            allowed=False,
+            reason=f"Tide write-scope violation: {rel_path.as_posix()} is outside .tide/ and testcases/",
+        )
+
+    return WriteScopeDecision(allowed=True)
+
+
+def _shell_tokens(command: str) -> list[str]:
+    try:
+        return shlex.split(command.replace("\n", " "), posix=True)
+    except ValueError:
+        return command.replace("\n", " ").split()
+
+
+def _first_denied_bash_write(command: str, cwd: str) -> WriteScopeDecision:
+    for match in re.finditer(r"(?:^|[\s])>>?\s*['\"]?([^'\"\s;]+)", command):
+        decision = _decision_for_path(match.group(1), cwd)
+        if not decision.allowed:
+            return decision
+
+    for match in re.finditer(
+        r"open\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"][wa+]",
+        command,
+    ):
+        decision = _decision_for_path(match.group(1), cwd)
+        if not decision.allowed:
+            return decision
+
+    tokens = _shell_tokens(command)
+    for index, token in enumerate(tokens):
+        if token in {"touch", "mkdir", "rm"}:
+            for candidate in _command_operands(tokens, index + 1):
+                decision = _decision_for_path(candidate, cwd)
+                if not decision.allowed:
+                    return decision
+
+        if token in {"cp", "mv"}:
+            operands = list(_command_operands(tokens, index + 1))
+            if operands:
+                decision = _decision_for_path(operands[-1], cwd)
+                if not decision.allowed:
+                    return decision
+
+        if token == "tee":
+            for candidate in _command_operands(tokens, index + 1):
+                decision = _decision_for_path(candidate, cwd)
+                if not decision.allowed:
+                    return decision
+
+    return WriteScopeDecision(allowed=True)
+
+
+def _command_operands(tokens: list[str], start: int) -> list[str]:
+    operands: list[str] = []
+    for token in tokens[start:]:
+        if token in _SHELL_SEPARATORS:
+            break
+        if token.startswith("-"):
+            continue
+        operands.append(token)
+    return operands
 
 
 def build_user_prompt_context(prompt: str) -> str | None:
@@ -60,19 +134,12 @@ def evaluate_write_scope(tool_input: dict[str, Any], cwd: str) -> WriteScopeDeci
     """Evaluate whether a Claude write target is allowed for a Tide run."""
 
     raw_path = tool_input.get("file_path") or tool_input.get("path")
-    if not isinstance(raw_path, str) or not raw_path.strip():
-        return WriteScopeDecision(allowed=True)
+    if isinstance(raw_path, str) and raw_path.strip():
+        return _decision_for_path(raw_path, cwd)
 
-    rel_path = _as_project_relative(raw_path, cwd)
-    if rel_path is None or not rel_path.parts:
-        return WriteScopeDecision(allowed=True)
-
-    top_level = rel_path.parts[0]
-    if top_level in _DENIED_PREFIXES:
-        return WriteScopeDecision(
-            allowed=False,
-            reason=f"Tide write-scope violation: {rel_path.as_posix()} is outside .tide/ and testcases/",
-        )
+    command = tool_input.get("command")
+    if isinstance(command, str) and command.strip():
+        return _first_denied_bash_write(command, cwd)
 
     return WriteScopeDecision(allowed=True)
 

@@ -71,6 +71,28 @@ class TestClaudeHooks:
         assert not decision.allowed
         assert "utils/assets/requests/meta_data_requests.py" in decision.reason
 
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "cat > utils/assets/requests/meta_data_requests.py <<'EOF'\npass\nEOF",
+            "cp /tmp/generated.py api/assets/assets_api.py",
+            "touch resource/common/msg.json",
+            "python -c \"open('config/env.py', 'w').write('x')\"",
+        ],
+    )
+    def test_write_scope_blocks_bash_writes_to_forbidden_paths(self, command: str) -> None:
+        decision = evaluate_write_scope({"command": command}, cwd="/repo")
+
+        assert not decision.allowed
+
+    def test_write_scope_allows_bash_reads_from_forbidden_paths(self) -> None:
+        decision = evaluate_write_scope(
+            {"command": "rg 'SparkThrift' api utils resource"},
+            cwd="/repo",
+        )
+
+        assert decision.allowed
+
     def test_hook_manifest_registers_prompt_and_write_scope_hooks(self) -> None:
         manifest = json.loads(Path("hooks/hooks.json").read_text(encoding="utf-8"))
 
@@ -79,7 +101,7 @@ class TestClaudeHooks:
         assert "user-prompt-submit" in prompt_command
 
         pre_tool = manifest["hooks"]["PreToolUse"][0]
-        assert pre_tool["matcher"] == "Write|Edit|MultiEdit"
+        assert pre_tool["matcher"] == "Write|Edit|MultiEdit|Bash"
         pre_tool_command = pre_tool["hooks"][0]["command"]
         assert "scripts/claude_hooks.py" in pre_tool_command
         assert "pre-tool-use" in pre_tool_command
