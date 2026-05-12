@@ -1,0 +1,27 @@
+## 生成接口测试完成
+
+### HAR 解析摘要
+| 指标 | 值 |
+|---|---|
+| 来源文件 | `20260509_152002_..._172.16.122.52.har` |
+| 原始请求数 | 31 条 |
+| 去重后端点 | 28 个 |
+| 涉及服务 | dassets（数据资产）、dmetadata（元数据） |
+
+### 生成的测试文件
+
+| 文件 | 测试数 | 覆盖 API |
+|---|---|---|
+| `test_datamap_browse.py` | 16 | 资产统计、热门搜索、资源目录、表搜索、表字段、分区判断、建表SQL 等 |
+| `test_table_detail_query.py` | 5 | 表生命周期、表详情、权限、申请状态、订阅信息 |
+| `test_sync_task_management.py` | 6 | 同步任务列表、元数据源、实时库表查询、任务创建、运行实例 |
+
+### 关键设计
+- **动态 ID 解析**：通过 `datamap/queryDetail` 运行时获取 tableId，通过 `listMetadataDataSource` 获取 SparkThrift 数据源 ID，避免硬编码
+- **环境适配**：对 Doris 等不支持建表 SQL 的数据源做兼容断言
+- **遵循项目约定**：`AssetsApi` 枚举 + `AssetsBaseRequest` + `setup_method` + Allure 装饰器 + `Logger`
+
+### 运行结果
+```
+27 passed in 62.64s
+```
