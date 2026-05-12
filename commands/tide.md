@@ -2,6 +2,11 @@
 
 Use Codex with the `$tide` skill to generate pytest API tests from a HAR recording.
 
+In Claude Code plugin CLI/non-interactive contexts, use the namespaced command
+`/tide:tide <har_file> --yes --non-interactive`. If `/tide` reports
+`Unknown command`, retry with `/tide:tide`; do not free-generate tests outside
+the Tide workflow.
+
 ## Arguments
 
 - `har_file`: path to a `.har` file.

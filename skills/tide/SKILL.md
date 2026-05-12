@@ -1,6 +1,6 @@
 ---
 name: tide
-description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/tide <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
+description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/tide <har-path>、/tide:tide <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
 argument-hint: "<har-file-path> [--quick] [--yes] [--non-interactive] [--resume] [--wave N]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList
@@ -10,6 +10,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 
 > **重要：除非必要，否则不要改动已有项目中的测试配置或脚本。如需修改，先用 AskUserQuestion 向用户报告改动原因和改动范围，确认后方可执行。**
 > **HAR 选择不得猜测**：当用户只说 "HAR 在 .tide/trash 下"、"使用 trash 里的 HAR" 或传入目录路径时，不得自行按 mtime、文件大小、名称相似度或模型推断挑选某一个 `.har` 文件。必须先运行 `scripts.har_inputs.resolve_har_input`；如果有多个候选文件，交互模式列出候选并询问用户选择，无头/非交互模式直接失败并给出精确命令示例。
+> **Claude Code 插件命令名**：在插件 CLI/非交互上下文中，可靠入口是 `/tide:tide <har-file> --yes --non-interactive`；若 `/tide` 返回 Unknown command，必须改用 `/tide:tide`，不得自由生成测试。
 
 ## 第零步：自更新
 

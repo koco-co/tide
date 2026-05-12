@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 SKILL = Path("skills/tide/SKILL.md")
+COMMAND = Path("commands/tide.md")
 
 
 def test_skill_defines_headless_policy() -> None:
@@ -30,3 +31,11 @@ def test_skill_uses_deterministic_har_parser_cli() -> None:
     assert "scripts.har_parser" in text
     assert ".tide/parsed.json" in text
     assert "har-parser Agent" not in text
+
+
+def test_claude_plugin_docs_include_namespaced_tide_command() -> None:
+    skill_text = SKILL.read_text(encoding="utf-8")
+    command_text = COMMAND.read_text(encoding="utf-8")
+
+    assert "/tide:tide" in skill_text
+    assert "/tide:tide" in command_text
