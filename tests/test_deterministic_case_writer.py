@@ -108,6 +108,14 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     assert "L3" in output
     assert "L4 data field must exist" in output
     assert "L5 code field must exist" in output
+    assert "# @Author: tide" in output
+    assert "import allure" in output
+    assert "import pytest" in output
+    assert "def setup_class(self):" in output
+    assert "self.req = AssetsBaseRequest()" in output
+    assert "self.req.post(" in output
+    assert "_req = AssetsBaseRequest()" not in output
+    assert "with allure.step(" in output
     assert "requires project-specific wiring" not in output
     assert "assert True, \"L4" not in output
     assert "assert True, \"L5" not in output
