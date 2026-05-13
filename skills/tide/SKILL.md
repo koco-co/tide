@@ -376,8 +376,8 @@ Task 4 → in_progress
    - **`test_granularity`**（新增）— 测试粒度
    - **`business_context`**（新增）— 业务场景描述
    - 按需加载的 code-style-python prompt 模块（来自 fingerprint 组装）
-5. **确定性 fallback（无头/非交互必跑）**：
-   若 case-writer 在预算内没有产出任何 `testcases/**/*.py`，或 `.tide/scenarios.json` 已存在但还没有可 collect 的生成测试文件，必须立即运行：
+5. **确定性 fallback（必跑）**：
+   在 case-writer 运行前或并行执行：
    ```bash
    tide_py -m scripts.deterministic_case_writer \
      --project-root "$PROJECT_ROOT" \
@@ -386,7 +386,16 @@ Task 4 → in_progress
      --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
    ```
    fallback 只允许写 `testcases/` 和 `.tide/artifact-manifest.json`，不得改 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/`。
-   如果 deterministic fallback 已经产出可 collect 的测试文件，不得继续启动 `case-writer` Agent；交互模式必须先问用户是否要继续消耗模型预算精修。
+
+5b. **确定性升级约束（新增）**：
+   deterministic case writer 生成的测试**仅供骨架参考**，不得作为最终输出。无论 deterministic case writer 是否产出可 collect 的测试文件，都必须继续启动 `case-writer` Agent 对每个生成文件进行**实时 HTTP 化改造**：
+   - 使用项目已有 HTTP client 类（`DataValidRequest`/`MetaDataRequest`等），进行方法与端点匹配
+   - **如果没有匹配的 client 方法，直接使用 `AssetsBaseRequest` 或 `BaseRequests`（`self.req.post/post(url, json=payload)`），不得使用 mock 数据（`response = {'body': {...}}`）
+   - 从 HAR 提取每个端点的真实请求体 payload
+   - 保留 deterministic case writer 生成的断言结构和 L1-L5 注释，但替换 response 数据来源为真实 HTTP 调用
+   - 禁止生成 `response = {'body': ...}` 或 `response = {'status_code': ...}` 形式的 mock 数据
+   - 禁止使用 `CONTRACTS` 常量字典作为断言依据（实时测试必须从真实 API 响应中获取数据）
+   - 完成改造后验证文件是否包含 `self.req`、`requests.`、`session.` 或 `httpx.`；如不包含，改造失败
 6. 全部完成后立刻校验目标写范围：
    ```bash
    tide_py -m scripts.write_scope_guard verify \
