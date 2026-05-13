@@ -179,34 +179,43 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
     lines = [
         f"    def {method_name}(self):",
         f"        \"\"\"{scenario_id}\"\"\"",
+        f"        with allure.step(\"{desc}\"):",
     ]
 
     # Generate real HTTP request call
     if method == "get":
         if req_body:
-            body_lines = pprint.pformat(req_body, sort_dicts=True, width=88).splitlines()
-            lines.append(f"        body = _req.get(\"{path}\", \"{desc}\", params={body_lines[0]}")
-            for bl in body_lines[1:]:
-                lines.append(f"            {bl}")
-            lines.append("        )")
+            body_str = pprint.pformat(req_body, sort_dicts=True, width=88)
+            body_lines = body_str.splitlines()
+            if len(body_lines) <= 1:
+                lines.append(f"            body = self.req.get(\"{path}\", \"{desc}\", params={body_str})")
+            else:
+                lines.append(f"            body = self.req.get(\"{path}\", \"{desc}\", params={body_lines[0]}")
+                for bl in body_lines[1:]:
+                    lines.append(f"                {bl}")
+                lines.append("            )")
         else:
-            lines.append(f"        body = _req.get(\"{path}\", \"{desc}\")")
+            lines.append(f"            body = self.req.get(\"{path}\", \"{desc}\")")
     else:
         if req_body:
-            body_lines = pprint.pformat(req_body, sort_dicts=True, width=88).splitlines()
-            lines.append(f"        body = _req.post(\"{path}\", \"{desc}\", json={body_lines[0]}")
-            for bl in body_lines[1:]:
-                lines.append(f"            {bl}")
-            lines.append("        )")
+            body_str = pprint.pformat(req_body, sort_dicts=True, width=88)
+            body_lines = body_str.splitlines()
+            if len(body_lines) <= 1:
+                lines.append(f"            body = self.req.post(\"{path}\", \"{desc}\", json={body_str})")
+            else:
+                lines.append(f"            body = self.req.post(\"{path}\", \"{desc}\", json={body_lines[0]}")
+                for bl in body_lines[1:]:
+                    lines.append(f"                {bl}")
+                lines.append("            )")
         else:
-            lines.append(f"        body = _req.post(\"{path}\", \"{desc}\")")
+            lines.append(f"            body = self.req.post(\"{path}\", \"{desc}\")")
 
     # L1: transport/status contract from live response
     expected_status = response_contract['status_code']
     lines.extend([
         "        # L1: transport/status contract",
-        f"        assert _req.result.status_code == {expected_status}, "
-        f"f\"L1 status contract: {{_req.result.status_code}}\"",
+        f"        assert self.req.result.status_code == {expected_status}, "
+        f"f\"L1 status contract: {{self.req.result.status_code}}\"",
         "        # L2: response schema contract",
     ])
 
@@ -247,11 +256,11 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoints: dict[str, dict[str, Any]]) -> str:
     lines = [
         "# -*- coding: utf-8 -*-",
-        "\"\"\"Tide-generated live HTTP metadata tests.\"\"\"",
+        "# @Author: tide",
         "",
+        "import allure",
+        "import pytest",
         "from utils.assets.requests.assets_requests import AssetsBaseRequest",
-        "",
-        "_req = AssetsBaseRequest()",
         "",
     ]
 
@@ -272,9 +281,16 @@ def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoint
         if used_class_names[generated_class_name] > 1:
             generated_class_name = f"{generated_class_name}{used_class_names[generated_class_name]}"
 
+        path = str(endpoint.get("path", "")) if endpoint else ""
+        feature_name = _safe_name(path.split("/")[-1]) if path else generated_class_name.lower()
         lines.extend([
+            f"@allure.epic(\"数据资产\")",
+            f"@allure.feature(\"{feature_name}\")",
             f"class {generated_class_name}:",
-            "    \"\"\"Generated from Tide normalized scenarios.\"\"\"",
+            "    \"\"\"Tide-generated tests from HAR scenarios.\"\"\"",
+            "",
+            "    def setup_class(self):",
+            "        self.req = AssetsBaseRequest()",
             "",
         ])
 
