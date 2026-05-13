@@ -437,6 +437,43 @@ Task 5 → in_progress
      --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
    ```
    若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
+
+2b. **Live Execution Gate（真实执行门禁）**：
+   在运行 pytest 前，检查生成的测试是否包含真实 HTTP 调用：
+   ```bash
+   # 检查所有生成测试文件是否引用了 HTTP 客户端
+   export TEST_MODE="DETERMINISTIC"
+   for f in <生成文件列表>; do
+     if grep -qE 'requests\.|httpx\.|self\.req|session\.(get|post|put|delete)|\.request\(' "$f" 2>/dev/null; then
+       TEST_MODE="LIVE"
+       break
+     fi
+   done
+   echo "Test mode: $TEST_MODE"
+   ```
+   
+   - **`TEST_MODE=LIVE`**：测试包含真实 HTTP 调用 → 正常执行 Wave 4 剩余步骤（pytest、失败语义分析、修复重跑）。
+   - **`TEST_MODE=DETERMINISTIC`**：测试仅为 mock 骨架，不发送真实 HTTP 请求 → **跳过 pytest 执行**（mock 测试始终通过，无验收价值）。标记运行状态为 `DETERMINISTIC_SKELETON` 并写入 `.tide/state.json`。
+   
+   **确定性骨架升级尝试**（`TEST_MODE=DETERMINISTIC` 时必做）：
+   尝试将 mock 骨架测试升级为真实 HTTP 测试：
+   ```bash
+   # 阅读项目现有测试了解 HTTP client 用法
+   head -80 testcases/scenariotest/assets/data_model/specification_create_table/data_model_create_table_test.py
+   
+   # 阅读 tide-config.yaml 了解 auth/client 配置
+   # 为每个 mock 测试生成对应的真实 HTTP 版本
+   # 使用：response = self.req.post(url, json=payload) 替代 response = {'body': {...}}
+   ```
+   升级要求：
+   - 读取项目现有测试文件了解 fixture 和 client 用法（按需加载，不批量读取）
+   - 从 `tide-config.yaml` 读取 auth 配置（`auth.method`、`auth.class`、`auth.module`）
+   - 保留原始 mock 测试作为降级备份
+   - 新测试使用项目已有 HTTP client（`self.req` / `Session()`）
+   - 从 HAR 提取真实请求 payload 和预期响应结构
+   - 升级完成后重新检查 `TEST_MODE`：如全部升级成功 → LIVE，继续 pytest
+   - 如果升级失败，保留 mock 测试，报告 `DETERMINISTIC_SKELETON`，不得退出
+
 3. 用最终 pytest 输出重写 `.tide/execution-report.json`，确保报告与最后一次实际执行一致：
 
    ```bash
@@ -504,14 +541,21 @@ Task 6 → in_progress
    ```
 
 5. 生成 `.tide/final-report.md`，必须包含：
+   - **测试模式** (`test_mode`: `LIVE` / `DETERMINISTIC_SKELETON` / `LIVE_WITH_DETERMINISTIC_FALLBACK`)。
    - 本次 run 的无头/交互模式。
    - HAR 原路径、快照路径、sha256。
    - 解析端点数、匹配 repo 数、未匹配路径列表。
    - 生成文件列表。
-   - pytest collect-only 和执行结果。
-   - `scripts.generated_assertion_gate` 结果；若存在 `empty L4`、`empty L5`、`missing L4` 或 `missing L5`，最终状态必须写为 FAIL。
+   - pytest collect-only 和执行结果（仅限 `test_mode=LIVE` 时）。
+   - **最终状态规则**：
+     - `test_mode=LIVE` 且 pytest all pass → `PASS`（仅此情况可写 PASS）
+     - `test_mode=LIVE` 且 pytest 有失败 → `FAIL`，附失败归类
+     - `test_mode=DETERMINISTIC_SKELETON` → 最终状态写 **`DETERMINISTIC_SKELETON`**，不得写 PASS
+     - `test_mode=LIVE_WITH_DETERMINISTIC_FALLBACK` → 根据 LIVE 部分结果写 PASS/FAIL
+   - `scripts.generated_assertion_gate` 结果；若存在 `empty L4`、`empty L5`、`missing L4` 或 `missing L5`，最终状态必须写为 FAIL（覆盖 test_mode 规则）。
+   - 确定性骨架升级尝试：成功/失败数量、原因。
    - 未完成阶段与失败原因。
-   - 没有 final-pytest-output.txt 时，不得输出成功总结；最终状态必须写 FAIL，并说明最终 pytest 未执行。
+   - 没有 final-pytest-output.txt 且 `test_mode=LIVE` 时，不得输出成功总结。
 
 **[Hook]** 执行 `tide_py -m scripts.hooks run output:notify`
 

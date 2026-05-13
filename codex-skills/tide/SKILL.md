@@ -157,10 +157,22 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
 6. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
 7. After the final narrow pytest run, rewrite `.tide/execution-report.json` from the final pytest output so it cannot contain stale intermediate counts:
    ```bash
-   set +e
-   "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
-   PYTEST_RC=$?
-   set -e
+   # Live Execution Gate: skip pytest if no real HTTP calls
+   TEST_MODE="DETERMINISTIC"
+   for f in <generated files>; do
+     if grep -qE 'requests\.|httpx\.|self\.req|session\.|\.request\(' "$f" 2>/dev/null; then
+       TEST_MODE="LIVE"; break
+     fi
+   done
+   if [ "$TEST_MODE" = "DETERMINISTIC" ]; then
+     echo "DETERMINISTIC_SKELETON: skipping pytest (mock-only tests)"
+     # Attempt upgrade: read project fixtures, convert mocks to real HTTP calls
+   else
+     set +e
+     "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+     PYTEST_RC=$?
+     set -e
+   fi
    PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
      --report "$PROJECT_ROOT/.tide/execution-report.json" \
      --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
@@ -168,4 +180,4 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
      --total-tests <collect-only generated test count> \
      --command "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q
    ```
-8. Summarize generated files, validation results, commands run, and remaining manual actions.
+8. Summarize generated files, validation results, commands run, and remaining manual actions. Status must be `DETERMINISTIC_SKELETON` when no live HTTP tests were run.
