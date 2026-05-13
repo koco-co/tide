@@ -8,6 +8,7 @@ from pathlib import Path
 
 from scripts.deterministic_case_writer import write_deterministic_cases
 from scripts.format_checker import check_file
+from scripts.generated_assertion_gate import validate_generated_assertions
 
 
 def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: Path) -> None:
@@ -105,6 +106,8 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     assert "L1" in output
     assert "L2" in output
     assert "L3" in output
+    assert "L4 response schema contract changed" in output
+    assert "L5 business response consistency changed" in output
     assert "requires project-specific wiring" not in output
     assert "assert True, \"L4" not in output
     assert "assert True, \"L5" not in output
@@ -117,6 +120,8 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     violations = check_file(str(generated[0]))
     assert not any(violation.rule.id == "FC11" for violation in violations)
     assert not any(violation.rule.id == "FC15" for violation in violations)
+    assertion_result = validate_generated_assertions(scenarios, generated)
+    assert assertion_result.ok, assertion_result.violations
 
 
 def test_write_deterministic_cases_merges_workers_with_same_fallback_output(tmp_path: Path) -> None:
@@ -159,6 +164,56 @@ def test_write_deterministic_cases_merges_workers_with_same_fallback_output(tmp_
     output = generated[0].read_text(encoding="utf-8")
     assert "def test_metadata_case" in output
     assert "def test_assets_case" in output
+
+
+def test_write_deterministic_cases_deduplicates_scenarios_across_workers(tmp_path: Path) -> None:
+    parsed = tmp_path / ".tide" / "parsed.json"
+    scenarios = tmp_path / ".tide" / "scenarios.json"
+    plan = tmp_path / ".tide" / "generation-plan.json"
+    parsed.parent.mkdir()
+
+    parsed.write_text(
+        json.dumps({
+            "endpoints": [
+                {"id": "ep1", "method": "POST", "path": "/dassets/v1/demo", "response": {"status": 200}},
+                {"id": "ep2", "method": "POST", "path": "/dassets/v1/other", "response": {"status": 200}},
+            ]
+        }),
+        encoding="utf-8",
+    )
+    scenarios.write_text(
+        json.dumps({
+            "scenarios": [
+                {"scenario_id": "duplicate_case", "endpoint_id": "ep1", "type": "har_direct"},
+                {"scenario_id": "unique_case", "endpoint_id": "ep2", "type": "har_direct"},
+            ]
+        }),
+        encoding="utf-8",
+    )
+    plan.write_text(
+        json.dumps({
+            "workers": [
+                {
+                    "worker_id": "first",
+                    "scenario_ids": ["duplicate_case", "duplicate_case"],
+                    "output_file": "testcases/scenariotest/assets/first/tide_generated_first_test.py",
+                },
+                {
+                    "worker_id": "second",
+                    "scenario_ids": ["duplicate_case", "unique_case"],
+                    "output_file": "testcases/scenariotest/assets/second/tide_generated_second_test.py",
+                },
+            ]
+        }),
+        encoding="utf-8",
+    )
+
+    generated = write_deterministic_cases(tmp_path, parsed, scenarios, plan)
+
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in generated)
+    assert combined.count("def test_duplicate_case") == 1
+    assert combined.count('"""duplicate_case"""') == 1
+    assert combined.count("def test_unique_case") == 1
 
 
 def test_write_deterministic_cases_writes_one_test_class_per_endpoint(tmp_path: Path) -> None:

@@ -140,11 +140,24 @@ def _required_fields(assertion_plan: dict[str, Any]) -> list[str]:
 
 def _has_assertion(assertion_plan: dict[str, Any], level: str) -> bool:
     value = assertion_plan.get(level)
-    if isinstance(value, list):
-        return bool(value)
     if isinstance(value, dict):
-        return bool(value)
+        return any(_has_meaningful_assertion_value(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_meaningful_assertion_value(item) for item in value)
     return value is not None
+
+
+def _has_meaningful_assertion_value(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(_has_meaningful_assertion_value(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_meaningful_assertion_value(item) for item in value)
+    return value not in (None, "")
+
+
+def _requires_l5(scenario: dict[str, Any], assertion_plan: dict[str, Any]) -> bool:
+    scenario_type = str(scenario.get("type") or "")
+    return _has_assertion(assertion_plan, "L5") or scenario_type in {"e2e_chain", "linkage", "chain"}
 
 
 def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[str]:
@@ -189,6 +202,29 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
         "        if \"success\" in body:",
         "            assert body[\"success\"] is True, \"L3 success flag contract changed\"",
     ])
+
+    if _has_assertion(assertion_plan, "L4"):
+        lines.extend([
+            "        # L4: response data schema contract",
+            "        schema_fields = set(body.get(\"body_keys\", []))",
+            "        schema_fields.update(body.get(\"data_keys\", []))",
+            "        schema_fields.update(body.get(\"data_item_keys\", []))",
+            "        assert schema_fields, \"L4 response schema contract changed\"",
+            "        for field_group in (\"body_keys\", \"data_keys\", \"data_item_keys\"):",
+            "            if field_group in body:",
+            "                assert isinstance(body[field_group], list), f\"L4 schema group is not a list: {field_group}\"",
+        ])
+
+    if _requires_l5(scenario, assertion_plan):
+        lines.extend([
+            "        # L5: business response consistency contract",
+            "        l5_business_markers = [key for key in (\"success\", \"code\") if key in body]",
+            "        assert l5_business_markers, \"L5 business response consistency changed\"",
+            "        if \"success\" in body:",
+            "            assert body[\"success\"] is True, \"L5 business success consistency changed\"",
+            "        if \"code\" in body:",
+            "            assert body[\"code\"] == 1, \"L5 business code consistency changed\"",
+        ])
 
     lines.append("")
     return lines
@@ -249,6 +285,7 @@ def write_deterministic_cases(
     scenarios_by_id = _scenario_map(scenarios_doc)
     generated: list[Path] = []
     grouped: dict[Path, list[dict[str, Any]]] = {}
+    assigned_scenario_ids: set[str] = set()
 
     workers = plan.get("workers", [])
     if not workers:
@@ -260,11 +297,13 @@ def write_deterministic_cases(
             output_file = DEFAULT_OUTPUT
         output_path = project_root / output_file
 
-        worker_scenarios = [
-            scenarios_by_id[scenario_id]
-            for scenario_id in worker.get("scenario_ids", [])
-            if scenario_id in scenarios_by_id
-        ]
+        worker_scenarios = []
+        for scenario_id in worker.get("scenario_ids", []):
+            scenario_id = str(scenario_id)
+            if scenario_id in assigned_scenario_ids or scenario_id not in scenarios_by_id:
+                continue
+            assigned_scenario_ids.add(scenario_id)
+            worker_scenarios.append(scenarios_by_id[scenario_id])
         if not worker_scenarios:
             continue
 
