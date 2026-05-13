@@ -1,0 +1,1044 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "scene_dmetadata_pageTask",
+      "endpoint_id": "301682d2-1890-4957-95fb-f4ec4512d424",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/syncTask/pageTask"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/syncTask/pageTask",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/syncTask/pageTask"
+    },
+    {
+      "scenario_id": "scene_dmetadata_listMetadataDataSource",
+      "endpoint_id": "159e7d9d-bfef-44ba-97f7-c0c71ed4dc45",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/dataSource/listMetadataDataSource"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/dataSource/listMetadataDataSource",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/dataSource/listMetadataDataSource"
+    },
+    {
+      "scenario_id": "scene_dmetadata_realTimeDbList",
+      "endpoint_id": "e2e003a7-2a5b-465a-9538-3eed6f5a79bd",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/dataDb/realTimeDbList"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/dataDb/realTimeDbList",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/dataDb/realTimeDbList"
+    },
+    {
+      "scenario_id": "scene_dmetadata_realTimeTableList",
+      "endpoint_id": "4d30cd29-d70e-4541-aed2-52d677d94c03",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/syncTask/realTimeTableList"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/syncTask/realTimeTableList",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/syncTask/realTimeTableList"
+    },
+    {
+      "scenario_id": "scene_dassets_pageUsers",
+      "endpoint_id": "8cd51962-cbb0-4da2-a423-bb9a1d114088",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/user/pageUsers"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/user/pageUsers",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/user/pageUsers"
+    },
+    {
+      "scenario_id": "scene_dmetadata_add",
+      "endpoint_id": "94157724-b6b7-4960-ac04-4478129bbca9",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/syncTask/add"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/syncTask/add",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/syncTask/add"
+    },
+    {
+      "scenario_id": "scene_dmetadata_pageQuery",
+      "endpoint_id": "3fb24acd-3e72-4a58-a904-71bd4ae2812c",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/syncJob/pageQuery"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/syncJob/pageQuery",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/syncJob/pageQuery"
+    },
+    {
+      "scenario_id": "scene_dassets_recentQuery",
+      "endpoint_id": "119d7863-c314-4f5e-8abe-78096b06cf97",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/recentQuery"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/recentQuery",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/recentQuery"
+    },
+    {
+      "scenario_id": "scene_dassets_assetStatistics",
+      "endpoint_id": "fb8b8536-944a-4891-a0d3-8cc354792ec5",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/assetStatistics"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/assetStatistics",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/assetStatistics"
+    },
+    {
+      "scenario_id": "scene_dassets_countDataSource",
+      "endpoint_id": "08da4760-5607-4f25-9e02-003c5c952203",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/dataInventory/countDataSource"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/dataInventory/countDataSource",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/dataInventory/countDataSource"
+    },
+    {
+      "scenario_id": "scene_dassets_list",
+      "endpoint_id": "452c88ff-1e07-4438-8b21-999c9b22d4b3",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/hotword/list"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/hotword/list",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/hotword/list"
+    },
+    {
+      "scenario_id": "scene_dassets_list_2",
+      "endpoint_id": "6a168630-bf8d-4edf-b6e8-2c80132246b3",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/hotLabel/list"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/hotLabel/list",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/hotLabel/list"
+    },
+    {
+      "scenario_id": "scene_dassets_listUsers",
+      "endpoint_id": "6661444d-ee89-405e-9de7-5724865ad14e",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/listUsers"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/listUsers",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/listUsers"
+    },
+    {
+      "scenario_id": "scene_dassets_list_3",
+      "endpoint_id": "065bfa21-806c-421a-af97-8866983e390d",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/label/list"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/label/list",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/label/list"
+    },
+    {
+      "scenario_id": "scene_dassets_listCatalogByQuery",
+      "endpoint_id": "8785c519-6f87-49ee-85ae-389eb088c1d0",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/resourceCatalog/listCatalogByQuery"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/resourceCatalog/listCatalogByQuery",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/resourceCatalog/listCatalogByQuery"
+    },
+    {
+      "scenario_id": "scene_dmetadata_isSuperUser",
+      "endpoint_id": "20864894-ffcd-4a8d-8cfc-0ffdc9162555",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/metadataApply/isSuperUser"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/metadataApply/isSuperUser",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/metadataApply/isSuperUser"
+    },
+    {
+      "scenario_id": "scene_dassets_queryDetail",
+      "endpoint_id": "9da97ce9-58a3-47c9-9c7d-83c5b7c064d2",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/queryDetail"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/queryDetail",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/queryDetail"
+    },
+    {
+      "scenario_id": "scene_dassets_pageTableColumn",
+      "endpoint_id": "09fa1548-3d00-48eb-84e7-fc008e5f32cf",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/dataTableColumn/pageTableColumn"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/dataTableColumn/pageTableColumn",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/dataTableColumn/pageTableColumn"
+    },
+    {
+      "scenario_id": "scene_dmetadata_getTableLifeCycle",
+      "endpoint_id": "36e98802-f974-444d-93f0-76f0cc63df1c",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/dataTable/getTableLifeCycle"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/dataTable/getTableLifeCycle",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/dataTable/getTableLifeCycle"
+    },
+    {
+      "scenario_id": "scene_dassets_queryDetail_2",
+      "endpoint_id": "63da4742-2acc-43b0-871a-0310f019a2fb",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/dataTable/queryDetail"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/dataTable/queryDetail",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/dataTable/queryDetail"
+    },
+    {
+      "scenario_id": "scene_dassets_listAllBindLabelByCondition",
+      "endpoint_id": "80d0abdd-426d-4311-894e-30ff86dda409",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/label/listAllBindLabelByCondition"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/label/listAllBindLabelByCondition",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/label/listAllBindLabelByCondition"
+    },
+    {
+      "scenario_id": "scene_dassets_bindResourceRel",
+      "endpoint_id": "40632136-1988-4710-8d7e-4509f9ba45c1",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/datamap/resource/bindResourceRel"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/datamap/resource/bindResourceRel",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/datamap/resource/bindResourceRel"
+    },
+    {
+      "scenario_id": "scene_dassets_judgeIsMetaByTableId",
+      "endpoint_id": "1efc6fb3-f84f-4381-b2d7-c3ad5020c91f",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/dataTable/judgeIsMetaByTableId"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/dataTable/judgeIsMetaByTableId",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/dataTable/judgeIsMetaByTableId"
+    },
+    {
+      "scenario_id": "scene_dassets_hasParition",
+      "endpoint_id": "7960c92e-96e7-4ead-b9f0-b65ca5bd478e",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/dataTable/hasParition"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/dataTable/hasParition",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/dataTable/hasParition"
+    },
+    {
+      "scenario_id": "scene_dassets_queryCreateTableSql",
+      "endpoint_id": "cf9200bf-b224-4b51-ad9e-c73cf7bde27f",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dassets/v1/dataTable/queryCreateTableSql"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dassets/v1/dataTable/queryCreateTableSql",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dassets",
+        "dt-center-assets"
+      ],
+      "description": "Test POST /dassets/v1/dataTable/queryCreateTableSql"
+    },
+    {
+      "scenario_id": "scene_dmetadata_getApplyStatus",
+      "endpoint_id": "94c8c550-4d8c-403c-b7b7-7fcd116b2621",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/metadataApply/getApplyStatus"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/metadataApply/getApplyStatus",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/metadataApply/getApplyStatus"
+    },
+    {
+      "scenario_id": "scene_dmetadata_getSubscribeByTableId",
+      "endpoint_id": "faddf704-72b4-4c21-97c7-6d2c468ffa53",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/dataSubscribe/getSubscribeByTableId"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/dataSubscribe/getSubscribeByTableId",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/dataSubscribe/getSubscribeByTableId"
+    },
+    {
+      "scenario_id": "scene_dmetadata_queryTablePermission",
+      "endpoint_id": "01604c9a-a86e-4ed1-90e5-239c49aafee2",
+      "endpoint": {
+        "method": "POST",
+        "path": "/dmetadata/v1/dataTable/queryTablePermission"
+      },
+      "type": "har_direct",
+      "confidence": "high",
+      "confidence_reason": "Directly captured from HAR: POST /dmetadata/v1/dataTable/queryTablePermission",
+      "assertion_plan": {
+        "L1": {
+          "status_code": 200
+        },
+        "L2": {
+          "required_fields": [
+            "code",
+            "success"
+          ]
+        },
+        "L3": {
+          "business_code": 1,
+          "success_flag": true
+        },
+        "L4": {
+          "data_schema_check": true
+        },
+        "L5": {
+          "business_logic": "verify_response"
+        }
+      },
+      "tags": [
+        "dmetadata",
+        "dt-center-metadata"
+      ],
+      "description": "Test POST /dmetadata/v1/dataTable/queryTablePermission"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2026-05-13T09:47:00+08:00",
+    "source_har": "/Users/poco/Projects/dtstack-httprunner/.tide/inputs/20260509_152002_20260509_150847_172.16.122.52.har"
+  }
+}

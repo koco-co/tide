@@ -19,6 +19,7 @@ PR: https://github.com/koco-co/tide/pull/1
 | Iter 19 | 90.55 | Scoped fallback remediation: one `Test*` class per endpoint, still blocked by L4/L5 and CLI termination. |
 | Iter 20 | 86.95 | Fresh natural-language run still did not exit; new assertion hard gate correctly fails all missing L4 checks. |
 | Iter 21 | 90.7 | PostToolUse auto-stop fixed CLI termination; strict gate still fails because L4/L5 plans are empty. |
+| Iter 22 | 91.2 | Default final report now marks Assertion Gate failure; strict L4/L5 runtime assertions still missing. |
 
 ## Improvements Delivered
 
@@ -32,13 +33,13 @@ PR: https://github.com/koco-co/tide/pull/1
 - Iter 19 deterministic fallback output uses one `Test*` class per endpoint for the current 28-endpoint target run.
 - Iter 20 adds FC15 and `generated_assertion_gate` so L4/L5 placeholders or omissions are no longer hidden by green pytest/format checks.
 - Iter 21 adds a natural-language auto-stop sentinel and PostToolUse hook; the CLI run exits cleanly after final report generation.
+- Iter 22 updates the default Tide command/skill workflow so final reports must include the assertion gate and mark the run failed/partial when L4/L5 are missing.
 
 ## Residual Risks
 
-- L4/L5 scenario plans are still empty (`db_verify: []`, `ui_verify: []`) in Iter 21; no project-native runtime assertions are implemented.
-- The final report currently lists L4/L5 as "待补充" but does not fail the default run status on that basis.
+- Generated tests still miss L4/L5 runtime assertions in Iter 22; the final report now surfaces this correctly.
 - The target repo has pre-existing unrelated dirty/untracked files; Tide write-scope verification covers forbidden-path changes but does not clean the whole target repo.
 
 ## Conclusion
 
-The plugin improved materially from the 72/100 baseline and reaches 90.7/100 conditionally in Iter 21 after fixing hands-free Claude CLI completion. It should not be declared complete against the strict hard-gate objective because real L4/L5 runtime assertions remain unresolved.
+The plugin improved materially from the 72/100 baseline and reaches 91.2/100 conditionally in Iter 22 after fixing hands-free Claude CLI completion and making final reports honest about Assertion Gate failure. It should not be declared complete against the strict hard-gate objective because real L4/L5 runtime assertions remain unresolved.

@@ -1,0 +1,4 @@
+ M commands/tide.md
+ M skills/tide/SKILL.md
+ M tests/test_skill_contract.py
+?? evals/tide-optimization/iter_22/
