@@ -72,7 +72,8 @@ def load_repo_profiles(profiles_path: Path, project_root: Path) -> list[Normaliz
     data = yaml.safe_load(profiles_path.read_text(encoding="utf-8")) or {}
     raw_profiles = data.get("profiles")
     if raw_profiles is None:
-        raw_profiles = data.get("repos", [])
+        repos = data.get("repos", [])
+        raw_profiles = repos.get("profiles", []) if isinstance(repos, dict) else repos
     if not isinstance(raw_profiles, list):
         raise ValueError(f"repo profiles must be a list in {profiles_path}")
     return [_normalize_one(item, project_root.resolve()) for item in raw_profiles]

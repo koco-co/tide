@@ -48,3 +48,30 @@ repos:
 
     assert result[0].name == "dt-center-metadata"
     assert result[0].local_path == tmp_path / ".tide" / "repos" / "CustomItem" / "dt-center-metadata"
+
+
+def test_loads_tide_config_repos_profiles_schema(tmp_path: Path) -> None:
+    config = tmp_path / "tide-config.yaml"
+    config.write_text(
+        """
+project:
+  name: demo
+repos:
+  profiles:
+    - name: metadata
+      remote_url: http://gitlab.example.com/group/metadata.git
+      branch: release
+      local_path: .tide/repos/metadata
+      url_prefixes:
+        - /dmetadata
+""",
+        encoding="utf-8",
+    )
+
+    result = load_repo_profiles(config, tmp_path)
+
+    assert len(result) == 1
+    assert result[0].name == "metadata"
+    assert result[0].branch == "release"
+    assert result[0].local_path == (tmp_path / ".tide" / "repos" / "metadata").resolve()
+    assert result[0].url_prefixes == ["/dmetadata"]

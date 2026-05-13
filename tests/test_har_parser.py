@@ -273,6 +273,33 @@ class TestMatchRepo:
         assert name is None
         assert branch is None
 
+    def test_matches_dtstack_d_service_paths_to_api_prefix_profiles(
+        self, tmp_path: Path
+    ) -> None:
+        profiles_path = tmp_path / "tide-config.yaml"
+        profiles_path.write_text(
+            """
+repos:
+  profiles:
+    - name: dt-center-assets
+      branch: release_6.3.x
+      url_prefixes:
+        - /api/assets
+    - name: dt-center-metadata
+      branch: release_6.3.x
+      url_prefixes:
+        - /api/metadata
+""",
+            encoding="utf-8",
+        )
+        profiles = load_repo_profiles(profiles_path, tmp_path)
+
+        assets_name, _ = match_repo("/dassets/v1/dataSource/getAllSchema", profiles)
+        metadata_name, _ = match_repo("/dmetadata/v1/dataSource/list", profiles)
+
+        assert assets_name == "dt-center-assets"
+        assert metadata_name == "dt-center-metadata"
+
 
 # ---------------------------------------------------------------------------
 # TestParseHar

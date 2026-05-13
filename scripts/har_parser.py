@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from scripts.repo_profiles import NormalizedRepoProfile, load_repo_profiles
@@ -290,13 +289,33 @@ def scan_auth_headers(har_path: Path) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def match_repo(
-    path: str, profiles: list
-) -> tuple[str | None, str | None]:
+def _service_aliases(path: str) -> set[str]:
+    service, _ = _extract_service_module(path)
+    aliases = {service}
+    if service.startswith("d") and len(service) > 1:
+        aliases.add(service[1:])
+    return aliases
+
+
+def _prefix_service(prefix: str) -> str:
+    parts = [part for part in prefix.strip("/").split("/") if part]
+    if not parts:
+        return ""
+    if parts[0] == "api" and len(parts) > 1:
+        return parts[1]
+    return parts[0]
+
+
+def match_repo(path: str, profiles: list) -> tuple[str | None, str | None]:
     """将 *path* 与 profiles 中的 url_prefixes 进行匹配；返回 (name, branch) 或 (None, None)。"""
     for profile in profiles:
         for prefix in profile.url_prefixes:
             if path.startswith(prefix):
+                return profile.name, profile.branch
+    aliases = _service_aliases(path)
+    for profile in profiles:
+        for prefix in profile.url_prefixes:
+            if _prefix_service(prefix) in aliases:
                 return profile.name, profile.branch
     return None, None
 
