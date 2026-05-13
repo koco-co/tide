@@ -110,17 +110,24 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
    - 生成测试和最终 pytest 必须使用项目已有配置的 active environment（例如 `tide-config.yaml` 的 `environments.active`、项目 env 文件、fixture、runner）。
 
 4c. **INTERACTIVE HARD GATE**：
-   - 若 `.tide/run-context.json` 中 `requires_confirmation=true`，必须用 AskUserQuestion 等用户确认，确认前不得进入下一阶段。
+   - 若 `.tide/run-context.json` 中 `requires_confirmation=true`，优先用 AskUserQuestion 等用户确认，确认前不得进入下一阶段。
    - 隐私/成本摘要后至少记录 `continue_after_precheck`。
    - `.tide/parsed.json` 解析完成并展示端点/环境摘要后必须询问，确认后记录 `continue_after_parse`。
    - `.tide/scenarios.json` 与 `.tide/generation-plan.json` 生成并展示写入计划后必须询问，确认后记录 `continue_after_scenarios`。
    - 涉及真实环境的最终 pytest，如用户未显式要求自动执行，也必须在交互模式下确认。
+   - **Codex exec 模式降级**：若 AskUserQuestion / request_user_input 不可用（返回 error 或 tool 不存在），自动降级到无头策略。
 
 5. **无头执行策略**：
    - 若 `.tide/run-context.json` 中 `requires_confirmation=false`，不得调用 AskUserQuestion。
    - 所有"是否继续 / 是否进入下一阶段 / 是否确认场景"的问题默认选择继续。
    - 将默认决策写入 `.tide/state.json` 的 metadata，例如 `{"headless_decisions":["continue_after_precheck","continue_after_parse","continue_after_scenarios"]}`。
-   - 若 `requires_confirmation=true`，保留现有 AskUserQuestion 交互。
+   - 若 `requires_confirmation=true`，优先尝试 AskUserQuestion。如果调用失败（tool 不存在、返回错误、或在 exec 模式中），**自动降级为无头模式**：
+     - 所有交互点默认选择继续
+     - 测试粒度默认 `hybrid`（混合模式）
+     - 业务场景根据 HAR 文件名自动推断
+     - 所有决策写入 `.tide/state.json` 的 `headless_fallback` 字段
+     - 继续下一阶段，不中断流程
+   - 降级后不得再次尝试 AskUserQuestion。
 
 6. 解析 `$ARGUMENTS`：`har_path`（必填）、`--quick`、`--yes`、`--non-interactive`、`--resume`、`--wave N`
 6a. **HAR 路径确定性解析（禁止猜测）**：

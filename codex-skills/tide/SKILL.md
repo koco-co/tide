@@ -90,7 +90,7 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
    ```bash
    PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.har_inputs "$HAR_PATH" --project-root "$PROJECT_ROOT"
    ```
-6. Confirm privacy/cost only when confirmation is required. Use `request_user_input` in Plan Mode; otherwise ask plainly.
+6. Confirm privacy/cost only when confirmation is required. Use `request_user_input` in Plan Mode; otherwise ask plainly. **Exec mode fallback**: if `request_user_input` is unavailable (returns error or tool not found), skip confirmation and use conservative defaults.
 7. Capture test granularity as `single_api`, `crud`, `e2e_chain`, or `hybrid`; default to `hybrid`.
 
 ### 1. Parse and Prepare
