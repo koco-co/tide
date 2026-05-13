@@ -51,6 +51,9 @@ class TestClaudeHooks:
         assert "/tide:tide" in context
         assert "--quick --yes --non-interactive" in context
         assert "scripts.deterministic_case_writer" in context
+        assert "do not continue with project-native enhancement" in context
+        assert ".tide/final-report.md" in context
+        assert "stop immediately" in context
         assert "不要自由生成" in context
 
     def test_user_prompt_hook_creates_write_scope_snapshot(self, tmp_path: Path) -> None:

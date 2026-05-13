@@ -80,3 +80,14 @@ class TestFormatChecker:
         )
         violations = check_file(str(bad))
         assert any(v.rule.id == "FC14" for v in violations)
+
+    def test_detects_placeholder_l4_l5_assertions(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_placeholder_l4.py"
+        bad.write_text(
+            "class TestPlaceholder:\n"
+            '    """Placeholder L4."""\n\n'
+            "    def test_l4_placeholder(self):\n"
+            '        assert True, "L4 DB assertion plan is present but requires project-specific wiring"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC15" for v in violations)

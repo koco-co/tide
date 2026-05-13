@@ -190,51 +190,17 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
         "            assert body[\"success\"] is True, \"L3 success flag contract changed\"",
     ])
 
-    if _has_assertion(assertion_plan, "L4"):
-        lines.extend([
-            "        # L4: data persistence contract",
-            "        if os.getenv(\"TIDE_ENABLE_DB_ASSERTIONS\") != \"1\":",
-            "            pytest.skip(\"Set TIDE_ENABLE_DB_ASSERTIONS=1 to enable DB assertions\")",
-            "        assert True, \"L4 DB assertion plan is present but requires project-specific wiring\"",
-        ])
-
-    if _has_assertion(assertion_plan, "L5"):
-        lines.extend([
-            "        # L5: cross-endpoint linkage contract",
-            "        if os.getenv(\"TIDE_ENABLE_LINKAGE_ASSERTIONS\") != \"1\":",
-            "            pytest.skip(\"Set TIDE_ENABLE_LINKAGE_ASSERTIONS=1 to enable linkage assertions\")",
-            "        assert True, \"L5 linkage assertion plan is present but requires project-specific wiring\"",
-        ])
-
     lines.append("")
     return lines
 
 
 def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoints: dict[str, dict[str, Any]]) -> str:
-    needs_optional_imports = any(
-        isinstance(scenario.get("assertion_plan"), dict)
-        and (
-            _has_assertion(scenario["assertion_plan"], "L4")
-            or _has_assertion(scenario["assertion_plan"], "L5")
-        )
-        for scenario in scenarios
-    )
     lines = [
         "# -*- coding: utf-8 -*-",
         "\"\"\"Deterministic Tide-generated metadata tests.\"\"\"",
         "",
     ]
-    if needs_optional_imports:
-        lines.extend([
-            "import os",
-            "",
-            "import pytest",
-            "",
-        ])
-
-    lines.extend([
-        "",
-    ])
+    lines.append("")
 
     scenarios_by_endpoint: dict[str, list[dict[str, Any]]] = {}
     for scenario in scenarios:

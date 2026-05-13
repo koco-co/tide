@@ -48,6 +48,7 @@ RULES: list[FormatRule] = [
     FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.ERROR),
     FormatRule("FC12", "setup_class 必须为实例方法（禁止 @classmethod）", Severity.ERROR),
     FormatRule("FC14", "包含测试方法的类名必须以 Test 开头", Severity.ERROR),
+    FormatRule("FC15", "禁止 L4/L5 占位断言或跳过逻辑", Severity.ERROR),
 ]
 
 _RULE_MAP = {r.id: r for r in RULES}
@@ -348,6 +349,47 @@ def _check_classmethod_setup(tree: ast.Module, filepath: str) -> list[Violation]
     return violations
 
 
+def _check_placeholder_l4_l5_assertions(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC15: L4/L5 must not be represented by placeholder pass/skip logic."""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC15"]
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assert):
+            message = ""
+            if isinstance(node.msg, ast.Constant) and isinstance(node.msg.value, str):
+                message = node.msg.value
+            is_assert_true = isinstance(node.test, ast.Constant) and node.test.value is True
+            if is_assert_true and (
+                "requires project-specific wiring" in message
+                or message.startswith(("L4 ", "L5 "))
+            ):
+                violations.append(Violation(
+                    rule=rule,
+                    file=filepath,
+                    line=node.lineno,
+                    detail="L4/L5 使用 assert True 占位，未提供可执行断言",
+                ))
+        elif isinstance(node, ast.Call):
+            if not (isinstance(node.func, ast.Attribute) and node.func.attr == "skip"):
+                continue
+            for arg in node.args:
+                if (
+                    isinstance(arg, ast.Constant)
+                    and isinstance(arg.value, str)
+                    and "TIDE_ENABLE_" in arg.value
+                    and "ASSERTIONS" in arg.value
+                ):
+                    violations.append(Violation(
+                        rule=rule,
+                        file=filepath,
+                        line=node.lineno,
+                        detail="L4/L5 使用环境变量跳过逻辑，未提供默认可执行断言",
+                    ))
+
+    return violations
+
+
 def _check_collectable_test_class_names(tree: ast.Module, filepath: str) -> list[Violation]:
     """FC14: 包含 test_* 方法的类名必须以 Test 开头，确保 pytest 会收集。"""
     violations: list[Violation] = []
@@ -434,6 +476,7 @@ def check_file(filepath: str) -> list[Violation]:
     violations.extend(_check_hardcoded_business_ids(tree, filepath))
     violations.extend(_check_classmethod_setup(tree, filepath))
     violations.extend(_check_collectable_test_class_names(tree, filepath))
+    violations.extend(_check_placeholder_l4_l5_assertions(tree, filepath))
 
     return violations
 

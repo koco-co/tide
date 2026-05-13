@@ -105,15 +105,18 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     assert "L1" in output
     assert "L2" in output
     assert "L3" in output
-    assert "L4" in output
-    assert "L5" in output
+    assert "requires project-specific wiring" not in output
+    assert "assert True, \"L4" not in output
+    assert "assert True, \"L5" not in output
     assert "172.16.122.52" not in output
     assert "webhook" not in output.lower()
     assert "12695" not in output
     assert "dataSourceId" not in output
     assert "body_keys" in output
     assert (tmp_path / ".tide/artifact-manifest.json").exists()
-    assert not any(violation.rule.id == "FC11" for violation in check_file(str(generated[0])))
+    violations = check_file(str(generated[0]))
+    assert not any(violation.rule.id == "FC11" for violation in violations)
+    assert not any(violation.rule.id == "FC15" for violation in violations)
 
 
 def test_write_deterministic_cases_merges_workers_with_same_fallback_output(tmp_path: Path) -> None:

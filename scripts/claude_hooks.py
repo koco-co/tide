@@ -147,7 +147,9 @@ def build_user_prompt_context(prompt: str) -> str | None:
         "一旦 `.tide/scenarios.json` 和 `.tide/generation-plan.json` 存在，必须先运行 "
         "`scripts.scenario_normalizer`、`scripts.scenario_validator` 和 "
         "`scripts.deterministic_case_writer`，确保预算耗尽前已有可 collect 的 pytest 文件；"
-        "之后如仍有预算再做项目原生增强。"
+        "in this non-interactive CLI flow, do not continue with project-native enhancement "
+        "after deterministic fallback and validation complete; write `.tide/final-report.md` "
+        "with generated files and verification results, then stop immediately. "
         "Target writes are limited to `.tide/` and `testcases/`; do not modify "
         "`api/`, `dao/`, `utils/`, `config/`, `testdata/`, or `resource/`."
     )
