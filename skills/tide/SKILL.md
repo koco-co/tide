@@ -362,6 +362,15 @@ Task 4 → in_progress
    - 对 FC11（硬编码业务 ID）的 ERROR 级别违规：自动将 `dataSourceId: 1` 等替换为 `self.ds_id` / `self.table_id` 变量引用，若无法修复则阻断流水线
    - 对 FC08（print 语句）的 ERROR 级别违规，自动移除
    - 记录问题到 `.tide/format-report.json`
+9. **断言硬门检查**（新增）：对 `.tide/scenarios.json` 和所有生成测试执行 generated_assertion_gate：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.generated_assertion_gate \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     <生成的 pytest 文件列表>
+   ```
+   - 若输出 `empty L4`、`empty L5`、`missing L4` 或 `missing L5`，本轮质量门必须 FAIL。
+   - 不得把 `pytest passed`、`format passed` 或空的 `db_verify: []` / `ui_verify: []` 当作 L4/L5 通过。
+   - 将输出保存为 `.tide/assertion-gate-report.json` 或在 `.tide/final-report.md` 中逐项列出失败原因。
 
 **[偏好]** 写入本次生成的模块数 `uv run python3 scripts/preferences.py write --key last_module_count --value <N>`
 
@@ -459,6 +468,7 @@ Task 6 → in_progress
    - 解析端点数、匹配 repo 数、未匹配路径列表。
    - 生成文件列表。
    - pytest collect-only 和执行结果。
+   - `scripts.generated_assertion_gate` 结果；若存在 `empty L4`、`empty L5`、`missing L4` 或 `missing L5`，最终状态必须写为 FAIL。
    - 未完成阶段与失败原因。
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run output:notify`

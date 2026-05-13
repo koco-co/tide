@@ -41,6 +41,18 @@ PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.deterministic_cas
 This fallback may be refined by Claude afterwards, but it prevents a run from
 ending with valid HAR parsing and no collectable test files.
 
+Before writing `.tide/final-report.md`, run the strict generated assertion gate:
+
+```bash
+PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.generated_assertion_gate \
+  --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+  <generated pytest files>
+```
+
+If this reports `empty L4`, `empty L5`, missing L4, or missing L5, the final
+report must mark the run as failed. Do not present green pytest/format results
+as full L1-L5 success when the assertion gate fails.
+
 ## Guardrails
 
 - Keep existing project configuration intact unless the user approves a specific change.
