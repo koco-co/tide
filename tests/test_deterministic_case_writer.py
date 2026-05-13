@@ -106,8 +106,8 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     assert "L1" in output
     assert "L2" in output
     assert "L3" in output
-    assert "L4 response schema contract changed" in output
-    assert "L5 business response consistency changed" in output
+    assert "L4 data field must exist" in output
+    assert "L5 code field must exist" in output
     assert "requires project-specific wiring" not in output
     assert "assert True, \"L4" not in output
     assert "assert True, \"L5" not in output
@@ -115,7 +115,6 @@ def test_write_deterministic_cases_creates_collectable_l1_to_l5_tests(tmp_path: 
     assert "webhook" not in output.lower()
     assert "12695" not in output
     assert "dataSourceId" not in output
-    assert "body_keys" in output
     assert (tmp_path / ".tide/artifact-manifest.json").exists()
     violations = check_file(str(generated[0]))
     assert not any(violation.rule.id == "FC11" for violation in violations)

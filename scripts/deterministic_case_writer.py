@@ -169,27 +169,50 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 
     response_contract = _response_contract(endpoint)
     required_fields = _required_fields(assertion_plan)
-    response_literal = pprint.pformat(response_contract, sort_dicts=True, width=88)
-    response_lines = response_literal.splitlines()
+
+    method = str(endpoint.get("method", "POST")).lower()
+    path = str(endpoint.get("path", ""))
+    req = endpoint.get("request", {})
+    req_body = req.get("body", {}) if isinstance(req, dict) else {}
+    desc = _safe_name(scenario_id)
 
     lines = [
         f"    def {method_name}(self):",
         f"        \"\"\"{scenario_id}\"\"\"",
-        f"        response = {response_lines[0]}",
+        "        _req = AssetsBaseRequest()",
     ]
-    lines.extend(f"        {line}" for line in response_lines[1:])
+
+    # Generate real HTTP request call
+    if method == "get":
+        if req_body:
+            body_lines = pprint.pformat(req_body, sort_dicts=True, width=88).splitlines()
+            lines.append(f"        body = _req.get(\"{path}\", \"{desc}\", params={body_lines[0]}")
+            for bl in body_lines[1:]:
+                lines.append(f"            {bl}")
+            lines.append("        )")
+        else:
+            lines.append(f"        body = _req.get(\"{path}\", \"{desc}\")")
+    else:
+        if req_body:
+            body_lines = pprint.pformat(req_body, sort_dicts=True, width=88).splitlines()
+            lines.append(f"        body = _req.post(\"{path}\", \"{desc}\", json={body_lines[0]}")
+            for bl in body_lines[1:]:
+                lines.append(f"            {bl}")
+            lines.append("        )")
+        else:
+            lines.append(f"        body = _req.post(\"{path}\", \"{desc}\")")
+
+    # L1: transport/status contract from live response
+    expected_status = response_contract['status_code']
     lines.extend([
-        "        body = response.get(\"body\", {})",
-        "        # L1: transport/status contract from HAR",
-        f"        assert response[\"status_code\"] == {response_contract['status_code']!r}, \"L1 status contract changed\"",
+        "        # L1: transport/status contract",
+        f"        assert _req.result.status_code == {expected_status}, "
+        f"f\"L1 status contract: {{_req.result.status_code}}\"",
         "        # L2: response schema contract",
     ])
 
     if required_fields:
-        lines.append("        available_fields = set(body)")
-        lines.append("        available_fields.update(body.get(\"body_keys\", []))")
-        lines.append("        available_fields.update(body.get(\"data_keys\", []))")
-        lines.append("        available_fields.update(body.get(\"data_item_keys\", []))")
+        lines.append("        available_fields = set(body) if isinstance(body, dict) else set()")
         lines.append(f"        for field in {required_fields!r}:")
         lines.append("            assert field in available_fields, f\"L2 missing response field: {field}\"")
     else:
@@ -197,8 +220,7 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 
     lines.extend([
         "        # L3: business success contract",
-        "        if \"code\" in body:",
-        "            assert body[\"code\"] == 1, \"L3 business code contract changed\"",
+        "        assert body.get(\"code\") == 1, f\"L3 business code: {body.get('code')}\"",
         "        if \"success\" in body:",
         "            assert body[\"success\"] is True, \"L3 success flag contract changed\"",
     ])
@@ -206,24 +228,19 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
     if _has_assertion(assertion_plan, "L4"):
         lines.extend([
             "        # L4: response data schema contract",
-            "        schema_fields = set(body.get(\"body_keys\", []))",
-            "        schema_fields.update(body.get(\"data_keys\", []))",
-            "        schema_fields.update(body.get(\"data_item_keys\", []))",
-            "        assert schema_fields, \"L4 response schema contract changed\"",
-            "        for field_group in (\"body_keys\", \"data_keys\", \"data_item_keys\"):",
-            "            if field_group in body:",
-            "                assert isinstance(body[field_group], list), f\"L4 schema group is not a list: {field_group}\"",
+            "        data = body.get(\"data\") if isinstance(body, dict) else body",
+            "        assert data is not None, \"L4 data field must exist\"",
+            "        if isinstance(data, dict):",
+            "            assert len(data) > 0, \"L4 data dict must not be empty\"",
+            "        elif isinstance(data, list):",
+            "            assert len(data) > 0, \"L4 data list must not be empty\"",
         ])
 
     if _requires_l5(scenario, assertion_plan):
         lines.extend([
             "        # L5: business response consistency contract",
-            "        l5_business_markers = [key for key in (\"success\", \"code\") if key in body]",
-            "        assert l5_business_markers, \"L5 business response consistency changed\"",
-            "        if \"success\" in body:",
-            "            assert body[\"success\"] is True, \"L5 business success consistency changed\"",
-            "        if \"code\" in body:",
-            "            assert body[\"code\"] == 1, \"L5 business code consistency changed\"",
+            "        assert \"code\" in body, \"L5 code field must exist\"",
+            "        assert body[\"code\"] == 1, f\"L5 business code: {body.get('code')}\"",
         ])
 
     lines.append("")
@@ -233,10 +250,11 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
 def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoints: dict[str, dict[str, Any]]) -> str:
     lines = [
         "# -*- coding: utf-8 -*-",
-        "\"\"\"Deterministic Tide-generated metadata tests.\"\"\"",
+        "\"\"\"Tide-generated live HTTP metadata tests.\"\"\"",
+        "",
+        "from utils.assets.requests.assets_requests import AssetsBaseRequest",
         "",
     ]
-    lines.append("")
 
     scenarios_by_endpoint: dict[str, list[dict[str, Any]]] = {}
     for scenario in scenarios:
