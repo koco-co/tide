@@ -18,6 +18,7 @@ PR: https://github.com/koco-co/tide/pull/1
 | Iter 18 | 90.0 | Guarded fallback produced 28 passing tests with clean format/write-scope gates. |
 | Iter 19 | 90.55 | Scoped fallback remediation: one `Test*` class per endpoint, still blocked by L4/L5 and CLI termination. |
 | Iter 20 | 86.95 | Fresh natural-language run still did not exit; new assertion hard gate correctly fails all missing L4 checks. |
+| Iter 21 | 90.7 | PostToolUse auto-stop fixed CLI termination; strict gate still fails because L4/L5 plans are empty. |
 
 ## Improvements Delivered
 
@@ -30,14 +31,14 @@ PR: https://github.com/koco-co/tide/pull/1
 - Iter 18 target evidence shows 28 generated tests passing and no forbidden business-code changes.
 - Iter 19 deterministic fallback output uses one `Test*` class per endpoint for the current 28-endpoint target run.
 - Iter 20 adds FC15 and `generated_assertion_gate` so L4/L5 placeholders or omissions are no longer hidden by green pytest/format checks.
+- Iter 21 adds a natural-language auto-stop sentinel and PostToolUse hook; the CLI run exits cleanly after final report generation.
 
 ## Residual Risks
 
-- Claude CLI still did not terminate cleanly after generating artifacts in Iter 20; it required SIGTERM after 772 seconds.
-- Fallback tests are L1-L3 contract tests; the Iter 20 hard gate reports 28 missing L4 runtime assertions.
-- L5 cross-endpoint runtime assertions are not implemented or proven in the current generated target output.
+- L4/L5 scenario plans are still empty (`db_verify: []`, `ui_verify: []`) in Iter 21; no project-native runtime assertions are implemented.
+- The final report currently lists L4/L5 as "待补充" but does not fail the default run status on that basis.
 - The target repo has pre-existing unrelated dirty/untracked files; Tide write-scope verification covers forbidden-path changes but does not clean the whole target repo.
 
 ## Conclusion
 
-The plugin improved materially from the 72/100 baseline and reached a conditional fallback-quality high point in Iter 19, but Iter 20's stricter verification lowers the defensible score to 86.95/100. It should not be declared complete against the strict hard-gate objective because real L4/L5 runtime assertions and hands-free Claude process completion remain unresolved.
+The plugin improved materially from the 72/100 baseline and reaches 90.7/100 conditionally in Iter 21 after fixing hands-free Claude CLI completion. It should not be declared complete against the strict hard-gate objective because real L4/L5 runtime assertions remain unresolved.

@@ -1,0 +1,12 @@
+ M hooks/hooks.json
+ D iter_2/score.md
+ D iter_3/score.md
+ D iter_4/score.md
+ D iter_5/score.md
+ D iter_6/final_score.md
+ D iter_6/score.md
+ M scripts/claude_hooks.py
+ M scripts/generated_assertion_gate.py
+ M tests/test_generated_assertion_gate.py
+ M tests/test_hooks.py
+?? evals/tide-optimization/iter_21/

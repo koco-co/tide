@@ -10,9 +10,9 @@ No for full autonomous project-native API test generation until the remaining ha
 
 ## Must Do Before Broad Rollout
 
-1. Fix Claude CLI non-termination so a normal user run exits with a final report and nonzero/zero status.
-2. Generate real L4 assertions for write operations using existing project DB/query fixtures; do not count `assert True`, env-gated skips, or placeholder comments as passing.
-3. Generate real L5 assertions for SparkThrift metadata-sync to data-map linkage.
+1. Generate real L4 assertions for write operations using existing project DB/query fixtures; do not count `assert True`, env-gated skips, empty `db_verify`, or placeholder comments as passing.
+2. Generate real L5 assertions for SparkThrift metadata-sync to data-map linkage; do not emit empty `ui_verify` plans.
+3. Make the default final report fail the run when `scripts.generated_assertion_gate` fails.
 4. Add a CI template that runs scenario validation, format checker, generated assertion gate, collect-only, generated pytest execution, and write-scope verification.
 
 ## Use Rules For Current Branch

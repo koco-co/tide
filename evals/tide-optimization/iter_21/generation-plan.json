@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-05-13T09:34:00",
+  "workers": [
+    {
+      "worker_id": "w_dassets",
+      "output_file": "testcases/scenariotest/assets/tide_generated/tide_generated_dassets_test.py",
+      "scenario_ids": [
+        "har_dassets_pageUsers",
+        "har_dassets_recentQuery",
+        "har_dassets_assetStatistics",
+        "har_dassets_countDataSource",
+        "har_dassets_list",
+        "har_dassets_list_2",
+        "har_dassets_listUsers",
+        "har_dassets_list_3",
+        "har_dassets_listCatalogByQuery",
+        "har_dassets_queryDetail",
+        "har_dassets_pageTableColumn",
+        "har_dassets_queryDetail_2",
+        "har_dassets_listAllBindLabelByCondition",
+        "har_dassets_bindResourceRel",
+        "har_dassets_judgeIsMetaByTableId",
+        "har_dassets_hasParition",
+        "har_dassets_queryCreateTableSql"
+      ]
+    },
+    {
+      "worker_id": "w_dmetadata",
+      "output_file": "testcases/scenariotest/assets/tide_generated/tide_generated_dmetadata_test.py",
+      "scenario_ids": [
+        "har_dmetadata_pageTask",
+        "har_dmetadata_listMetadataDataSource",
+        "har_dmetadata_realTimeDbList",
+        "har_dmetadata_realTimeTableList",
+        "har_dmetadata_add",
+        "har_dmetadata_pageQuery",
+        "har_dmetadata_isSuperUser",
+        "har_dmetadata_getTableLifeCycle",
+        "har_dmetadata_getApplyStatus",
+        "har_dmetadata_getSubscribeByTableId",
+        "har_dmetadata_queryTablePermission"
+      ]
+    }
+  ]
+}
