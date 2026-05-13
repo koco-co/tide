@@ -21,6 +21,7 @@ _HAR_MARKERS = ("har", ".har", "HAR")
 _GENERATION_MARKERS = ("生成", "接口测试", "pytest", "测试", "generate")
 _DENIED_PREFIXES = frozenset({"api", "dao", "utils", "config", "testdata", "resource"})
 _SHELL_SEPARATORS = frozenset({";", "&&", "||", "|"})
+AUTO_STOP_SENTINEL = "auto-stop-requested.json"
 
 
 @dataclass(frozen=True)
@@ -166,6 +167,21 @@ def ensure_write_scope_snapshot(cwd: str) -> bool:
     return True
 
 
+def ensure_prompt_run_state(cwd: str) -> None:
+    """Create deterministic state used by natural-language Tide runs."""
+
+    project_root = Path(cwd).expanduser().resolve()
+    tide_dir = project_root / ".tide"
+    tide_dir.mkdir(parents=True, exist_ok=True)
+    ensure_write_scope_snapshot(cwd)
+    sentinel = tide_dir / AUTO_STOP_SENTINEL
+    if not sentinel.exists():
+        sentinel.write_text(
+            json.dumps({"source": "natural-language-har-generation"}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+
 def evaluate_write_scope(tool_input: dict[str, Any], cwd: str) -> WriteScopeDecision:
     """Evaluate whether a Claude write target is allowed for a Tide run."""
 
@@ -193,6 +209,17 @@ def _tide_guard_active(cwd: str) -> bool:
     )
 
 
+def should_auto_stop_after_final_report(cwd: str) -> bool:
+    """Return true when a natural-language Tide run has reached its final report."""
+
+    tide_dir = Path(cwd).expanduser().resolve() / ".tide"
+    return (
+        (tide_dir / AUTO_STOP_SENTINEL).exists()
+        and (tide_dir / "artifact-manifest.json").exists()
+        and (tide_dir / "final-report.md").exists()
+    )
+
+
 def _read_stdin_json() -> dict[str, Any]:
     raw = sys.stdin.read().strip()
     if not raw:
@@ -209,7 +236,7 @@ def user_prompt_submit() -> int:
     context = build_user_prompt_context(str(payload.get("prompt", "")))
     if context:
         cwd = str(payload.get("cwd") or Path.cwd())
-        ensure_write_scope_snapshot(cwd)
+        ensure_prompt_run_state(cwd)
         _emit({
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
@@ -232,6 +259,18 @@ def pre_tool_use() -> int:
     return 0
 
 
+def post_tool_use() -> int:
+    payload = _read_stdin_json()
+    cwd = str(payload.get("cwd") or Path.cwd())
+    if should_auto_stop_after_final_report(cwd):
+        _emit({
+            "continue": False,
+            "stopReason": "Tide natural-language run completed final report and artifact manifest.",
+            "suppressOutput": True,
+        })
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     if not args:
@@ -243,6 +282,8 @@ def main(argv: list[str] | None = None) -> int:
         return user_prompt_submit()
     if command == "pre-tool-use":
         return pre_tool_use()
+    if command == "post-tool-use":
+        return post_tool_use()
 
     print(f"unknown hook command: {command}", file=sys.stderr)
     return 2

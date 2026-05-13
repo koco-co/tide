@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from scripts.claude_hooks import build_user_prompt_context, ensure_write_scope_snapshot, evaluate_write_scope
+from scripts.claude_hooks import (
+    AUTO_STOP_SENTINEL,
+    build_user_prompt_context,
+    ensure_prompt_run_state,
+    ensure_write_scope_snapshot,
+    evaluate_write_scope,
+    should_auto_stop_after_final_report,
+)
 from scripts.hooks import HookPoint, HookRegistration, HookRegistry
 
 
@@ -68,6 +75,28 @@ class TestClaudeHooks:
         assert snapshot.exists()
         assert "api/assets_api.py" in snapshot.read_text(encoding="utf-8")
         assert not ensure_write_scope_snapshot(str(tmp_path))
+
+    def test_user_prompt_hook_creates_auto_stop_sentinel(self, tmp_path: Path) -> None:
+        ensure_prompt_run_state(str(tmp_path))
+
+        sentinel = tmp_path / ".tide" / AUTO_STOP_SENTINEL
+        assert sentinel.exists()
+        assert "natural-language" in sentinel.read_text(encoding="utf-8")
+
+    def test_post_tool_auto_stops_after_final_report(self, tmp_path: Path) -> None:
+        ensure_prompt_run_state(str(tmp_path))
+        (tmp_path / ".tide" / "artifact-manifest.json").write_text("{}", encoding="utf-8")
+        (tmp_path / ".tide" / "final-report.md").write_text("# done\n", encoding="utf-8")
+
+        assert should_auto_stop_after_final_report(str(tmp_path))
+
+    def test_post_tool_auto_stop_requires_sentinel(self, tmp_path: Path) -> None:
+        tide_dir = tmp_path / ".tide"
+        tide_dir.mkdir()
+        (tide_dir / "artifact-manifest.json").write_text("{}", encoding="utf-8")
+        (tide_dir / "final-report.md").write_text("# done\n", encoding="utf-8")
+
+        assert not should_auto_stop_after_final_report(str(tmp_path))
 
     def test_user_prompt_hook_runs_from_target_cwd(self, tmp_path: Path) -> None:
         (tmp_path / "api").mkdir()
@@ -152,3 +181,9 @@ class TestClaudeHooks:
         pre_tool_command = pre_tool["hooks"][0]["command"]
         assert "scripts/claude_hooks.py" in pre_tool_command
         assert "pre-tool-use" in pre_tool_command
+
+        post_tool = manifest["hooks"]["PostToolUse"][0]
+        assert post_tool["matcher"] == "Bash|Write"
+        post_tool_command = post_tool["hooks"][0]["command"]
+        assert "scripts/claude_hooks.py" in post_tool_command
+        assert "post-tool-use" in post_tool_command

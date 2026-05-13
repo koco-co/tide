@@ -75,3 +75,30 @@ def test_validate_generated_assertions_accepts_real_l4_and_l5_markers(tmp_path: 
 
     assert result.ok
     assert result.violations == []
+
+
+def test_validate_generated_assertions_rejects_empty_l4_l5_plans(tmp_path: Path) -> None:
+    scenarios = tmp_path / "scenarios.json"
+    generated = tmp_path / "test_generated.py"
+    scenarios.write_text(
+        json.dumps({
+            "scenarios": [
+                {
+                    "scenario_id": "empty_plan_case",
+                    "confidence": "high",
+                    "assertion_plan": {
+                        "L4": {"db_verify": []},
+                        "L5": {"ui_verify": []},
+                    },
+                }
+            ]
+        }),
+        encoding="utf-8",
+    )
+    _write_generated(generated, "empty_plan_case")
+
+    result = validate_generated_assertions(scenarios, [generated])
+
+    assert not result.ok
+    assert "empty_plan_case: empty L4 plan" in result.violations
+    assert "empty_plan_case: empty L5 plan" in result.violations

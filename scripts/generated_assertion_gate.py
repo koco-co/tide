@@ -22,11 +22,16 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _has_meaningful_value(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(_has_meaningful_value(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_meaningful_value(item) for item in value)
+    return value not in (None, "")
+
+
 def _has_plan(assertion_plan: dict[str, Any], level: str) -> bool:
-    value = assertion_plan.get(level)
-    if isinstance(value, (list, dict)):
-        return bool(value)
-    return value is not None
+    return _has_meaningful_value(assertion_plan.get(level))
 
 
 def _requires_l5(scenario: dict[str, Any], assertion_plan: dict[str, Any]) -> bool:
@@ -84,10 +89,18 @@ def validate_generated_assertions(scenarios_path: Path, generated_files: list[Pa
         assertion_plan = scenario.get("assertion_plan")
         if not isinstance(assertion_plan, dict):
             assertion_plan = {}
-        if _has_plan(assertion_plan, "L4") and "L4" not in levels:
-            violations.append(f"{scenario_id}: missing L4")
-        if _requires_l5(scenario, assertion_plan) and "L5" not in levels:
-            violations.append(f"{scenario_id}: missing L5")
+        if "L4" in assertion_plan:
+            if not _has_plan(assertion_plan, "L4"):
+                violations.append(f"{scenario_id}: empty L4 plan")
+            elif "L4" not in levels:
+                violations.append(f"{scenario_id}: missing L4")
+
+        requires_l5 = _requires_l5(scenario, assertion_plan)
+        if "L5" in assertion_plan or requires_l5:
+            if not _has_plan(assertion_plan, "L5"):
+                violations.append(f"{scenario_id}: empty L5 plan")
+            elif "L5" not in levels:
+                violations.append(f"{scenario_id}: missing L5")
 
     return AssertionGateResult(
         ok=not violations,
