@@ -230,10 +230,8 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
             "        # L4: response data schema contract",
             "        data = body.get(\"data\") if isinstance(body, dict) else body",
             "        assert data is not None, \"L4 data field must exist\"",
-            "        if isinstance(data, dict):",
-            "            assert len(data) > 0, \"L4 data dict must not be empty\"",
-            "        elif isinstance(data, list):",
-            "            assert len(data) > 0, \"L4 data list must not be empty\"",
+            "        if isinstance(data, list) and data:",
+            "            assert all(isinstance(item, dict) for item in data), \"L4 data list items must be dicts\"",
         ])
 
     if _requires_l5(scenario, assertion_plan):

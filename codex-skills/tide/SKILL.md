@@ -160,7 +160,7 @@ If this command reports `Multiple HAR files found; Do not guess`, do not select 
    # Live Execution Gate: skip pytest if no real HTTP calls
    TEST_MODE="DETERMINISTIC"
    for f in <generated files>; do
-     if grep -qE 'requests\.|httpx\.|self\.req|session\.|\.request\(' "$f" 2>/dev/null; then
+     if grep -qE 'requests\.|httpx\.|self\.req|_req\.|session\.|\.request\(' "$f" 2>/dev/null; then
        TEST_MODE="LIVE"; break
      fi
    done
