@@ -179,7 +179,6 @@ def _scenario_lines(scenario: dict[str, Any], endpoint: dict[str, Any]) -> list[
     lines = [
         f"    def {method_name}(self):",
         f"        \"\"\"{scenario_id}\"\"\"",
-        "        _req = AssetsBaseRequest()",
     ]
 
     # Generate real HTTP request call
@@ -251,6 +250,8 @@ def _render_test_file(class_name: str, scenarios: list[dict[str, Any]], endpoint
         "\"\"\"Tide-generated live HTTP metadata tests.\"\"\"",
         "",
         "from utils.assets.requests.assets_requests import AssetsBaseRequest",
+        "",
+        "_req = AssetsBaseRequest()",
         "",
     ]
 
