@@ -7,7 +7,6 @@ PR: https://github.com/koco-co/tide/pull/1
 | Iteration | Score | Outcome |
 |---|---:|---|
 | Baseline | 72.0 | Starting point from prior audit. |
-| Iter 9 | 83.75 | Added stricter audit around hardcoded IDs; fresh Claude run blocked. |
 | Iter 10 | 65.0 | Regression: ambiguous `.tide/trash` selected the wrong HAR. |
 | Iter 11 | 78.9 | Correct HAR, but generated classes were not pytest-collectable. |
 | Iter 12 | 88.4 | Best project-native run: 27 passed, but missing scenario artifact and noisy reports. |
