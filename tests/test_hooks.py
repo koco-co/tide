@@ -90,6 +90,32 @@ class TestClaudeHooks:
 
         assert should_auto_stop_after_final_report(str(tmp_path))
 
+    def test_post_tool_auto_stop_only_fires_once(self, tmp_path: Path) -> None:
+        ensure_prompt_run_state(str(tmp_path))
+        (tmp_path / ".tide" / "artifact-manifest.json").write_text("{}", encoding="utf-8")
+        (tmp_path / ".tide" / "final-report.md").write_text("# done\n", encoding="utf-8")
+        payload = {"cwd": str(tmp_path), "tool_input": {"command": "echo done"}}
+
+        first = subprocess.run(
+            [sys.executable, str(Path("scripts/claude_hooks.py").resolve()), "post-tool-use"],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        second = subprocess.run(
+            [sys.executable, str(Path("scripts/claude_hooks.py").resolve()), "post-tool-use"],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        assert first.returncode == 0
+        assert "stopReason" in first.stdout
+        assert second.returncode == 0
+        assert second.stdout == ""
+
     def test_post_tool_auto_stop_requires_sentinel(self, tmp_path: Path) -> None:
         tide_dir = tmp_path / ".tide"
         tide_dir.mkdir()

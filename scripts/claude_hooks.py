@@ -220,6 +220,16 @@ def should_auto_stop_after_final_report(cwd: str) -> bool:
     )
 
 
+def consume_auto_stop_sentinel(cwd: str) -> None:
+    """Consume the natural-language auto-stop sentinel after one stop signal."""
+
+    sentinel = Path(cwd).expanduser().resolve() / ".tide" / AUTO_STOP_SENTINEL
+    try:
+        sentinel.unlink()
+    except FileNotFoundError:
+        pass
+
+
 def _read_stdin_json() -> dict[str, Any]:
     raw = sys.stdin.read().strip()
     if not raw:
@@ -263,6 +273,7 @@ def post_tool_use() -> int:
     payload = _read_stdin_json()
     cwd = str(payload.get("cwd") or Path.cwd())
     if should_auto_stop_after_final_report(cwd):
+        consume_auto_stop_sentinel(cwd)
         _emit({
             "continue": False,
             "stopReason": "Tide natural-language run completed final report and artifact manifest.",
