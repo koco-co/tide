@@ -1,6 +1,0 @@
-{
-  "ok": true,
-  "scenario_count": 28,
-  "renamed": {}
-}
-exit_code=0

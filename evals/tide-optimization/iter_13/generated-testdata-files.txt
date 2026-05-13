@@ -1,6 +1,0 @@
-testdata/scenariotest/assets/meta_data/meta_data_sync/meta_data_sync_task_data.py
-testdata/scenariotest/assets/meta_data/meta_data_sync/__pycache__/meta_data_sync_task_data.cpython-314.pyc
-testdata/scenariotest/assets/meta_data/meta_data_sync/__pycache__/meta_data_sync_task_data.cpython-38.pyc
-testdata/scenariotest/assets/meta_data/data_map/data_map_browse_data.py
-testdata/scenariotest/assets/meta_data/data_map/__pycache__/data_map_browse_data.cpython-314.pyc
-testdata/scenariotest/assets/meta_data/data_map/__pycache__/data_map_browse_data.cpython-38.pyc

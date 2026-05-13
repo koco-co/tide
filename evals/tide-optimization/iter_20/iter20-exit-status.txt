@@ -1,4 +1,0 @@
-exit_code=143
-duration_seconds=772
-started_epoch=1778611281
-ended_epoch=1778612053

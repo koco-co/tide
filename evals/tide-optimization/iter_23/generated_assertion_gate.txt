@@ -1,8 +1,0 @@
-{
-  "ok": true,
-  "checked_scenarios": 28,
-  "generated_tests": 28,
-  "violations": []
-}
-
-exit_code=0

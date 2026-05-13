@@ -1,8 +1,0 @@
-....s..sss                                                               [100%]
-=============================== warnings summary ===============================
-testcases/scenariotest/assets/meta_data/tide_metadata_sync_test.py::TestTideMetadataSync::test_sync_task_page_and_datasource_options
-  /Users/poco/Projects/dtstack-httprunner/.venv/lib/python3.8/site-packages/jaydebeapi/__init__.py:200: DeprecationWarning: jpype._core.isThreadAttachedToJVM is deprecated, use java.lang.Thread.isAttached instead
-    if not jpype.isThreadAttachedToJVM():
-
--- Docs: https://docs.pytest.org/en/latest/warnings.html
-6 passed, 4 skipped, 1 warning in 22.50s

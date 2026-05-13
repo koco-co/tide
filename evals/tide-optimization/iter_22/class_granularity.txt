@@ -1,5 +1,0 @@
-tide_generated_assets_test.py: classes=17 tests=17 max_methods_per_class=1
-tide_generated_metadata_test.py: classes=11 tests=11 max_methods_per_class=1
-overall_max_methods_per_class=1
-ok=true
-exit_code=0
