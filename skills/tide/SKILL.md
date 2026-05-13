@@ -419,7 +419,75 @@ Task 4 → in_progress
 
 ---
 
+## 第三波次结尾 — Live Execution Gate（硬阻断）
+
+**在进入第四波次前必须执行此门禁，不得跳过。**
+
+Task 4 完成后，在 Task 5 开始前，立即执行以下步骤：
+
+### 1. 检测测试模式
+
+```bash
+export TEST_MODE="DETERMINISTIC"
+for f in <Wave 3 生成的所有 py 文件>; do
+  if grep -qE 'requests\.|httpx\.|self\.req|session\.(get|post|put|delete)|\.request\(' "$f" 2>/dev/null; then
+    TEST_MODE="LIVE"
+    break
+  fi
+done
+echo "Test mode: $TEST_MODE"
+```
+
+### 2. `TEST_MODE=LIVE` → 允许进入第四波次
+
+测试包含真实 HTTP 调用，跳至步骤 5 写入状态文件，然后正常进入第四波次。
+
+### 3. `TEST_MODE=DETERMINISTIC` → 跳过第四波次，执行升级
+
+测试仅为 mock 骨架，不得进入第四波次。立即执行确定性骨架升级：
+
+```bash
+# 检查项目是否有现成 HTTP client 可用
+for client_py in utils/assets/requests/*.py; do
+  if grep -q 'class.*Request' "$client_py" 2>/dev/null; then
+    echo "Found HTTP client: $client_py"
+    head -80 "$client_py"
+    break
+  fi
+done
+
+# 检查 tide-config.yaml 了解 auth/client 配置
+grep -A5 'auth:' tide-config.yaml
+
+# 读取一个现有测试文件了解 fixture 和 client 用法
+sample_test=$(find testcases/scenariotest/assets -name '*_test.py' -not -name 'tide_generated_*' | head -1)
+if [ -n "$sample_test" ]; then head -80 "$sample_test"; fi
+```
+
+升级要求：
+- 从 `tide-config.yaml` 读取 auth 配置
+- 保留原始 mock 测试作为降级备份
+- 为每个 mock 测试生成真实 HTTP 版本，使用 `response = self.req.post(url, json=payload)`
+- 从 HAR 提取真实请求 payload
+- 使用项目已有 HTTP client 类；若没有匹配的，创建继承 `BaseRequests` 的最小 client
+- 升级后重新执行步骤 1 检测
+
+### 4. 升级结果判定
+
+- `TEST_MODE=LIVE` → 全部升级成功 → **允许进入第四波次**。
+- `TEST_MODE=DETERMINISTIC` → 升级失败 → **跳过第四波次**，直接进入验收报告阶段。最终报告状态写 `DETERMINISTIC_SKELETON`（不得写 PASS 或 Success），并说明升级失败原因。
+
+### 5. 写入状态文件
+
+```bash
+echo "{\"test_mode\": \"$TEST_MODE\"}" > .tide/live-gate-result.json
+```
+
+---
+
 ## 第四波次：评审 + 执行 + 交付
+
+**仅在 `TEST_MODE=LIVE` 时执行本波次所有步骤。** 若 `TEST_MODE=DETERMINISTIC`，跳过整个第四波次。
 
 Task 5 → in_progress
 
@@ -437,42 +505,6 @@ Task 5 → in_progress
      --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
    ```
    若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
-
-2b. **Live Execution Gate（真实执行门禁）**：
-   在运行 pytest 前，检查生成的测试是否包含真实 HTTP 调用：
-   ```bash
-   # 检查所有生成测试文件是否引用了 HTTP 客户端
-   export TEST_MODE="DETERMINISTIC"
-   for f in <生成文件列表>; do
-     if grep -qE 'requests\.|httpx\.|self\.req|session\.(get|post|put|delete)|\.request\(' "$f" 2>/dev/null; then
-       TEST_MODE="LIVE"
-       break
-     fi
-   done
-   echo "Test mode: $TEST_MODE"
-   ```
-   
-   - **`TEST_MODE=LIVE`**：测试包含真实 HTTP 调用 → 正常执行 Wave 4 剩余步骤（pytest、失败语义分析、修复重跑）。
-   - **`TEST_MODE=DETERMINISTIC`**：测试仅为 mock 骨架，不发送真实 HTTP 请求 → **跳过 pytest 执行**（mock 测试始终通过，无验收价值）。标记运行状态为 `DETERMINISTIC_SKELETON` 并写入 `.tide/state.json`。
-   
-   **确定性骨架升级尝试**（`TEST_MODE=DETERMINISTIC` 时必做）：
-   尝试将 mock 骨架测试升级为真实 HTTP 测试：
-   ```bash
-   # 阅读项目现有测试了解 HTTP client 用法
-   head -80 testcases/scenariotest/assets/data_model/specification_create_table/data_model_create_table_test.py
-   
-   # 阅读 tide-config.yaml 了解 auth/client 配置
-   # 为每个 mock 测试生成对应的真实 HTTP 版本
-   # 使用：response = self.req.post(url, json=payload) 替代 response = {'body': {...}}
-   ```
-   升级要求：
-   - 读取项目现有测试文件了解 fixture 和 client 用法（按需加载，不批量读取）
-   - 从 `tide-config.yaml` 读取 auth 配置（`auth.method`、`auth.class`、`auth.module`）
-   - 保留原始 mock 测试作为降级备份
-   - 新测试使用项目已有 HTTP client（`self.req` / `Session()`）
-   - 从 HAR 提取真实请求 payload 和预期响应结构
-   - 升级完成后重新检查 `TEST_MODE`：如全部升级成功 → LIVE，继续 pytest
-   - 如果升级失败，保留 mock 测试，报告 `DETERMINISTIC_SKELETON`，不得退出
 
 3. 用最终 pytest 输出重写 `.tide/execution-report.json`，确保报告与最后一次实际执行一致：
 
