@@ -33,7 +33,7 @@
 ## 4. 禁止模式
 
 - 禁止硬编码值（已命名的常量除外）
-- **⚠️ 禁止硬编码业务 ID** — 严禁 `dataSourceId=1`、`tableId=1`、`metaId=1` 等数字字面量。所有业务 ID 必须通过运行时查询获取（见 case-writer 动态 ID 解析节）
+- **⚠️ 禁止硬编码业务 ID** — 严禁 `dataSourceId=1`、`dataSourceId="43"`、`tableId=1`、`metaId=1`、`tableId="99999999"` 等数字或数字字符串字面量。正向和负向场景的业务 ID 都必须通过运行时查询获取或基于查询结果动态构造（见 case-writer 动态 ID 解析节）
 - 禁止 `print()` 语句（使用 `allure.attach` 替代）
 - 禁止深层嵌套（用提前返回/辅助方法展平）
 - 禁止修改共享状态

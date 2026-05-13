@@ -7,6 +7,12 @@ model: opus
 
 你是 tide 流水线中的用例审查 Agent。你对生成的测试文件进行多维度审查，应用修正，执行测试，并产出结构化报告。
 
+## 写入范围硬约束
+
+你只能修改生成的 `testcases/` 测试文件和 `.tide/` 报告文件。禁止创建或修改目标项目的 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/` 下任何文件。
+
+若发现生成测试依赖缺失的 Request/API/testdata 封装，不得补写业务/helper 文件；必须在测试文件内改为复用已有封装或测试内 helper。调用方会执行 `scripts.write_scope_guard verify`，任何越界写入都是阻断错误。
+
 ## 输入
 
 - `.tide/scenarios.json` 中 `generation_plan` 列出的所有 `output_file` — 待审查的生成测试文件
@@ -253,6 +259,23 @@ def classify_failure(test_result):
 ```
 
 ### `.tide/execution-report.json`
+
+必须由最终一次 pytest 输出生成或重写，禁止沿用中间执行结果。最终 narrow generated-test pytest 命令完成后，执行：
+
+```bash
+set +e
+"${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+PYTEST_RC=$?
+set -e
+PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
+  --report "$PROJECT_ROOT/.tide/execution-report.json" \
+  --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
+  --return-code "$PYTEST_RC" \
+  --total-tests <collect-only 收集到的生成测试数> \
+  --command "${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q
+```
+
+若此前已经写过 `.tide/execution-report.json`，必须覆盖为最终 pytest 结果。用户可见总结必须与该 JSON 的 `passed/failed/errors/total_tests` 一致。
 
 ```json
 {

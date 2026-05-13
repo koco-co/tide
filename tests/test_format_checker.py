@@ -45,3 +45,49 @@ class TestFormatChecker:
         bad.write_text("def broken(\n")
         violations = check_file(str(bad))
         assert any(v.rule.id == "FC00" for v in violations)
+
+    def test_detects_string_numeric_business_ids(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_hardcoded_string_ids.py"
+        bad.write_text(
+            "class TestHardcodedIds:\n"
+            '    """Hardcoded IDs."""\n\n'
+            "    def test_bad(self):\n"
+            '        payload = {"dataSourceId": "43", "taskType": 1}\n'
+            '        assert payload["dataSourceId"] == "43", "uses hardcoded id"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC11" for v in violations)
+
+    def test_detects_meta_id_business_ids(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_hardcoded_meta_id.py"
+        bad.write_text(
+            "class TestHardcodedMetaId:\n"
+            '    """Hardcoded metaId."""\n\n'
+            "    def test_bad(self):\n"
+            '        payload = {"metaId": 12345, "metaType": 1}\n'
+            '        assert payload["metaId"] == 12345, "uses hardcoded meta id"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC11" for v in violations)
+
+    def test_detects_uncollectable_test_class_names(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_uncollectable_class.py"
+        bad.write_text(
+            "class SyncTaskTest:\n"
+            '    """Looks like a test class but pytest will not collect it."""\n\n'
+            "    def test_page_task(self):\n"
+            '        assert True, "will be skipped by pytest collection"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC14" for v in violations)
+
+    def test_detects_placeholder_l4_l5_assertions(self, tmp_path: Path) -> None:
+        bad = tmp_path / "test_placeholder_l4.py"
+        bad.write_text(
+            "class TestPlaceholder:\n"
+            '    """Placeholder L4."""\n\n'
+            "    def test_l4_placeholder(self):\n"
+            '        assert True, "L4 DB assertion plan is present but requires project-specific wiring"\n'
+        )
+        violations = check_file(str(bad))
+        assert any(v.rule.id == "FC15" for v in violations)

@@ -24,15 +24,28 @@ def validate_scenario_outputs(
 
     endpoint_ids = {item["id"] for item in parsed.get("endpoints", []) if item.get("id")}
     scenarios = scenarios_doc.get("scenarios", [])
-    scenario_ids = {item["scenario_id"] for item in scenarios if item.get("scenario_id")}
+    scenario_id_list = [item["scenario_id"] for item in scenarios if item.get("scenario_id")]
+    scenario_ids = set(scenario_id_list)
 
     if not scenarios:
         raise ValueError("scenarios.json contains no scenarios")
+    if len(scenario_id_list) != len(scenario_ids):
+        raise ValueError("duplicate scenario_id found")
 
     for scenario in scenarios:
         endpoint_id = scenario.get("endpoint_id")
         if endpoint_id and endpoint_id not in endpoint_ids:
             raise ValueError(f"unknown endpoint_id: {endpoint_id}")
+
+    medium_or_high_count = sum(
+        1 for scenario in scenarios
+        if scenario.get("confidence") in {"medium", "high"}
+    )
+    medium_or_high_ratio = medium_or_high_count / len(scenarios)
+    if medium_or_high_ratio < 0.60:
+        raise ValueError(
+            f"confidence>=medium ratio below 60%: {medium_or_high_count}/{len(scenarios)}"
+        )
 
     for endpoint_id in endpoint_ids:
         has_har_direct = any(
@@ -54,6 +67,8 @@ def validate_scenario_outputs(
         "ok": True,
         "endpoint_count": len(endpoint_ids),
         "scenario_count": len(scenarios),
+        "confidence_medium_or_high_count": medium_or_high_count,
+        "confidence_medium_or_high_ratio": medium_or_high_ratio,
         "worker_count": len(workers),
     }
 

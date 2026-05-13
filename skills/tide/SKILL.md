@@ -1,6 +1,6 @@
 ---
 name: tide
-description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/tide <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
+description: "从 HAR 文件生成 pytest 测试套件，结合源码进行 AI 智能分析。触发方式：/tide <har-path>、/tide:tide <har-path>、'从 HAR 生成测试'、提供 .har 文件路径。"
 argument-hint: "<har-file-path> [--quick] [--yes] [--non-interactive] [--resume] [--wave N]"
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList
@@ -9,6 +9,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Task
 # Tide：HAR 转 Pytest 测试生成
 
 > **重要：除非必要，否则不要改动已有项目中的测试配置或脚本。如需修改，先用 AskUserQuestion 向用户报告改动原因和改动范围，确认后方可执行。**
+> **HAR 选择不得猜测**：当用户只说 "HAR 在 .tide/trash 下"、"使用 trash 里的 HAR" 或传入目录路径时，不得自行按 mtime、文件大小、名称相似度或模型推断挑选某一个 `.har` 文件。必须先运行 `scripts.har_inputs.resolve_har_input`；如果有多个候选文件，交互模式列出候选并询问用户选择，无头/非交互模式直接失败并给出精确命令示例。
+> **Claude Code 插件命令名**：在插件 CLI/非交互上下文中，可靠入口是 `/tide:tide <har-file> --yes --non-interactive`；若 `/tide` 返回 Unknown command，必须改用 `/tide:tide`，不得自由生成测试。
 
 ## 第零步：自更新
 
@@ -88,6 +90,25 @@ bash "${CLAUDE_SKILL_DIR}/../../scripts/self-update.sh"
    - 若 `requires_confirmation=true`，保留现有 AskUserQuestion 交互。
 
 5. 解析 `$ARGUMENTS`：`har_path`（必填）、`--quick`、`--yes`、`--non-interactive`、`--resume`、`--wave N`
+5a. **HAR 路径确定性解析（禁止猜测）**：
+   ```bash
+   export HAR_PATH="$(PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY'
+   import json
+   import os
+   from pathlib import Path
+   from scripts.har_inputs import resolve_har_input
+
+   run_context = Path(os.environ["PROJECT_ROOT"]) / ".tide" / "run-context.json"
+   ctx = json.loads(run_context.read_text())
+   print(resolve_har_input(ctx["har_path"], Path(os.environ["PROJECT_ROOT"])))
+   PY
+   )"
+   echo "Resolved HAR: $HAR_PATH"
+   ```
+   - 若命令报 `Multiple HAR files found; Do not guess`：
+     - 交互模式：用 AskUserQuestion 列出候选 `.har` 文件，请用户选择精确路径后重新解析。
+     - 无头/非交互模式：立即终止，输出候选清单和示例：`/tide .tide/trash/<exact-file>.har --yes --non-interactive`。
+   - 不得在多个候选中自动选择"最新"、"最大"或"看起来最相关"的 HAR。
 6. **环境检查**：`test -f repo-profiles.yaml`，若缺失则打印带修复命令的错误信息并终止
 5. **读取配置**：读取 `repo-profiles.yaml` 和 `tide-config.yaml`，提取 repos、test_dir、test_types、industry 等
 6. **无源码降级**：repos 为空时设置 `no_source_mode=true`
@@ -275,13 +296,19 @@ Task 3 → in_progress
    读取 `.tide/scenarios.json` 与 `.tide/generation-plan.json` 后，必须执行：
 
    ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.scenario_normalizer \
+     --parsed "$PROJECT_ROOT/.tide/parsed.json" \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
+
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.scenario_validator \
      --parsed "$PROJECT_ROOT/.tide/parsed.json" \
      --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
      --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
    ```
 
-   若校验失败，返回 scenario-analyzer 修复一次；第二次仍失败则停止并写入 `.tide/final-report.md`。
+   若 normalizer 仍无法消除重复 `scenario_id` 或补齐 generation-plan 引用，返回 scenario-analyzer 修复一次；第二次仍失败则停止并写入 `.tide/final-report.md`。
+   **不得跳过此校验**：缺失 `.tide/scenarios.json`、重复 `scenario_id`、或 `confidence>=medium` 比例低于 60% 都是阻断错误，不能继续生成代码。
 4. 若非 `--quick`，展示确认清单供用户确认
 
 **[Hook]** 若配置了 hook，执行 `uv run python3 scripts/hooks.py run wave2:analyze:after`
@@ -296,14 +323,38 @@ Task 4 → in_progress
 
 1. 读取 `.tide/scenarios.json` → `generation_plan`
 2. 读取 `.tide/project-assets.json`（若存在）— 项目已有工具类清单
-3. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入：
+3. 在任何 case-writer 写文件之前创建目标写范围快照：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard snapshot \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   只允许写 `.tide/` 和 `testcases/`。禁止新增或修改 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/`。
+4. 对每个模块并行启动一个 case-writer Agent，prompt 见 `agents/case-writer.md`，传入：
    - `detected_auth_type` — 认证方式
    - **`project_assets`**（新增）— 项目已有工具类方法清单，要求优先复用
    - **`test_granularity`**（新增）— 测试粒度
    - **`business_context`**（新增）— 业务场景描述
    - 按需加载的 code-style-python prompt 模块（来自 fingerprint 组装）
-4. 全部完成后，对每个生成文件执行 py_compile + AST 检查
-5. **格式检查**（新增）：对所有生成文件执行 format_checker：
+5. **确定性 fallback（无头/非交互必跑）**：
+   若 case-writer 在预算内没有产出任何 `testcases/**/*.py`，或 `.tide/scenarios.json` 已存在但还没有可 collect 的生成测试文件，必须立即运行：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.deterministic_case_writer \
+     --project-root "$PROJECT_ROOT" \
+     --parsed "$PROJECT_ROOT/.tide/parsed.json" \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
+   ```
+   fallback 只允许写 `testcases/` 和 `.tide/artifact-manifest.json`，不得改 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/`。
+6. 全部完成后立刻校验目标写范围：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
+7. 对每个生成文件执行 py_compile + AST 检查
+8. **格式检查**（新增）：对所有生成文件执行 format_checker：
    ```bash
    PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generation_plan 中所有 output_file 的父目录>
    ```
@@ -311,6 +362,15 @@ Task 4 → in_progress
    - 对 FC11（硬编码业务 ID）的 ERROR 级别违规：自动将 `dataSourceId: 1` 等替换为 `self.ds_id` / `self.table_id` 变量引用，若无法修复则阻断流水线
    - 对 FC08（print 语句）的 ERROR 级别违规，自动移除
    - 记录问题到 `.tide/format-report.json`
+9. **断言硬门检查**（新增）：对 `.tide/scenarios.json` 和所有生成测试执行 generated_assertion_gate：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.generated_assertion_gate \
+     --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
+     <生成的 pytest 文件列表>
+   ```
+   - 若输出 `empty L4`、`empty L5`、`missing L4` 或 `missing L5`，本轮质量门必须 FAIL。
+   - 不得把 `pytest passed`、`format passed` 或空的 `db_verify: []` / `ui_verify: []` 当作 L4/L5 通过。
+   - 将输出保存为 `.tide/assertion-gate-report.json` 或在 `.tide/final-report.md` 中逐项列出失败原因。
 
 **[偏好]** 写入本次生成的模块数 `uv run python3 scripts/preferences.py write --key last_module_count --value <N>`
 
@@ -329,7 +389,30 @@ Task 5 → in_progress
      - `ENV_ISSUE` — 环境问题（服务不可用、数据不存在）→ 标记为环境问题，调整预期
      - `BUSINESS_BUG` — 业务 bug（code≠1 但非参数问题）→ 标记为疑似缺陷
    - **等待 case-reviewer 全部完成再继续下一步**
-2. 读取 `.tide/execution-report.json`，向用户报告执行结果：
+2. case-reviewer 结束后再次校验目标写范围：
+   ```bash
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   若失败，立即停止，报告 forbidden path；不得继续 pytest、不得输出成功总结。
+3. 用最终 pytest 输出重写 `.tide/execution-report.json`，确保报告与最后一次实际执行一致：
+
+   ```bash
+   set +e
+   "${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+   PYTEST_RC=$?
+   set -e
+   PYTHONPATH="$PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
+     --report "$PROJECT_ROOT/.tide/execution-report.json" \
+     --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
+     --return-code "$PYTEST_RC" \
+     --total-tests <collect-only 收集到的生成测试数> \
+     --command "${PYTHON_BIN:-python3}" -m pytest <生成文件列表> -q
+   ```
+
+   若 `.tide/execution-report.json` 中的 `passed/failed/errors/total_tests` 与最终 pytest 输出不一致，必须以此命令重写后的 JSON 为准。
+4. 读取 `.tide/execution-report.json`，向用户报告执行结果：
 
    ```
    测试执行完成
@@ -340,7 +423,7 @@ Task 5 → in_progress
    - 修复轮数：1
    ```
 
-3. 生成验收报告
+5. 生成验收报告
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run wave4:review:after` 和 `uv run python3 scripts/hooks.py run output:notify`
 
@@ -385,6 +468,7 @@ Task 6 → in_progress
    - 解析端点数、匹配 repo 数、未匹配路径列表。
    - 生成文件列表。
    - pytest collect-only 和执行结果。
+   - `scripts.generated_assertion_gate` 结果；若存在 `empty L4`、`empty L5`、`missing L4` 或 `missing L5`，最终状态必须写为 FAIL。
    - 未完成阶段与失败原因。
 
 **[Hook]** 执行 `uv run python3 scripts/hooks.py run output:notify`

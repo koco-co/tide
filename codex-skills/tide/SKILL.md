@@ -16,6 +16,7 @@ Generate pytest API tests from a browser HAR recording, reusing Tide's determini
 - In Plan Mode, use `request_user_input` for material confirmations. In Default mode, ask a concise plain-text question only when a risky decision cannot be inferred.
 - Do not default to parallel subagents. For Codex v1, perform the workflow locally and sequentially unless the user explicitly requests subagents or parallel agent work.
 - Do not change existing project test configuration unless the user has approved the reason and scope.
+- Do not guess which HAR to use. If the user says the HAR is in `.tide/trash` or provides a directory, run `scripts.har_inputs.resolve_har_input` first. When multiple `.har` files exist, ask for the exact file in interactive mode, or stop in non-interactive mode with the candidate list and an exact command example.
 
 ## Arguments
 
@@ -58,6 +59,25 @@ print(json.dumps({
 PY
 ```
 
+Then resolve the HAR path deterministically before validation or parsing:
+
+```bash
+export HAR_PATH="$(PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+from scripts.har_inputs import resolve_har_input
+
+project_root = Path(os.environ["PROJECT_ROOT"])
+ctx = json.loads((project_root / ".tide" / "run-context.json").read_text())
+print(resolve_har_input(ctx["har_path"], project_root))
+PY
+)"
+echo "Resolved HAR: $HAR_PATH"
+```
+
+If this command reports `Multiple HAR files found; Do not guess`, do not select the newest or most plausible HAR. Ask the user for one exact candidate in interactive mode; in non-interactive mode, stop and print a command such as `$tide .tide/trash/<exact-file>.har --yes --non-interactive`.
+
 ## Workflow
 
 ### 0. Preflight
@@ -95,27 +115,57 @@ PY
      --scenarios "$PROJECT_ROOT/.tide/scenarios.json" \
      --generation-plan "$PROJECT_ROOT/.tide/generation-plan.json"
    ```
-4. If validation fails, repair once using the same analyzer prompt. If it still fails, stop and write `.tide/final-report.md`.
+4. Do not skip this validation. Missing `.tide/scenarios.json`, duplicate `scenario_id`, or a `confidence>=medium` ratio below 60% is a blocking error.
+5. If validation fails, repair once using the same analyzer prompt. If it still fails, stop and write `.tide/final-report.md`.
 
 ### 3. Generate Test Code
 
 1. Read `.tide/generation-plan.json`, `.tide/scenarios.json`, `.tide/project-assets.json`, and selected style prompt modules.
-2. Use `agents/case-writer.md` to generate each planned pytest file, preserving the target project's conventions.
-3. Run `py_compile` on generated Python files.
-4. Run the format checker:
+2. Before any generated file is written, snapshot the target write scope:
+   ```bash
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard snapshot \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   Only `.tide/` and `testcases/` are writable. Do not create or edit `api/`, `dao/`, `utils/`, `config/`, `testdata/`, or `resource/`.
+3. Use `agents/case-writer.md` to generate each planned pytest file, preserving the target project's conventions.
+4. Immediately verify the target write scope:
+   ```bash
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.write_scope_guard verify \
+     --project-root "$PROJECT_ROOT" \
+     --snapshot "$PROJECT_ROOT/.tide/write-scope-snapshot.json"
+   ```
+   If verification fails, stop and report the forbidden paths. Do not continue to pytest or a success summary.
+5. Run `py_compile` on generated Python files.
+6. Run the format checker:
    ```bash
    PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.format_checker <generated-test-dir>
    ```
-5. Fix blocking generated-code issues once, then rerun checks.
+7. Fix blocking generated-code issues once, then rerun checks.
+8. Re-run write-scope verification after any fix.
 
 ### 4. Review, Execute, and Deliver
 
 1. Use `agents/case-reviewer.md` and `prompts/review-checklist.md` for static review.
-2. Run collection before execution:
+2. Re-run write-scope verification after case-reviewer changes. If verification fails, stop and report forbidden paths.
+3. Run collection before execution:
    ```bash
    "${PYTHON_BIN:-python3}" -m pytest --collect-only -q
    ```
-3. Run the narrow generated test scope first, then broaden only when useful.
-4. Classify failures as test defect, environment issue, or suspected business defect.
-5. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
-6. Summarize generated files, validation results, commands run, and remaining manual actions.
+4. Run the narrow generated test scope first, then broaden only when useful.
+5. Classify failures as test defect, environment issue, or suspected business defect.
+6. Write `.tide/review-report.json`, `.tide/execution-report.json`, and `.tide/artifact-manifest.json`.
+7. After the final narrow pytest run, rewrite `.tide/execution-report.json` from the final pytest output so it cannot contain stale intermediate counts:
+   ```bash
+   set +e
+   "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q > "$PROJECT_ROOT/.tide/final-pytest-output.txt" 2>&1
+   PYTEST_RC=$?
+   set -e
+   PYTHONPATH="$TIDE_PLUGIN_DIR:$PYTHONPATH" uv run python3 -m scripts.test_runner report \
+     --report "$PROJECT_ROOT/.tide/execution-report.json" \
+     --output-file "$PROJECT_ROOT/.tide/final-pytest-output.txt" \
+     --return-code "$PYTEST_RC" \
+     --total-tests <collect-only generated test count> \
+     --command "${PYTHON_BIN:-python3}" -m pytest <generated-files> -q
+   ```
+8. Summarize generated files, validation results, commands run, and remaining manual actions.

@@ -47,6 +47,8 @@ RULES: list[FormatRule] = [
     FormatRule("FC10", "嵌套深度不超过 3 层", Severity.WARNING),
     FormatRule("FC11", "无硬编码业务ID（tableId、dataSourceId等）", Severity.ERROR),
     FormatRule("FC12", "setup_class 必须为实例方法（禁止 @classmethod）", Severity.ERROR),
+    FormatRule("FC14", "包含测试方法的类名必须以 Test 开头", Severity.ERROR),
+    FormatRule("FC15", "禁止 L4/L5 占位断言或跳过逻辑", Severity.ERROR),
 ]
 
 _RULE_MAP = {r.id: r for r in RULES}
@@ -269,31 +271,51 @@ def _check_nesting_depth(tree: ast.Module, filepath: str) -> list[Violation]:
 _HARDCODED_ID_KEYS = frozenset({
     "tableId", "dataSourceId", "sourceId", "projectId",
     "tenantId", "catalogueId", "taskId", "userId", "roleId",
-    "dsId", "dbId", "clusterId", "engineId",
+    "dsId", "dbId", "clusterId", "engineId", "metaId", "apiId",
 })
+
+
+def _is_business_id_key(key: str) -> bool:
+    """Return whether a JSON key represents a runtime business ID."""
+    return key in _HARDCODED_ID_KEYS or key.endswith(("Id", "Ids"))
+
+
+def _literal_business_id(value: ast.AST) -> str | None:
+    """Return the hardcoded ID literal if the AST node is a business ID value."""
+    if isinstance(value, ast.Constant):
+        if isinstance(value.value, int) and value.value != 0:
+            return str(value.value)
+        if isinstance(value.value, str) and value.value.isdigit() and int(value.value) != 0:
+            return value.value
+    if isinstance(value, (ast.List, ast.Tuple)):
+        for item in value.elts:
+            literal = _literal_business_id(item)
+            if literal is not None:
+                return literal
+    return None
 
 
 def _check_hardcoded_business_ids(tree: ast.Module, filepath: str) -> list[Violation]:
     """FC11: 无硬编码业务ID（tableId、dataSourceId等）。
 
-    检测字典 JSON payload 中数值类型的硬编码业务 ID，要求通过
+    检测字典 JSON payload 中数值/数字字符串类型的硬编码业务 ID，要求通过
     运行时查询获取而非写死。
     """
     violations: list[Violation] = []
     rule = _RULE_MAP["FC11"]
 
     for node in ast.walk(tree):
-        # 匹配 {"tableId": 1} 或 {"dataSourceId": 99999999} 这种模式
+        # 匹配 {"tableId": 1}、{"dataSourceId": "99999999"} 或 {"roleIds": [1]}。
         if isinstance(node, ast.Dict):
             for key, value in zip(node.keys, node.values):
                 if (isinstance(key, ast.Constant) and isinstance(key.value, str)
-                        and key.value in _HARDCODED_ID_KEYS
-                        and isinstance(value, ast.Constant)
-                        and isinstance(value.value, (int,))
-                        and value.value != 0):  # 允许 tableId: 0 作为 fallback
+                        and _is_business_id_key(key.value)):
+                    hardcoded_value = _literal_business_id(value)
+                    if hardcoded_value is None:
+                        continue
                     violations.append(Violation(
                         rule=rule, file=filepath, line=node.lineno,
-                        detail=f"硬编码业务ID: {key.value}={value.value}，应通过运行时查询获取",
+                        detail=f"硬编码业务ID: {key.value}={hardcoded_value}，应通过运行时查询获取",
                     ))
 
     return violations
@@ -324,6 +346,70 @@ def _check_classmethod_setup(tree: ast.Module, filepath: str) -> list[Violation]
                     rule=rule, file=filepath, line=node.lineno,
                     detail="setup_class 第一个参数为 cls（类方法风格），应使用 self",
                 ))
+    return violations
+
+
+def _check_placeholder_l4_l5_assertions(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC15: L4/L5 must not be represented by placeholder pass/skip logic."""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC15"]
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assert):
+            message = ""
+            if isinstance(node.msg, ast.Constant) and isinstance(node.msg.value, str):
+                message = node.msg.value
+            is_assert_true = isinstance(node.test, ast.Constant) and node.test.value is True
+            if is_assert_true and (
+                "requires project-specific wiring" in message
+                or message.startswith(("L4 ", "L5 "))
+            ):
+                violations.append(Violation(
+                    rule=rule,
+                    file=filepath,
+                    line=node.lineno,
+                    detail="L4/L5 使用 assert True 占位，未提供可执行断言",
+                ))
+        elif isinstance(node, ast.Call):
+            if not (isinstance(node.func, ast.Attribute) and node.func.attr == "skip"):
+                continue
+            for arg in node.args:
+                if (
+                    isinstance(arg, ast.Constant)
+                    and isinstance(arg.value, str)
+                    and "TIDE_ENABLE_" in arg.value
+                    and "ASSERTIONS" in arg.value
+                ):
+                    violations.append(Violation(
+                        rule=rule,
+                        file=filepath,
+                        line=node.lineno,
+                        detail="L4/L5 使用环境变量跳过逻辑，未提供默认可执行断言",
+                    ))
+
+    return violations
+
+
+def _check_collectable_test_class_names(tree: ast.Module, filepath: str) -> list[Violation]:
+    """FC14: 包含 test_* 方法的类名必须以 Test 开头，确保 pytest 会收集。"""
+    violations: list[Violation] = []
+    rule = _RULE_MAP["FC14"]
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef) or node.name.startswith("Test"):
+            continue
+        has_test_method = any(
+            isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and item.name.startswith("test_")
+            for item in node.body
+        )
+        if has_test_method:
+            violations.append(Violation(
+                rule=rule,
+                file=filepath,
+                line=node.lineno,
+                detail=f"类 {node.name} 包含 test_* 方法但类名不以 Test 开头，pytest 不会收集",
+            ))
     return violations
 
 
@@ -389,6 +475,8 @@ def check_file(filepath: str) -> list[Violation]:
     violations.extend(_check_nesting_depth(tree, filepath))
     violations.extend(_check_hardcoded_business_ids(tree, filepath))
     violations.extend(_check_classmethod_setup(tree, filepath))
+    violations.extend(_check_collectable_test_class_names(tree, filepath))
+    violations.extend(_check_placeholder_l4_l5_assertions(tree, filepath))
 
     return violations
 

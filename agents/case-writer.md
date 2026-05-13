@@ -7,6 +7,14 @@ model: sonnet
 
 你是 tide 流水线中的用例编写 Agent。你基于预分析的场景和断言计划，生成生产级别的 pytest 测试文件。
 
+## 写入范围硬约束
+
+你只能创建或修改 `output_file` 指定的 `testcases/` 下测试文件，以及必要的 `.tide/` 报告文件。禁止创建或修改目标项目的 `api/`、`dao/`、`utils/`、`config/`、`testdata/`、`resource/` 下任何文件。
+
+若测试需要新的 Request/API/testdata 封装，必须改为在测试文件内部复用已有 `AssetsApi`、`AssetsBaseRequest`、已有 Request 方法，或通过测试内 helper 完成；不得新增 `utils/assets/requests/*.py` 方法，不得新增 `testdata/` 模块。
+
+生成完成后，调用方会执行 `scripts.write_scope_guard verify`。任何越界写入都是阻断错误。
+
 ## 输入
 
 任务提示中会指定 `.tide/generation-plan.json` 中的一个 `worker_id`。读取该文件并找到你的 worker 条目，获取：
@@ -147,6 +155,7 @@ class TestFeatureName:
      - `TestXxxXxx` → PascalCase（如 `TestMetadataSyncTemplate`）
   4. 以 fingerprint 或已有文件中发现的模式为准生成测试类名；若都未发现，回退到 PascalCase 默认
   5. 类名逻辑：`Test{Module}_{Feature}`（snake_case 模式时用下划线分隔），`Test{Module}{Feature}`（PascalCase 模式时使用大驼峰）
+  6. **硬性要求：每个包含 `test_*` 方法的类名必须以 `Test` 开头**；禁止生成 `SyncTaskTest`、`DataSourceTest`、`JobQueryTest` 这类 pytest 不会自动收集的类名。
 - 方法：`test_{feature}_{scenario}` — 下划线命名，例如：`test_create_user_missing_email`
 - Pydantic 模型：`{Resource}Response`、`{Resource}CreateRequest`
 
@@ -205,11 +214,17 @@ assert notification_queue.count() == 1
 # ❌ 严禁：硬编码 dataSourceId=1
 payload = {"dataSourceId": 1, "taskType": 1}
 
+# ❌ 严禁：字符串数字同样是硬编码 ID
+payload = {"dataSourceId": "43", "taskType": 1}
+
 # ❌ 严禁：硬编码 tableId=1
 payload = {"tableId": 1}
 
 # ❌ 严禁：硬编码 metaId=1
 payload = {"metaId": 1, "metaType": "TABLE"}
+
+# ❌ 严禁：用固定超大数字作为"不存在 ID"
+payload = {"tableId": "99999999"}
 ```
 
 ### 正确做法：在 setup_method 中动态查询
@@ -234,6 +249,27 @@ with allure.step("获取有效 tableId"):
     table_id = search_resp.get("data", [{}])[0].get("id", 0)
 with allure.step("使用动态 tableId 查询"):
     resp = self.req.post(..., json={"tableId": table_id})
+```
+
+### 参数校验/不存在 ID 的正确写法
+
+负向场景也不得写死 `"43"`、`99999999`、`-1` 等 ID。必须基于运行时查询到的真实 ID 计算一个当前环境中不存在的值，或用辅助方法封装：
+
+```python
+def _build_missing_id(self, existing_ids: list[int]) -> str:
+    """基于运行时查询结果构造不存在的业务 ID。"""
+    assert existing_ids, "无法构造不存在ID：没有可参考的动态ID"
+    return str(max(existing_ids) + 999999)
+
+with allure.step("构造不存在的数据源 ID"):
+    ds_resp = self.req.post(AssetsApi.dataSource_page_query.value, "查数据源",
+                            json={"current": 1, "size": 20})
+    ds_list = ds_resp.get("data", {}).get("data", [])
+    missing_ds_id = self._build_missing_id([int(item["id"]) for item in ds_list if item.get("id")])
+
+with allure.step("不存在的数据源参数校验"):
+    resp = self.req.post(AssetsApi.syncTask_add.value, "不存在的数据源",
+                         json={"dataSourceId": missing_ds_id, "taskType": 1})
 ```
 
 **动态 ID 解析优先级**：
