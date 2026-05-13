@@ -514,6 +514,16 @@ Task 6 → in_progress
 1. 显示最终摘要（测试通过数/失败数/断言覆盖率/失败归类）
 2. 打印验收命令（pytest collect-only / pytest run / allure serve）
 3. 归档会话
+
+2b. **报告超时保护**：
+   假设代码生成和 pytest 执行已完成（py 文件和 pytest 输出已存在），如果总运行时间接近平台限制（例如 Codex exec 600s），报告生成本身不应导致整个运行失败：
+   ```bash
+   # 核心产物已到位，快速写入简洁报告
+   # 使用 echo/cat 而非复杂 Python 脚本
+   # 至少写入状态和文件列表
+   ```
+   报告生成应在 30s 内完成。如果超过 60s 未响应，使用极简报告模板（只包含状态、文件列表、pytest 输出）尽快结束。
+
 4. 生成 artifact manifest：
 
    ```bash
