@@ -1,0 +1,9 @@
+ M scripts/claude_hooks.py
+ M scripts/deterministic_case_writer.py
+ M scripts/format_checker.py
+ M tests/test_deterministic_case_writer.py
+ M tests/test_format_checker.py
+ M tests/test_hooks.py
+?? evals/tide-optimization/iter_20/
+?? scripts/generated_assertion_gate.py
+?? tests/test_generated_assertion_gate.py

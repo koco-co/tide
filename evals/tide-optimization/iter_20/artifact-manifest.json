@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-05-12T19:03:19.428276+00:00",
+  "artifacts": [
+    {
+      "path": "testcases/scenariotest/assets/tide_generated/tide_generated_assets_test.py",
+      "kind": "generated_test",
+      "sha256": "65c1ff1fee3670823df403ebc5e5aa63c35434d7c7752cc6d8c03916f6c74d7a",
+      "size_bytes": 14497
+    },
+    {
+      "path": "testcases/scenariotest/assets/tide_generated/tide_generated_metadata_test.py",
+      "kind": "generated_test",
+      "sha256": "7a08a5ae562cc22fc5f3ecaa46bdea9ac694bb454f2d89b7131092feefae9f00",
+      "size_bytes": 9513
+    }
+  ]
+}

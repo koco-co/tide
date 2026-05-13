@@ -1,0 +1,7 @@
+{
+  "generated": [
+    "/Users/poco/Projects/dtstack-httprunner/testcases/scenariotest/assets/tide_generated/tide_generated_assets_test.py",
+    "/Users/poco/Projects/dtstack-httprunner/testcases/scenariotest/assets/tide_generated/tide_generated_metadata_test.py"
+  ]
+}
+exit_code=0

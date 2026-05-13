@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-05-13T02:40:00+00:00",
+  "workers": [
+    {
+      "name": "assets_worker",
+      "scenario_ids": [
+        "assets_dassets_v1_user_pageUsers",
+        "assets_dassets_v1_datamap_recentQuery",
+        "assets_dassets_v1_datamap_assetStatistics",
+        "assets_dassets_v1_dataInventory_countDataSource",
+        "assets_dassets_v1_datamap_hotword_list",
+        "assets_dassets_v1_datamap_hotLabel_list",
+        "assets_dassets_v1_datamap_listUsers",
+        "assets_dassets_v1_datamap_label_list",
+        "assets_dassets_v1_resourceCatalog_listCatalogByQuery",
+        "assets_dassets_v1_datamap_queryDetail",
+        "assets_dassets_v1_dataTableColumn_pageTableColumn",
+        "assets_dassets_v1_dataTable_queryDetail",
+        "assets_dassets_v1_label_listAllBindLabelByCondition",
+        "assets_dassets_v1_datamap_resource_bindResourceRel",
+        "assets_dassets_v1_dataTable_judgeIsMetaByTableId",
+        "assets_dassets_v1_dataTable_hasParition",
+        "assets_dassets_v1_dataTable_queryCreateTableSql"
+      ],
+      "output_file": "testcases/scenariotest/assets/tide_generated/tide_generated_assets_test.py"
+    },
+    {
+      "name": "metadata_worker",
+      "scenario_ids": [
+        "metadata_dmetadata_v1_syncTask_pageTask",
+        "metadata_dmetadata_v1_dataSource_listMetadataDataSource",
+        "metadata_dmetadata_v1_dataDb_realTimeDbList",
+        "metadata_dmetadata_v1_syncTask_realTimeTableList",
+        "metadata_dmetadata_v1_syncTask_add",
+        "metadata_dmetadata_v1_syncJob_pageQuery",
+        "metadata_dmetadata_v1_metadataApply_isSuperUser",
+        "metadata_dmetadata_v1_dataTable_getTableLifeCycle",
+        "metadata_dmetadata_v1_metadataApply_getApplyStatus",
+        "metadata_dmetadata_v1_dataSubscribe_getSubscribeByTableId",
+        "metadata_dmetadata_v1_dataTable_queryTablePermission"
+      ],
+      "output_file": "testcases/scenariotest/assets/tide_generated/tide_generated_metadata_test.py"
+    }
+  ]
+}
