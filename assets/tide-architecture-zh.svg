@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="860" viewBox="0 0 1600 860" role="img" aria-labelledby="title desc">
+  <title id="title">Tide 架构</title>
+  <desc id="desc">Tide 架构图，展示输入、宿主适配层、Tide 编排层、确定性核心、生成测试与质量门。</desc>
+  <defs>
+    <linearGradient id="surface" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eef6ff"/>
+    </linearGradient>
+    <linearGradient id="primary" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="success" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#65a30d"/>
+    </linearGradient>
+    <linearGradient id="warning" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-12%" y="-12%" width="124%" height="135%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .title { font: 750 46px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 19px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .kicker { font: 750 13px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #64748b; letter-spacing: 1.2px; }
+      .heading { font: 750 25px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+      .body { font: 500 17px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .small { font: 650 15px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #334155; }
+      .pill { font: 700 14px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .white-heading { font: 750 24px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #ffffff; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; rx: 18; filter: url(#soft-shadow); }
+      .inner { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.2; rx: 12; }
+      .line { fill: none; stroke: #2563eb; stroke-width: 4; marker-end: url(#arrow); }
+      .line-soft { fill: none; stroke: #94a3b8; stroke-width: 2.4; stroke-dasharray: 8 8; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="860" fill="url(#surface)"/>
+  <rect x="44" y="36" width="1512" height="788" rx="30" fill="#ffffff" stroke="#d0d7de"/>
+
+  <text x="92" y="104" class="title">Tide 架构</text>
+  <text x="94" y="140" class="subtitle">AI 宿主适配层共享同一套确定性核心，用于 HAR 解析、项目约定扫描、pytest 生成和质量门校验。</text>
+
+  <rect x="96" y="202" width="256" height="180" class="card"/>
+  <text x="126" y="246" class="kicker">输入</text>
+  <text x="126" y="286" class="heading">用户流程</text>
+  <text x="126" y="322" class="body">浏览器 HAR 录制</text>
+  <text x="126" y="350" class="body">目标 pytest 仓库</text>
+
+  <rect x="426" y="180" width="286" height="224" class="card"/>
+  <text x="456" y="224" class="kicker">宿主适配层</text>
+  <rect x="456" y="252" width="226" height="38" class="inner"/>
+  <text x="478" y="277" class="pill">Claude Code · /tide</text>
+  <rect x="456" y="306" width="226" height="38" class="inner"/>
+  <text x="478" y="331" class="pill">Codex · $tide</text>
+  <rect x="456" y="360" width="226" height="38" class="inner"/>
+  <text x="478" y="385" class="pill">Cursor · tide</text>
+
+  <rect x="786" y="180" width="330" height="224" class="card"/>
+  <rect x="786" y="180" width="330" height="82" rx="18" fill="url(#primary)"/>
+  <text x="818" y="230" class="white-heading">Tide 编排层</text>
+  <text x="818" y="296" class="body">Skills、commands、agents、prompts</text>
+  <text x="818" y="328" class="body">规划四波生成工作流</text>
+  <text x="818" y="360" class="body">隔离不同宿主的工具语义</text>
+
+  <rect x="1190" y="180" width="314" height="224" class="card"/>
+  <text x="1220" y="224" class="kicker">确定性核心</text>
+  <text x="1220" y="264" class="heading">Python 脚本</text>
+  <text x="1220" y="302" class="body">HAR 解析器</text>
+  <text x="1220" y="330" class="body">项目约定扫描器</text>
+  <text x="1220" y="358" class="body">场景与断言质量门</text>
+
+  <path d="M 354 292 C 382 292, 396 292, 424 292" class="line"/>
+  <path d="M 714 292 C 744 292, 754 292, 784 292" class="line"/>
+  <path d="M 1118 292 C 1148 292, 1158 292, 1188 292" class="line"/>
+
+  <rect x="96" y="512" width="310" height="190" class="card"/>
+  <rect x="96" y="512" width="310" height="66" rx="18" fill="url(#primary)"/>
+  <text x="126" y="553" class="white-heading">1 · 准备</text>
+  <text x="126" y="616" class="body">解析 HAR</text>
+  <text x="126" y="646" class="body">扫描项目约定</text>
+  <text x="126" y="676" class="body">写入 .tide 状态</text>
+
+  <rect x="454" y="512" width="310" height="190" class="card"/>
+  <rect x="454" y="512" width="310" height="66" rx="18" fill="url(#success)"/>
+  <text x="484" y="553" class="white-heading">2 · 理解</text>
+  <text x="484" y="616" class="body">识别接口场景</text>
+  <text x="484" y="646" class="body">发现链路与状态变更</text>
+  <text x="484" y="676" class="body">规划 L1-L5 断言</text>
+
+  <rect x="812" y="512" width="310" height="190" class="card"/>
+  <rect x="812" y="512" width="310" height="66" rx="18" fill="url(#warning)"/>
+  <text x="842" y="553" class="white-heading">3 · 生成</text>
+  <text x="842" y="616" class="body">写入 pytest 用例</text>
+  <text x="842" y="646" class="body">复用 fixture 和 client</text>
+  <text x="842" y="676" class="body">避免硬编码敏感信息</text>
+
+  <rect x="1170" y="512" width="334" height="190" class="card"/>
+  <rect x="1170" y="512" width="334" height="66" rx="18" fill="#24292f"/>
+  <text x="1200" y="553" class="white-heading">4 · 验证</text>
+  <text x="1200" y="616" class="body">运行 collect-only 与窄范围测试</text>
+  <text x="1200" y="646" class="body">强制检查断言覆盖</text>
+  <text x="1200" y="676" class="body">输出证据报告</text>
+
+  <path d="M 407 606 C 426 606, 434 606, 452 606" class="line"/>
+  <path d="M 765 606 C 784 606, 792 606, 810 606" class="line"/>
+  <path d="M 1123 606 C 1142 606, 1150 606, 1168 606" class="line"/>
+
+  <path d="M 1348 406 C 1348 454, 1338 474, 1338 510" class="line-soft"/>
+  <path d="M 952 406 C 952 454, 968 474, 968 510" class="line-soft"/>
+  <path d="M 570 406 C 570 454, 252 474, 252 510" class="line-soft"/>
+
+  <rect x="300" y="752" width="1000" height="54" rx="16" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="334" y="786" class="small">输出：</text>
+  <text x="420" y="786" class="body">项目风格 pytest 文件</text>
+  <text x="674" y="786" class="body">.tide/final-pytest-output.txt</text>
+  <text x="1010" y="786" class="body">.tide/final-report.md</text>
+</svg>

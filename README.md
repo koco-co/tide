@@ -1,533 +1,324 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Tide-1.3-7C3AED?style=for-the-badge&logoColor=white">
-  <img alt="Tide" src="https://img.shields.io/badge/Tide-1.3-7C3AED?style=for-the-badge&logoColor=white">
-</picture>
+# Tide
 
-# <img src="https://em-content.zobj.net/source/apple/391/test-tube_1f9ea.png" width="32" /> Tide
+**HAR 驱动、源码感知的 pytest 接口自动化测试生成插件。**
 
-### HAR-Driven, Source-Aware API Test Generation
+把浏览器 HAR 录制文件转成贴合项目风格的 pytest 接口测试：自动扫描项目约定、规划 L1-L5 断言，并用确定性质量门验证生成结果。
 
-<br />
+<p>
+  中文 | <a href="./README-EN.md">English</a>
+</p>
 
-**一句话说清**：丢入浏览器 HAR 抓包，自动出生产级 pytest 测试套件。
+<p>
+  <a href="./pyproject.toml"><img alt="Version" src="https://img.shields.io/badge/version-1.3.0-2563eb?style=flat-square"></a>
+  <a href="./pyproject.toml"><img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white"></a>
+  <a href="https://docs.astral.sh/uv/"><img alt="uv" src="https://img.shields.io/badge/uv-managed-111827?style=flat-square"></a>
+  <a href="https://pytest.org/"><img alt="pytest" src="https://img.shields.io/badge/pytest-ready-0a9edc?style=flat-square&logo=pytest&logoColor=white"></a>
+  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square"></a>
+</p>
 
-基于 **Claude Code Plugin** 构建，并提供 **Codex / Cursor** 适配入口的 AI 接口自动化测试生成引擎，5 个 Agent 协同、4 波编排。
+<p>
+  <img alt="Claude Code" src="https://img.shields.io/badge/Claude_Code-plugin-7C3AED?style=flat-square">
+  <img alt="Codex" src="https://img.shields.io/badge/Codex-plugin-111827?style=flat-square">
+  <img alt="Cursor" src="https://img.shields.io/badge/Cursor-rules-000000?style=flat-square">
+</p>
 
-<br />
-
-📡 HAR 解析 &nbsp;·&nbsp; 🔍 源码追踪 &nbsp;·&nbsp; 🧪 L1-L5 断言 &nbsp;·&nbsp; ⚡ 并行生成 &nbsp;·&nbsp; 📊 Allure 报告
-
-<br />
-
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org/)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=flat-square&logo=anthropic&logoColor=white)](https://claude.ai/code)
-[![pytest](https://img.shields.io/badge/pytest-Framework-0A9EDC?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=flat-square)](./pyproject.toml)
-
-<br />
-
-```
-📡 HAR ─── /tide ──→ 🔍 源码分析 ──→ 🧪 pytest 测试套件 ──→ 📊 Allure 报告
+```text
+/using-tide
+/tide ./recordings/api.har
 ```
 
 </div>
 
-<br />
-
 ---
 
-## 目录
+## 概览
 
-- [核心特性](#核心特性)
-- [工作流总览](#工作流总览)
-- [断言层级](#断言层级)
-- [快速开始](#快速开始)
-- [使用指南](#使用指南)
-- [融入已有项目](#融入已有项目)
-- [配置参考](#配置参考)
-- [项目结构](#项目结构)
-- [开发](#开发)
-- [Roadmap](#roadmap)
-- [License](#license)
+Tide 是一套面向 API 自动化项目的 AI 插件工作流与确定性 Python 执行层。
 
----
+它尤其适合已有 pytest 接口自动化项目：生成测试前会扫描仓库里的 API client、fixture、命名风格、认证辅助函数、断言习惯和输出目录，让生成代码尽量像团队自己补进去的测试。
 
-## 核心特性
+![Tide 架构](assets/tide-architecture-zh.svg)
 
-| 特性 | 说明 |
-|------|------|
-| **HAR → pytest** | 浏览器录制的 HAR 文件自动转化为生产级 pytest 测试套件，零样板代码 |
-| **源码感知** | 读取后端源码（Controller → Service → DAO），深度理解业务逻辑 |
-| **L1-L5 断言** | 从 HTTP 状态码（L1）到 AI 推断的隐式业务规则（L5），5 层断言递进覆盖 |
-| **5 Agent 协同** | har-parser · repo-syncer · scenario-analyzer · case-writer · case-reviewer |
-| **4 波并行编排** | 解析 → 分析 → 生成 → 评审，波次内并行、波次间串行，充分利用 AI 能力 |
-| **安全校验** | HAR 输入 Pydantic 校验、repo-profiles YAML schema 验证、分支容错 |
-| **Hook 系统** | 9 个 Hook 点（wave1-4 before/after + output:notify），YAML 配置注入自定义处理 |
-| **偏好学习** | 跨会话偏好持久化（断言风格、fixture 作用域等），自动修正生成风格 |
-| **格式检查** | AST 级 Python 代码检查（FC01-FC10），CLI 集成，覆盖 docstring/print/行长等 |
-| **智能项目分类** | 自动检测已有自动化项目 vs 新项目，阈值保守、不误判覆盖 |
-| **行业感知** | 收集行业画像 → AI 调研 → 2-3 方案推荐，行业断言全流程贯穿 |
-| **方案推荐** | 基于行业/团队/鉴权复杂度，推荐完整技术方案（框架+CI+报告+Mock+数据管理） |
-| **旧项目无侵入** | 自动检测已有项目的测试目录、API 封装、断言风格，沿用原有规范 |
-| **交互式确认** | 每个关键节点提供确认清单，支持 `--quick` 跳过和断点恢复 |
-| **验证透明** | 每波次结束明确输出验证摘要（py_compile / import 检查 / 断言覆盖率） |
-| **任务可视化** | 全流程进度实时可见，spinner 显示当前阶段，子步骤逐项追踪 |
+## 为什么用 Tide
 
----
+| 能力 | 价值 |
+|---|---|
+| HAR 转 pytest | 把浏览器录制的业务流程转成可收集、可运行的 pytest 接口测试。 |
+| 源码感知生成 | 有后端源码或 API 定义时，利用实现细节增强业务断言。 |
+| 适配已有项目 | 自动扫描测试结构、fixture、API client、命名和断言辅助函数。 |
+| L1-L5 分层断言 | 从传输成功到状态变更、端到端业务结果逐层规划断言。 |
+| 确定性质量门 | 校验 HAR 解析、场景结构、断言覆盖、写入范围和 pytest 输出。 |
+| 多宿主支持 | 同一套核心资产同时支持 Claude Code、Codex 和 Cursor。 |
 
-## 工作流总览
+> [!IMPORTANT]
+> Tide 默认只应写入生成测试和 `.tide/` 状态文件。除非用户明确授权，不应修改业务代码、共享配置或敏感信息。
 
-![Tide Pipeline](assets/workflow.png)
+## 支持的宿主
 
-<details>
-<summary><b>4 波次详解</b></summary>
+| 宿主 | 用户入口 | Tide 资产 |
+|---|---|---|
+| Claude Code | `/using-tide`、`/tide <har-file>` | `.claude-plugin/`、`skills/`、`agents/`、`prompts/`、`scripts/` |
+| Codex | `$using-tide`、`$tide <har-file>` | `.codex-plugin/`、`codex-skills/`、`commands/`、`.agents/plugins/` |
+| Cursor | `using-tide`、`tide <har-file>` | `.cursor/rules/`、`.cursor/commands/` |
 
-### Wave 1：解析与准备（并行）
-
-| Agent | 模型 | 输入 | 输出 |
-|-------|------|------|------|
-| **har-parser** | haiku | HAR 文件 | `.tide/parsed.json` |
-| **repo-syncer** | haiku | `repo-profiles.yaml` | `.tide/repo-status.json` |
-
-两个 Agent 并行执行。无源码仓库时自动跳过 repo-syncer。
-
-### Wave 2：场景分析（交互式）
-
-| Agent | 模型 | 职责 |
-|-------|------|------|
-| **scenario-analyzer** | opus | 源码追踪 + 场景推断 + 断言计划 |
-
-- 追踪 Controller → Service → DAO 调用链
-- 推断正常路径、异常路径、边界值、CRUD 闭环等 8 种场景类别
-- 规划每个场景的 L1-L5 断言层级
-- 生成确认清单，用户确认后继续
-
-### Wave 3：代码生成（并行扇出）
-
-| Agent | 模型 | 职责 |
-|-------|------|------|
-| **case-writer ×N** | sonnet | 按模块并行生成 pytest 测试文件 |
-
-- 每个服务模块独立一个 Agent
-- 遵循项目已有的代码风格（API 封装、Request 工具类、allure 标注等）
-- 生成后自动进行 py_compile 验证
-
-### Wave 4：评审与交付（交互式）
-
-| Agent | 模型 | 职责 |
-|-------|------|------|
-| **case-reviewer** | opus | 5 维评审 + 自动修复 + 执行 |
-
-5 个评审维度：
-1. **断言完整性** — L1-L5 逐层验证
-2. **场景完整性** — CRUD 闭环、异常路径、边界值
-3. **源码交叉核验** — 断言值与源码实际逻辑一致
-4. **代码质量** — 无硬编码、不可变模式、规模限制
-5. **可运行性** — 导入完整、语法正确、fixture 可用
-
-偏差率处理：`< 15%` 静默修复 · `15-40%` 修复并警告 · `> 40%` 阻断
-
-</details>
-
-<details>
-<summary><b>任务可视化</b></summary>
-
-Tide 在流程开始时创建任务清单，实时展示当前进度：
-
-**`/tide` 执行时的任务面板：**
-
-| 状态 | 任务 |
-|------|------|
-| ✅ | 预检与参数校验 |
-| ✅ | [1/4] 解析与准备 |
-| ▶ 分析测试场景... | [2/4] 场景分析 |
-| ○ | [3/4] 代码生成 |
-| ○ | [4/4] 评审与交付 |
-| ○ | 验收报告与归档 |
-
-**`/using-tide` 执行时的任务面板：**
-
-| 状态 | 任务 |
-|------|------|
-| ✅ | 环境检测 + 智能分类 |
-| ▶ 扫描项目代码... | 深度扫描（已有项目） |
-| ○ | 7 维度确认 |
-| ○ | 源码仓库配置 |
-| ○ | 连接配置 |
-| ○ | 脚手架生成 + 配置验证 |
-
-每个任务包含子步骤描述，完成后自动标记。分支确定后任务名称自动更新。
-
-</details>
-
----
-
-## 断言层级
-
-![Assertion Layers](assets/assertion_layers.svg)
-
-| 层级 | 名称 | 覆盖内容 | 生成条件 |
-|------|------|----------|----------|
-| **L1** | 协议层 | HTTP 状态码 · 响应时间 · Content-Type | 所有接口（100%） |
-| **L2** | 结构层 | Schema 验证 · 字段类型 · 存在性检查 | 有响应体的接口 |
-| **L3** | 数据层 | 值范围 · 枚举合法性 · 分页不变量 | 有源码参考时 |
-| **L4** | 业务层 | 状态机 · CRUD 一致性 · 数据库验证 | 配置了数据库连接 |
-| **L5** | AI 推断层 | 隐式规则 · 安全边界 · 异常路径 | 源码追踪 + 高置信度 |
-
-每层断言代码示例参见 [references/assertion-examples.md](references/assertion-examples.md)。
-
----
+宿主适配文件只负责命令语义和工具语义差异；`scripts/` 下的确定性执行层由所有宿主共享。
 
 ## 快速开始
 
-### 前置条件
+### 前置要求
 
-- Claude Code、Codex 或 Cursor（任选其一作为 AI 编排入口）
-- Python >= 3.12
-- [uv](https://docs.astral.sh/uv/) 包管理器（推荐）或 pip
-- Git
+- Python `3.12+`
+- `uv`
+- 一个 pytest 接口自动化项目
+- 从浏览器导出的 `.har` 文件
 
-### Claude Code 安装
+### Claude Code
 
 ```bash
-# 方式一：从 marketplace 安装（推荐）
 claude plugins marketplace add koco-co/tide
 claude plugins install tide
-
-# 方式二：或直接克隆（适用于全局安装）
-git clone https://github.com/koco-co/tide.git ~/.claude/plugins/tide
-cd ~/.claude/plugins/tide && uv sync
-
-# 验证安装
-claude plugins list
 ```
 
-安装后，进入你的测试项目目录启动 Claude Code：
+然后在目标自动化项目里运行：
 
-```bash
-cd /path/to/your-test-project
-claude
-```
-
-### Codex / Cursor 适配
-
-Tide 同仓库提供 Codex 与 Cursor 的项目级适配文件：
-
-| 入口 | 文件 | 使用方式 |
-|------|------|----------|
-| Codex 插件 | `.codex-plugin/plugin.json`、`codex-skills/`、`commands/` | 安装为本地 Codex 插件后使用 `$using-tide` / `$tide`，或 `/using-tide` / `/tide` 命令 |
-| Cursor 项目规则 | `.cursor/rules/*.mdc`、`.cursor/commands/*.md` | 在 Cursor 中打开 Tide 仓库或拷贝 `.cursor/` 到项目后使用 `using-tide` / `tide` 命令 |
-
-Codex 和 Cursor 适配层复用同一套 `scripts/`、`agents/`、`prompts/` 资产，不改变 Claude Code 入口。
-
----
-
-## 使用指南
-
-### 第一步：初始化项目（仅首次）
-
-在 Claude Code、Codex 或 Cursor 中运行初始化入口：
-
-```
+```text
 /using-tide
-```
-
-这是一个交互式向导，会根据项目类型自动选择路径：
-
-**已有自动化项目**（如 dtstack-httprunner）→ 自动检测为 existing：
-
-| 步骤 | 说明 |
-|------|------|
-| 项目扫描 | 自动通读代码，检测 API 封装方式、HTTP 客户端、断言风格等 |
-| 交互确认 | 逐项确认扫描结果，可手动调整 |
-| 仓库配置 | 输入后端仓库 URL（可选，用于源码分析增强断言） |
-| 连接配置 | Base URL · 认证方式 |
-| 生成配置 | 写入 `tide-config.yaml` |
-
-**全新项目** → 自动检测为 new：
-
-| 步骤 | 说明 |
-|------|------|
-| 行业画像 | 选择行业、系统类型、团队规模 |
-| AI 调研 | 自动搜索行业最佳实践，推荐技术方案 |
-| 方案确认 | 选择技术栈（框架/客户端/报告/CI 等） |
-| 脚手架 | 生成完整的项目结构 + 示例测试 |
-
-生成文件：`tide-config.yaml` · `repo-profiles.yaml`
-
-### 第二步：录制 HAR 文件
-
-在浏览器开发者工具 Network 面板中操作目标系统，导出 `.har` 文件。
-
-### 第三步：生成测试
-
-```bash
-# 标准模式（全流程 + 交互确认）
 /tide ./recordings/api.har
-
-# 快速模式（跳过确认清单，适合 CI）
-/tide ./recordings/api.har --quick
-
-# 恢复中断的会话
-/tide --resume
 ```
 
-在 Codex 中也可以使用 `$tide <har-file>`；在 Cursor 中可以使用 `.cursor/commands/tide.md` 对应的 `tide <har-file>` 命令。
-
-#### 约定适配（自动）
-
-Tide 在生成测试代码时会自动适配目标项目的编码规范——无需手动配置：
-
-| 检测维度 | 自动适配行为 |
-|---------|------------|
-| API 定义 | Enum 类如 `BatchApi.create_project.value`、Class 常量、或内联 URL |
-| HTTP 客户端 | 自定义 `BaseRequests`、`httpx`、或 `requests` |
-| 断言风格 | `resp["code"] == 1`、`resp.status_code == 200`、或 `resp.get("key")` |
-| 测试结构 | `*_test.py` 后缀或 `test_*.py`、`setup_class` 或 conftest fixture |
-| Allure 标注 | 自动生成 `@allure.feature` / `@allure.story`，或不使用 |
-| pytest markers | 自动应用项目已有的 markers（如 `@pytest.mark.smoke`）|
-
-适配信息来自 `scripts/convention_scanner.py` 的 AST 检测，存储在 `.tide/convention-scout.json` 中。
-
-### 第四步：验收
-
-生成完成后输出验收命令：
+本地插件开发方式：
 
 ```bash
-# 收集测试用例（验证语法）
-pytest --collect-only
-
-# 执行测试 + Allure 报告
-pytest -v --alluredir=.tide/allure-results
-
-# 查看 Allure 报告
-allure serve .tide/allure-results
+git clone https://github.com/koco-co/tide.git ~/.claude/plugins/tide
+cd ~/.claude/plugins/tide
+uv sync
 ```
 
-> 实际命令会根据项目的配置自动适配。
+如果你的 Claude Code 环境需要命名空间命令：
 
----
+```text
+/tide:tide ./recordings/api.har --yes --non-interactive
+```
 
-## 常见场景
+### Codex
 
-### 场景 A：全新项目从零开始
+Tide 内置 Codex 插件元数据和技能：
+
+```text
+.codex-plugin/plugin.json
+codex-skills/tide/SKILL.md
+codex-skills/using-tide/SKILL.md
+commands/tide.md
+commands/using-tide.md
+```
+
+在 Codex 中安装或重载本地 Tide 插件后，在目标项目中使用：
+
+```text
+$using-tide
+$tide ./recordings/api.har
+```
+
+Codex 适配层会把已安装插件根目录解析为 `TIDE_PLUGIN_DIR`，并从插件环境运行 Tide 脚本。目标项目的 Python 只用于执行生成后的 pytest 测试。
+
+### Cursor
+
+Tide 内置 Cursor 规则和命令文档：
+
+```text
+.cursor/rules/tide-core.mdc
+.cursor/rules/tide-init.mdc
+.cursor/commands/tide.md
+.cursor/commands/using-tide.md
+```
+
+在 Cursor 中打开带有 Tide 规则的目标项目后运行：
+
+```text
+using-tide
+tide ./recordings/api.har
+```
+
+## 工作流
+
+Tide 使用四波工作流。AI 负责项目理解与测试设计，脚本负责解析、规范化和验证。
+
+| 波次 | 目标 | 典型产物 |
+|---|---|---|
+| 1. 准备 | 解析 HAR 并扫描项目约定。 | `.tide/parsed.json`、`.tide/project-assets.json`、`.tide/convention-fingerprint.yaml` |
+| 2. 理解 | 识别场景、请求链路、风险点和断言机会。 | `.tide/scenarios.json`、`.tide/generation-plan.json` |
+| 3. 生成 | 复用本地 helper 和风格写入 pytest 文件。 | `testcases/` 或配置目录下的生成测试 |
+| 4. 验证 | 运行窄范围校验并输出证据报告。 | `.tide/final-pytest-output.txt`、`.tide/final-report.md` |
+
+典型运行方式：
 
 ```bash
-mkdir my-api-tests && cd my-api-tests && git init
-# 启动 Claude Code → /using-tide
+# 在 AI 宿主中打开目标 pytest 自动化项目。
+/using-tide
+/tide ./recordings/metadata-sync.har
+
+# 验证生成测试。
+python -m pytest --collect-only testcases -q
+python -m pytest testcases -q
 ```
 
-生成脚手架：`tests/` · `conftest.py` · `pyproject.toml` · `Makefile`
+## 断言模型
 
-### 场景 B：已有自动化项目（如 dtstack-httprunner）
+| 层级 | 含义 | 示例 |
+|---|---|---|
+| L1 | 传输成功 | HTTP 状态码、响应存在、请求完成 |
+| L2 | API 契约 | `code == 0`、必需字段、稳定字段类型 |
+| L3 | 业务响应 | 创建名称、同步状态、列表包含目标对象 |
+| L4 | 状态变更 | 通过后续查询验证创建、更新、删除效果 |
+| L5 | 端到端链路 | 多步骤流程到达最终可观察业务状态 |
 
-```bash
-cd /path/to/existing-test-project
-# 启动 Claude Code → /using-tide（初始化配置）
-# → /tide ./recordings/api.har（生成测试）
+> [!NOTE]
+> 写操作场景应包含 L4，链路场景应包含 L5。即使格式化和 pytest 收集通过，缺失必需断言层时 Tide 的断言门也必须把该次运行标记为失败。
+
+## 质量门
+
+| 质量门 | 要求 |
+|---|---|
+| 可收集性 | 生成测试通过 `pytest --collect-only`。 |
+| 项目契合度 | import、fixture、API client、类粒度和命名遵循本地 anchor。 |
+| 断言覆盖 | 每个接口包含 L1-L3；写操作包含 L4；链路场景包含 L5。 |
+| 数据安全 | 不硬编码活动环境 URL、token、webhook secret、凭据或不稳定运行时 ID。 |
+| 场景完整性 | `scenario_id` 唯一，confidence 有证据支撑。 |
+| 写入范围 | 生成内容限制在批准的测试目录和 `.tide/` 路径内。 |
+
+严格运行时，Tide 会记录真实的最终 pytest 输出：
+
+```text
+.tide/final-pytest-output.txt
 ```
 
-Tide 会自动检测：
-- API 封装模式（Enum / Class / 内联）
-- 自定义 HTTP 客户端和调用签名
-- 断言风格和辅助方法
-- 测试文件命名规范
-- pytest markers
-- Allure 使用模式
+没有这个文件时，不应把运行总结为成功。
 
-生成的测试代码自动遵循已有项目的编码规范，无侵入。
+## 配置
 
-### 场景 C：纯脚本模式（不使用 Claude Code）
+Tide 把目标项目状态和配置存放在 `.tide/` 下。
 
-```bash
-git clone https://github.com/koco-co/tide.git
-cd tide && uv sync
-
-# 执行项目扫描（输出 convention-scout.json）
-uv run python3 scripts/convention_scanner.py --project-root /path/to/project
-
-# HAR 解析
-uv run python -c "
-from scripts.har_parser import parse_har
-from pathlib import Path
-result = parse_har(Path('your.har'), Path('repo-profiles.yaml'))
-print(f'解析到 {len(result.endpoints)} 个接口')
-"
+```text
+.tide/tide-config.yaml
+.tide/repo-profiles.yaml
 ```
 
-> 纯脚本模式仅提供 HAR 解析、脚手架、通知等基础工具，不含 AI 场景分析和用例生成。
-
----
-
-## 配置参考
-
-### repo-profiles.yaml
-
-```yaml
-repos:
-  - name: backend-service
-    local_path: .repos/group/backend/
-    remote: https://git.example.com/group/backend.git
-    branch: release_1.0
-    url_prefixes:
-      - /api/v1
-```
-
-### tide-config.yaml
+最小 `tide-config.yaml`：
 
 ```yaml
 project:
-  type: existing          # existing | new
-  test_dir: testcases     # 测试入口目录
-  test_types:             # 要生成的测试类型
-    - interface
-    - scenariotest
-  code_style:
-    api_pattern: enum     # enum | constant | inline
-    request_class: BaseRequests
-    assertion_style: "resp['code'] == 1"
-    auth_method: reuse    # cookie | token | password | none | reuse
-    allure_enabled: true
-  package_manager: pip    # uv | pip | poetry
+  type: existing_automation
+  language: python
+  test_framework: pytest
 
-# 行业信息（由 /using-tide 自动生成）
-industry:
-  domain: "金融/银行"
-  system_type: "微服务架构"
-  team_size: "3-5人"
-  auth_complexity: complex
-  special_needs: ["multi_env"]
-  compliance: ["等保三级", "数据脱敏"]
+paths:
+  tests: testcases
+  api_clients: api
+  config: config
+  utilities: utils
 
-solution:
-  name: "金融级 API 自动化方案"
-  fit_score: 92
-  stack:
-    framework: pytest
-    http_client: httpx
-    report: allure
-    mock: wiremock
-    ci: github_actions
-    data_management: factory_boy
-  industry_specific:
-    - "金融交易幂等性断言"
-    - "敏感数据字段脱敏验证"
+generation:
+  assertion_policy: l1_l5
+  prefer_existing_helpers: true
+  no_source_mode: false
+
+safety:
+  forbid_hardcoded_base_url: true
+  forbid_plaintext_secrets: true
+  write_scope:
+    - testcases
+    - .tide
 ```
 
-### 环境变量（.env）
+最小 `repo-profiles.yaml`：
 
-| 变量名 | 必填 | 说明 |
-|--------|------|------|
-| `BASE_URL` | 是 | 被测服务基础 URL |
-| `AUTH_COOKIE` | 否 | 认证 Cookie（或 `AUTH_TOKEN`） |
-| `DB_PASSWORD` | 否 | 数据库密码（L4 断言需要） |
-| `DINGTALK_WEBHOOK` | 否 | 钉钉 Webhook |
-| `FEISHU_WEBHOOK` | 否 | 飞书 Webhook |
-| `SLACK_WEBHOOK` | 否 | Slack Webhook |
+```yaml
+repositories:
+  backend:
+    path: ../backend
+    role: source_trace
+    optional: true
 
----
+  automation:
+    path: .
+    role: pytest_target
+    optional: false
+```
 
-## 项目结构
+敏感信息应放在环境变量或被版本控制排除的本地 `.env` 中。生成测试应引用项目已有的认证和环境 helper，而不是嵌入 HAR 中捕获的 token。
+
+## 模式
+
+| 模式 | 适用场景 | 行为 |
+|---|---|---|
+| Source-aware | 可访问后端源码或 API 定义。 | 追踪端点、推断状态转移，并增强 L4/L5 断言。 |
+| No-source | 只有 HAR 证据和目标自动化项目。 | 基于观测响应、请求链路、命名启发和诚实的置信度标签生成测试。 |
+
+No-source 模式仍应生成有用测试，但不应假装知道未被观测到的后端内部逻辑。
+
+## 确定性核心
+
+| 脚本 | 作用 |
+|---|---|
+| `scripts.har_parser` | 解析并规范化 HAR 录制文件。 |
+| `scripts.convention_scanner` | 提取 pytest 项目约定和可复用资产。 |
+| `scripts.scenario_validator` | 校验场景结构和证据。 |
+| `scripts.scenario_normalizer` | 修复并规范化场景和生成计划文件。 |
+| `scripts.deterministic_case_writer` | 当模型生成停滞时产出 fallback pytest 文件。 |
+| `scripts.generated_assertion_gate` | 强制检查生成测试中的必需断言层。 |
+| `scripts.write_scope_guard` | 限制写入在批准路径内。 |
+
+脚本应从 Tide 插件环境运行：
+
+```bash
+cd /path/to/tide
+PYTHONPATH="$PWD:$PYTHONPATH" uv run python3 -m scripts.har_parser --help
+```
+
+## 仓库结构
 
 ```text
 tide/
-├── .codex-plugin/                   # Codex 插件元数据
-├── .cursor/                         # Cursor 项目规则与命令
-│   ├── commands/                    #   tide / using-tide 命令
-│   └── rules/                       #   Tide 工作流项目规则
-├── skills/                          # Claude Code 技能定义
-│   ├── tide/SKILL.md            #   /tide — 主流程（4 波编排）
-│   └── using-tide/SKILL.md      #   /using-tide — 初始化向导
-├── codex-skills/                    # Codex 技能定义
-│   ├── tide/SKILL.md                #   $tide — HAR 生成 pytest
-│   └── using-tide/SKILL.md          #   $using-tide — 初始化向导
-├── commands/                        # Codex slash command 文档
-│   ├── tide.md
-│   └── using-tide.md
-├── agents/                          # 5 个 Agent 定义
-│   ├── har-parser.md                #   HAR 解析（haiku）
-│   ├── repo-syncer.md               #   仓库同步（haiku）
-│   ├── scenario-analyzer.md         #   场景分析（opus）
-│   ├── case-writer.md               #   代码生成（sonnet）
-│   ├── case-reviewer.md             #   评审修复（opus）
-│   ├── project-scanner.md           #   项目深度扫描（opus）
-│   └── industry-researcher.md       #   行业调研（sonnet）             #   评审修复（opus）
-├── prompts/                         # Agent 规范文档（按需加载）
-│   ├── code-style-python/           # Python 代码风格模块
-│   │   ├── 00-core.md               #   通用核心规范
-│   │   ├── 10-api-enum.md           #   Enum 风格 API
-│   │   ├── 20-client-custom.md      #   自定义 HTTP 客户端
-│   │   ├── 30-assert-code-success.md #   resp['code']==1 断言
-│   │   └── ...                      #   更多条件模块
-│   ├── assertion-layers.md          #   L1-L5 断言规范
-│   ├── har-parse-rules.md           #   HAR 解析过滤规则
-│   ├── review-checklist.md          #   评审清单与质量标准
-│   ├── scenario-enrich.md           #   8 种场景类别生成策略
-│   └── industry-assertions.md       #   行业特定断言规范
-├── scripts/                         # Python 工具库
-│   ├── common.py                    #   共享常量、JSON/日志工具
-│   ├── har_parser.py                #   HAR 解析与去重（Pydantic 校验）
-│   ├── scaffold.py                  #   脚手架生成（new/existing 模式）
-│   ├── state_manager.py             #   波次检查点管理
-│   ├── test_runner.py               #   pytest 执行包装（uv/pip/poetry）
-│   ├── repo_sync.py                 #   Git 同步（含分支容错）
-│   ├── notifier.py                  #   钉钉/飞书/Slack 通知
-│   ├── hooks.py                     #   Hook 注册表与 YAML 加载
-│   ├── preferences.py               #   偏好学习（跨会话持久化）
-│   └── format_checker.py            #   AST 格式检查（FC01-FC10）
-├── templates/                       # Jinja2 模板
-├── references/                      # 参考文档
-├── assets/                          # 流程图资源
-├── .claude-plugin/                  # Claude Code 插件元数据
-├── pyproject.toml                   # 项目配置
-├── Makefile                         # 开发命令
-└── LICENSE
+├── .claude-plugin/       # Claude Code 插件元数据
+├── .codex-plugin/        # Codex 插件元数据
+├── .cursor/              # Cursor 规则和命令
+├── .agents/plugins/      # 本地 Codex 插件 marketplace 入口
+├── agents/               # 宿主侧 agent prompt
+├── assets/               # README 和插件视觉资产
+├── codex-skills/         # Codex 技能定义
+├── commands/             # Codex slash-command 文档
+├── prompts/              # Prompt 片段和风格规则
+├── scripts/              # 确定性 Python 执行层
+├── skills/               # Claude Code 技能定义
+└── tests/                # 合约和脚本测试
 ```
-
----
 
 ## 开发
 
 ```bash
-git clone https://github.com/koco-co/tide.git
-cd tide
-uv sync --dev
-
-make test       # 运行测试
-make lint       # ruff 代码检查
-make typecheck  # pyright 类型检查
-make ci         # lint + typecheck + test
-make fmt        # 代码格式化
+uv sync --all-extras
+uv run pytest tests/test_skill_contract.py tests/test_agent_contracts.py tests/test_codex_plugin_contract.py -q
+uv run pytest
 ```
 
----
+校验插件元数据：
+
+```bash
+python3 -m json.tool .claude-plugin/plugin.json
+python3 -m json.tool .codex-plugin/plugin.json
+python3 -m json.tool .agents/plugins/marketplace.json
+```
 
 ## Roadmap
 
-| 版本 | 主要特性 |
-|------|---------|
-| **v1.0** | HAR 解析 · 4 波编排 · L1-L5 断言 · DB 验证 · 检查点恢复 · 外部通知 |
-| **v1.1** | 旧项目适配 · 验证透明度 · 验收命令优化 · 路径修复 · 测试类型选择 |
-| **v1.3**（当前） | 跨项目优化 · Hook 系统 · 偏好学习 · 格式检查器 · Codex/Cursor 适配 · no-source mode 泛化 |
-| **v1.4**（进行中） | Convention 指纹驱动适配 · Prompt 按需加载（省 ~50% tokens）· 成本预估 · 多项目风格扩展框架 |
-| v1.4 | OpenAPI / Swagger spec 作为补充输入源 |
-| v2.0 | UI 自动化集成（Playwright）· 性能测试 |
-
----
-
-## Contributing
-
-欢迎提交 Issue 和 Pull Request。提交前请确保：
-
-```bash
-make ci   # 所有检查通过
-```
-
----
+- 面向已有测试套件的增量生成。
+- 更强的 no-source 置信度评分。
+- 生成测试校验的 CI 模板。
+- 可选的显式并行 agent 编排。
+- 更多常见 pytest API 自动化栈的项目 profile。
 
 ## License
 
-[MIT](./LICENSE) &copy; 2026 Tide contributors
+[MIT](./LICENSE)
