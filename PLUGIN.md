@@ -1,7 +1,7 @@
 ---
 name: tide
 description: "基于 HAR 文件驱动、结合后端源码感知的 API 自动化测试工具。从 HAR 文件与后端源码生成带有 L1-L5 分层断言的 pytest 测试套件。"
-version: "1.3.0"
+version: "1.3.1"
 author: "koco-co"
 license: MIT
 repository: "https://github.com/koco-co/tide"

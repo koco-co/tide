@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  <a href="./pyproject.toml"><img alt="Version" src="https://img.shields.io/badge/version-1.3.0-2563eb?style=flat-square"></a>
+  <a href="./pyproject.toml"><img alt="Version" src="https://img.shields.io/badge/version-1.3.1-2563eb?style=flat-square"></a>
   <a href="./pyproject.toml"><img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white"></a>
   <a href="https://docs.astral.sh/uv/"><img alt="uv" src="https://img.shields.io/badge/uv-managed-111827?style=flat-square"></a>
   <a href="https://pytest.org/"><img alt="pytest" src="https://img.shields.io/badge/pytest-ready-0a9edc?style=flat-square&logo=pytest&logoColor=white"></a>

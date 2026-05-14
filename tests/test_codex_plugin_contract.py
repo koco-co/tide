@@ -36,7 +36,7 @@ def test_codex_manifest_points_to_codex_skill_layer() -> None:
     data = json.loads(MANIFEST.read_text(encoding="utf-8"))
 
     assert data["name"] == "tide"
-    assert data["version"] == "1.3.0"
+    assert data["version"] == "1.3.1"
     assert data["skills"] == "./codex-skills/"
     assert data["interface"]["displayName"] == "Tide"
     assert data["interface"]["category"] == "Coding"
