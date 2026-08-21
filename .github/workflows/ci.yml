@@ -1,20 +1,81 @@
-name: CI
-on: [push, pull_request]
+name: 插件校验
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  validate:
+    name: 校验纯 Skills 插件
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync --dev
-      - run: uv run ruff check scripts/ tests/
-      - run: uv run ruff format --check scripts/ tests/
-      - run: uv run pyright scripts/
-      - run: uv run pytest tests/ -v --cov=scripts --cov-report=xml
-      - uses: codecov/codecov-action@v4
-        if: matrix.python-version == '3.13'
+      - name: 检出仓库
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: 准备 Python 3.8
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          python-version: "3.8"
+
+      - name: 校验清单与目录边界
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path.cwd()
+          manifests = (
+              root / ".claude-plugin/plugin.json",
+              root / ".claude-plugin/marketplace.json",
+              root / ".codex-plugin/plugin.json",
+              root / ".agents/plugins/marketplace.json",
+          )
+          for path in manifests:
+              json.loads(path.read_text(encoding="utf-8"))
+
+          forbidden = (
+              "src", "plugins", "resources", "tests", "docs", "commands",
+              "codex-skills", "agents", "prompts", "references", "templates",
+              "PLUGIN.md", "README-EN.md", "pyproject.toml", "uv.lock", "Makefile",
+          )
+          present = [item for item in forbidden if (root / item).exists()]
+          if present:
+              raise SystemExit("发现退役产物：" + ", ".join(present))
+
+          versions = {
+              json.loads((root / ".claude-plugin/plugin.json").read_text())["version"],
+              json.loads((root / ".codex-plugin/plugin.json").read_text())["version"],
+              json.loads((root / ".claude-plugin/marketplace.json").read_text())["plugins"][0]["version"],
+          }
+          if len(versions) != 1:
+              raise SystemExit("插件版本不一致")
+          version = next(iter(versions))
+          if re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", version) is None:
+              raise SystemExit("插件版本不是有效的稳定 SemVer")
+          PY
+
+      - name: 校验脚本兼容性
+        run: |
+          find skills -path '*/scripts/*.py' -type f -print0 | sort -z | while IFS= read -r -d '' script; do
+            PYTHONDONTWRITEBYTECODE=1 python "$script" --help >/dev/null
+            PYTHONDONTWRITEBYTECODE=1 python "$script" --self-test
+          done
+          if find skills \( -type d -name __pycache__ -o -type f -name '*.py[co]' \) | grep -q .; then
+            echo "脚本校验产生了缓存产物"
+            exit 1
+          fi
+
+      - name: 检查公共内容边界
+        run: |
+          if grep -RInE 'Claude Code|Codex|/tide:|\$init-tide|\$tide|^model:|^tools:|dtstack|rdos|172\.16\.' skills; then
+            echo "Skill 中出现平台耦合、禁用字段或项目专属内容"
+            exit 1
+          fi
+          if git grep -nE 'using-tide|using_tide|UsingTide' -- . ':(exclude)CHANGELOG.md' ':(exclude).github/workflows/ci.yml'; then
+            echo "变更记录外仍存在旧名称"
+            exit 1
+          fi

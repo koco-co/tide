@@ -8,7 +8,7 @@
       "name": "tide",
       "source": {
         "source": "local",
-        "path": "./plugins/tide"
+        "path": "./"
       },
       "policy": {
         "installation": "AVAILABLE",

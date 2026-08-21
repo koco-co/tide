@@ -1,33 +1,9 @@
-# Python
+.DS_Store
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
+.pytest_cache/
+.ruff_cache/
 .venv/
-
-# Plugin working directories (in user projects, not plugin itself)
-.autoflow/
-.repos/
-.trash/
-
-# Environment
-.env
-
-# IDE
-.idea/
-.vscode/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Coverage
-htmlcov/
-.coverage
-coverage.xml
-
-# Worktrees
-.worktrees/
-.worktrees/
 .tide/
+.worktrees/
+.claude/settings.local.json

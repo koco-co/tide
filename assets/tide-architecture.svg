@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Tide 纯 Skills 工作流</title>
+  <desc id="desc">初始化项目规范、本地脱敏 HAR、分析生成测试、确认写入与可选执行的流程。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ecfeff"/>
+      <stop offset="1" stop-color="#f0fdfa"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#134e4a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="500" rx="28" fill="url(#bg)"/>
+  <text x="600" y="62" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="700" fill="#134e4a">Tide 2.0 · 单一 Skill 来源</text>
+  <text x="600" y="96" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#0f766e">项目事实与原始 HAR 留在本地，所有副作用逐步确认</text>
+  <g font-family="system-ui, sans-serif" filter="url(#shadow)">
+    <g transform="translate(45 155)">
+      <rect width="190" height="170" rx="18" fill="#fff" stroke="#5eead4" stroke-width="2"/>
+      <circle cx="95" cy="48" r="25" fill="#ccfbf1"/>
+      <text x="95" y="56" text-anchor="middle" font-size="23" fill="#0f766e">1</text>
+      <text x="95" y="98" text-anchor="middle" font-size="19" font-weight="700" fill="#134e4a">初始化项目</text>
+      <text x="95" y="128" text-anchor="middle" font-size="14" fill="#475569">读取真实 pytest 规范</text>
+      <text x="95" y="151" text-anchor="middle" font-size="14" fill="#475569">确认后写入 .tide</text>
+    </g>
+    <g transform="translate(275 155)">
+      <rect width="190" height="170" rx="18" fill="#fff" stroke="#5eead4" stroke-width="2"/>
+      <circle cx="95" cy="48" r="25" fill="#ccfbf1"/>
+      <text x="95" y="56" text-anchor="middle" font-size="23" fill="#0f766e">2</text>
+      <text x="95" y="98" text-anchor="middle" font-size="19" font-weight="700" fill="#134e4a">本地脱敏</text>
+      <text x="95" y="128" text-anchor="middle" font-size="14" fill="#475569">标准库脚本处理 HAR</text>
+      <text x="95" y="151" text-anchor="middle" font-size="14" fill="#475569">原始内容不进入模型</text>
+    </g>
+    <g transform="translate(505 155)">
+      <rect width="190" height="170" rx="18" fill="#fff" stroke="#5eead4" stroke-width="2"/>
+      <circle cx="95" cy="48" r="25" fill="#ccfbf1"/>
+      <text x="95" y="56" text-anchor="middle" font-size="23" fill="#0f766e">3</text>
+      <text x="95" y="98" text-anchor="middle" font-size="19" font-weight="700" fill="#134e4a">分析与生成</text>
+      <text x="95" y="128" text-anchor="middle" font-size="14" fill="#475569">多角色按证据协作</text>
+      <text x="95" y="151" text-anchor="middle" font-size="14" fill="#475569">不猜测项目约定</text>
+    </g>
+    <g transform="translate(735 155)">
+      <rect width="190" height="170" rx="18" fill="#fff" stroke="#5eead4" stroke-width="2"/>
+      <circle cx="95" cy="48" r="25" fill="#ccfbf1"/>
+      <text x="95" y="56" text-anchor="middle" font-size="23" fill="#0f766e">4</text>
+      <text x="95" y="98" text-anchor="middle" font-size="19" font-weight="700" fill="#134e4a">确认写入</text>
+      <text x="95" y="128" text-anchor="middle" font-size="14" fill="#475569">只新增确认的测试</text>
+      <text x="95" y="151" text-anchor="middle" font-size="14" fill="#475569">文件冲突立即停止</text>
+    </g>
+    <g transform="translate(965 155)">
+      <rect width="190" height="170" rx="18" fill="#fff" stroke="#5eead4" stroke-width="2"/>
+      <circle cx="95" cy="48" r="25" fill="#ccfbf1"/>
+      <text x="95" y="56" text-anchor="middle" font-size="23" fill="#0f766e">5</text>
+      <text x="95" y="98" text-anchor="middle" font-size="19" font-weight="700" fill="#134e4a">可选执行</text>
+      <text x="95" y="128" text-anchor="middle" font-size="14" fill="#475569">真实请求再次确认</text>
+      <text x="95" y="151" text-anchor="middle" font-size="14" fill="#475569">输出脱敏本地报告</text>
+    </g>
+  </g>
+  <g stroke="#0f766e" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M238 240h30"/>
+    <path d="M468 240h30"/>
+    <path d="M698 240h30"/>
+    <path d="M928 240h30"/>
+  </g>
+  <g fill="#0f766e">
+    <path d="M268 240l-10-6v12z"/>
+    <path d="M498 240l-10-6v12z"/>
+    <path d="M728 240l-10-6v12z"/>
+    <path d="M958 240l-10-6v12z"/>
+  </g>
+  <rect x="180" y="382" width="840" height="64" rx="16" fill="#134e4a"/>
+  <text x="600" y="410" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#fff">写入边界</text>
+  <text x="600" y="434" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" fill="#ccfbf1">仅限 .tide/ 与用户确认的测试目录 · 不覆盖已有文件 · 不修改 Git、依赖或项目配置</text>
+</svg>

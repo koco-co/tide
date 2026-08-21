@@ -1,0 +1,7 @@
+interface:
+  display_name: "Tide 接口测试"
+  short_description: "从脱敏 HAR 生成并审查 pytest 接口测试"
+  default_prompt: "显式启动本 Skill，在已初始化的项目中安全分析本地 HAR，经确认后生成 pytest 接口测试。"
+
+policy:
+  allow_implicit_invocation: false

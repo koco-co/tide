@@ -1,0 +1,7 @@
+interface:
+  display_name: "初始化 Tide"
+  short_description: "为已有 Python 与 pytest 项目生成项目专属规则"
+  default_prompt: "扫描当前项目，展示项目画像和规则计划；经我确认后初始化 Tide。"
+
+policy:
+  allow_implicit_invocation: false
