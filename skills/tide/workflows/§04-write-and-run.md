@@ -23,7 +23,7 @@ python3 <Skill根目录>/scripts/write_run.py \
 - 已确认环境和目标；
 - 项目画像中已证明会被测试客户端读取的目标地址环境变量；
 - 项目画像中已证明且当前节点必需的其他运行时环境变量名；只展示名称和缺失状态，不显示值；
-- 运行时由 `scripts/launch_pytest.py` 机械读取项目画像，只接受具备对应普通锁文件的安全 runner 白名单并注入画像与 runner 摘要；`uv` runner 必须已有完整项目 `.venv`，并使用一次性隔离缓存与画像环境变量白名单；不得由角色拼接 runner 命令，不创建运行环境、不安装或同步依赖；
+- 运行时由 `scripts/launch_pytest.py` 机械读取项目画像，只接受具备对应普通锁文件的安全 runner 白名单；所有 runner 都必须已有完整项目 `.venv`，并由该环境的 Python 启动执行器，使用一次性隔离缓存且只透传画像中必需的环境变量；不得由角色拼接 runner 命令，不创建运行环境、不安装或同步依赖；
 - 执行可能产生的真实请求及其观察边界；
 - 不执行时状态保持 `NOT_RUN`。
 
@@ -42,7 +42,7 @@ python3 <Skill根目录>/scripts/launch_pytest.py --project-root <project-root> 
   --test-node <confirmed-node>
 ```
 
-需要多个节点时重复 `--test-node`。预览和执行均必须通过同一启动器；直接调用 `run_pytest.py` 会因缺少画像与 runner 绑定而阻断。执行器先验证当前 `sys.executable` 能导入 pytest，不能导入时在零测试、零请求状态下阻断。验证通过后使用 `sys.executable -m pytest` 和精确节点列表，不使用 shell，不透传任意 pytest 参数，不持久化原始 stdout 或 stderr。
+需要多个节点时重复 `--test-node`。预览和执行均必须通过同一启动器；`run_pytest.py` 本体同时核验画像与 runner 摘要，以及当前 `sys.prefix` 必须精确指向目标项目的真实 `.venv`，因此宿主 Python 直接调用会在零测试、零请求状态下阻断。执行器再验证当前环境能导入 pytest；验证通过后使用同一 `.venv` 的 `sys.executable -m pytest` 和精确节点列表，不使用 shell，不透传任意 pytest 参数，不持久化原始 stdout 或 stderr。
 
 ## 阶段 4：记录与交付
 

@@ -1,6 +1,7 @@
 ---
 name: init-tide
 description: 初始化已有的 Python 与 pytest 接口自动化项目；只读扫描当前项目及经逐项授权的本地源码目录，展示项目画像和专属规则计划，并在用户确认后写入 .tide。
+disable-model-invocation: true
 compatibility: 需要 macOS 或 Linux，以及 Python 3.8+ 运行随附的本地脚本。
 ---
 

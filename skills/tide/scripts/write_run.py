@@ -7,7 +7,6 @@ import json
 import os
 import re
 import secrets
-import shutil
 import stat
 import subprocess
 import sys
@@ -31,6 +30,7 @@ FORBIDDEN_ENV_NAMES = {
     "TIDE_EXECUTION_ENV",
     "TMPDIR",
     "VIRTUAL_ENV",
+    "TIDE_VENV_IDENTITY_SHA256",
 }
 SAFE_ENVIRONMENTS = {
     "local",
@@ -93,7 +93,11 @@ def _check_regular_file(path, label, max_bytes):
         info = os.lstat(str(path))
     except OSError as exc:
         raise WritePlanError("无法读取%s：%s" % (label, exc))
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+    if (
+        stat.S_ISLNK(info.st_mode)
+        or not stat.S_ISREG(info.st_mode)
+        or info.st_nlink != 1
+    ):
         raise WritePlanError("%s必须是普通文件，不能是软链接。" % label)
     if info.st_size > max_bytes:
         raise WritePlanError("%s超过大小限制。" % label)
@@ -693,8 +697,16 @@ def _prepare(root, plan, test_dirs, profile=None):
 def _ruff_configuration(root):
     candidates = [root / "pyproject.toml", root / "ruff.toml", root / ".ruff.toml"]
     for path in candidates:
-        if not path.is_file() or path.is_symlink():
+        try:
+            info = os.lstat(str(path))
+        except FileNotFoundError:
             continue
+        if (
+            stat.S_ISLNK(info.st_mode)
+            or not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+        ):
+            raise WritePlanError("Ruff 配置必须是唯一普通文件：%s" % path.name)
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeError):
@@ -707,7 +719,6 @@ def _ruff_configuration(root):
 def _isolated_tool_environment(temporary_root):
     allowed = (
         "PATH",
-        "HOME",
         "LANG",
         "LC_ALL",
         "LC_CTYPE",
@@ -724,18 +735,17 @@ def _isolated_tool_environment(temporary_root):
     environment["UV_CACHE_DIR"] = str(uv_cache)
     environment["XDG_CACHE_HOME"] = str(xdg_cache)
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PYTHONNOUSERSITE"] = "1"
     return environment
 
 
 def _require_prepared_runner(root, prefix):
-    if tuple(prefix) != ("uv", "run", "--locked", "--no-sync", "python"):
-        return
     environment_dir = root / ".venv"
     try:
         environment_info = os.lstat(str(environment_dir))
     except FileNotFoundError:
         raise WritePlanError(
-            "项目 uv runner 环境尚未准备；为避免自动创建 .venv，Tide 未启动 Ruff。"
+            "项目 runner 环境尚未准备；为避免自动创建 .venv，Tide 未启动 Ruff。"
         )
     if stat.S_ISLNK(environment_info.st_mode) or not stat.S_ISDIR(
         environment_info.st_mode
@@ -746,12 +756,33 @@ def _require_prepared_runner(root, prefix):
         environment_dir / "bin" / "python",
         environment_dir / "Scripts" / "python.exe",
     )
+    try:
+        configuration_info = os.lstat(str(configuration))
+    except OSError:
+        configuration_info = None
     if (
-        configuration.is_symlink()
-        or not configuration.is_file()
+        configuration_info is None
+        or stat.S_ISLNK(configuration_info.st_mode)
+        or not stat.S_ISREG(configuration_info.st_mode)
+        or configuration_info.st_nlink != 1
         or not any(path.exists() and path.resolve().is_file() for path in executables)
     ):
         raise WritePlanError("项目 .venv 不完整，拒绝由 Tide 自动创建或修复。")
+
+
+def _project_python(root):
+    executables = (
+        root / ".venv" / "bin" / "python",
+        root / ".venv" / "Scripts" / "python.exe",
+    )
+    for executable in executables:
+        try:
+            resolved = executable.resolve(strict=True)
+        except OSError:
+            continue
+        if resolved.is_file():
+            return executable
+    raise WritePlanError("项目 .venv 缺少可用 Python。")
 
 
 def validate_candidates(project_root, plan_path, test_dirs):
@@ -774,10 +805,17 @@ def validate_candidates(project_root, plan_path, test_dirs):
     if lock_name is None:
         raise WritePlanError("项目画像 runner 不在 Tide 安全白名单中。")
     lock_path = root / lock_name
-    if lock_path.is_symlink() or not lock_path.is_file():
+    try:
+        lock_info = os.lstat(str(lock_path))
+    except OSError:
+        lock_info = None
+    if (
+        lock_info is None
+        or stat.S_ISLNK(lock_info.st_mode)
+        or not stat.S_ISREG(lock_info.st_mode)
+        or lock_info.st_nlink != 1
+    ):
         raise WritePlanError("项目画像 runner 缺少对应普通锁文件：%s" % lock_name)
-    if shutil.which(prefix[0]) is None:
-        raise WritePlanError("当前环境找不到项目 runner：%s" % prefix[0])
     _require_prepared_runner(root, prefix)
     with tempfile.TemporaryDirectory(prefix="tide-candidate-check-") as directory:
         temporary_root = Path(directory)
@@ -787,7 +825,7 @@ def validate_candidates(project_root, plan_path, test_dirs):
             candidate.write_bytes(encoded)
             candidate_paths.append(str(candidate))
         command = (
-            prefix
+            [str(_project_python(root))]
             + [
                 "-m",
                 "ruff",
@@ -890,7 +928,7 @@ def _file_digest_at(root_fd, relative):
             relative.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent_fd
         )
         info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode):
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise WritePlanError("目标不是普通文件：%s" % relative)
         digest = hashlib.sha256()
         while True:
@@ -919,6 +957,7 @@ def _rules_entries_at(directory_fd, prefix=Path()):
             continue
         if (
             not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
             or relative.suffix.lower() != ".md"
             or name.startswith(".")
         ):
@@ -1163,6 +1202,9 @@ def self_test():
                 raise WritePlanError("自检发现工具缓存越过一次性临时目录。")
         if unbound_name in tool_environment or "PATH" not in tool_environment:
             raise WritePlanError("自检发现工具子进程环境未按白名单构造。")
+        for forbidden in ("HOME", "PYTHONPATH", "VIRTUAL_ENV"):
+            if forbidden in tool_environment:
+                raise WritePlanError("自检发现工具环境透传了禁止变量：%s" % forbidden)
         root = Path(directory) / "project"
         root.mkdir()
         try:
@@ -1173,6 +1215,17 @@ def self_test():
             pass
         else:
             raise WritePlanError("自检未阻断缺少既有 .venv 的 uv runner。")
+        for prefix in (
+            ["poetry", "run", "python"],
+            ["pipenv", "run", "python"],
+            ["pdm", "run", "python"],
+        ):
+            try:
+                _require_prepared_runner(root, prefix)
+            except WritePlanError:
+                pass
+            else:
+                raise WritePlanError("自检未阻断缺少既有 .venv 的 runner。")
         (root / ".tide").mkdir()
         (root / ".tide" / "rules").mkdir()
         profile = {

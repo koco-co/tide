@@ -16,7 +16,7 @@
 
 ## 阶段 2：委派结果审查
 
-先使用 `scripts/write_run.py --validate-candidates`，传入目标项目、完整写入计划和确认测试目录。脚本按画像中已确认的目标 Python 版本解析候选，并通过 `scripts/candidate_checks.py` 拒绝原生断言、直接抛异常、吞异常、异常处理块内的 `pytest.fail`、会泄漏响应内容的项目 fixture 或辅助方法、固定首屏分页、未推进的分页游标、过早失效的清理标记、运行时对象输出、不安全失败消息、硬编码完整目标地址、显式开启自动重定向以及项目现有 HTTP 证据未支持的字面量查询参数；如果项目存在 Ruff 配置，则只使用画像确认且具备对应锁文件的安全 runner，以不同步、隔离缓存、白名单环境、无修复参数检查系统临时候选。`uv` runner 还必须已有完整的项目 `.venv`，缺失时直接阻断，禁止 Tide 自动创建、安装或修复。任何机械检查失败都必须修改候选、重新绑定计划并重新审查。
+先使用 `scripts/write_run.py --validate-candidates`，传入目标项目、完整写入计划和确认测试目录。脚本按画像中已确认的目标 Python 版本解析候选，并通过 `scripts/candidate_checks.py` 拒绝原生断言、直接抛异常、吞异常、异常处理块内的 `pytest.fail`、会泄漏响应内容的项目 fixture 或辅助方法、固定首屏分页、未推进的分页游标、过早失效的清理标记、运行时对象输出、不安全失败消息、硬编码完整目标地址、显式开启自动重定向以及项目现有 HTTP 证据未支持的字面量查询参数；带逻辑标签的额外源码证据已在初始化三阶段完成同构 helper 检查，生成阶段不会把标签误当项目路径。如果项目存在 Ruff 配置，则只使用画像确认且具备对应锁文件的安全 runner 和项目既有 `.venv` Python，以隔离缓存、白名单环境、无修复参数检查系统临时候选；缺少完整 `.venv` 时直接阻断，禁止 Tide 自动创建、安装或修复。任何机械检查失败都必须修改候选、重新绑定计划并重新审查。
 
 机械检查通过后，使用 `scripts/write_run.py --inspect-plan --plan <system-temp>/write-plan.json` 取得计划摘要。完整读取 `prompts/result-reviewer.agent.md`，再创建独立结果审查任务，提供确认场景、完整写入计划和相同证据来源。审查任务只返回语义结论并写入系统临时目录；结论为 `PASS` 后，调用 `scripts/write_run.py --bind-review --project-root <project-root> --plan <system-temp>/write-plan.json --review-candidate <system-temp>/review-candidate.json --test-dir <confirmed-test-dir> --output <system-temp>/review.json`，由脚本重新执行候选机械校验，并绑定当前计划摘要、校验摘要与完整文件范围。有多个确认测试目录时重复 `--test-dir`。
 

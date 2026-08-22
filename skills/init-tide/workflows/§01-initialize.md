@@ -52,16 +52,16 @@
 ## 阶段 5：执行规则审查
 
 1. 使用 `prompts/rule-reviewer.agent.md` 的完整内容委派“规则审查”角色。
-2. 先执行 `scripts/bind_init_plan.py --inspect-candidates --project-root <目标根目录> --profile <system-temp>/project-profile.json --rules-dir <system-temp>/rules`。脚本除输出画像摘要、规则集合摘要与规则文件清单外，还会根据规则声明的 Python 证据机械拒绝会泄漏响应内容的项目 helper 或 fixture；通过后再把原样输出连同 `scan.json`、两份扫描角色 JSON、画像和规则候选交给审查角色。角色不重复实现该机械检查，也不回填或计算摘要。
+2. 先执行 `scripts/bind_init_plan.py --inspect-candidates --project-root <目标根目录> --scope-plan <system-temp>/scope.json --confirmed-scope-digest <用户确认摘要> --profile <system-temp>/project-profile.json --rules-dir <system-temp>/rules`。脚本除输出画像摘要、规则集合摘要与规则文件清单外，还会在同一份已确认读取范围中解析当前项目和额外源码的 Python 证据，机械拒绝会泄漏响应内容的 helper 或 fixture；通过后再把原样输出连同 `scan.json`、两份扫描角色 JSON、画像和规则候选交给审查角色。角色不重复实现该机械检查，也不回填或计算摘要。
 3. 审查结果为“需要修正”时，只按审查发现修复画像或规则，再使用同一角色复审。
-4. 只有 `verdict` 为 `PASS` 且 `blocking_findings` 为空时，才执行 `scripts/bind_init_plan.py --bind-review --project-root <目标根目录> --profile <system-temp>/project-profile.json --rules-dir <system-temp>/rules --review-candidate <system-temp>/review-candidate.json --output <system-temp>/review.json`；脚本重新执行候选机械检查，并把当前两个候选摘要绑定进最终审查结果。未知字段、重复字段、结构外文字、旧候选审查结果或任何阻塞项都必须停止。
+4. 只有 `verdict` 为 `PASS` 且 `blocking_findings` 为空时，才执行 `scripts/bind_init_plan.py --bind-review --project-root <目标根目录> --scope-plan <system-temp>/scope.json --confirmed-scope-digest <用户确认摘要> --profile <system-temp>/project-profile.json --rules-dir <system-temp>/rules --review-candidate <system-temp>/review-candidate.json --output <system-temp>/review.json`；脚本在同一份已确认读取范围中重新执行候选机械检查，并把当前两个候选摘要绑定进最终审查结果。未知字段、重复字段、结构外文字、旧候选审查结果或任何阻塞项都必须停止。
 5. 不得因耗时中断、催促、重启或重新委派审查角色；持续等待同一任务自然返回完成或真实失败。中断后的结果不得算作首轮审查证据。
 
 完成信号：审查结论为“通过”，且不存在无证据规则、固定项目假设、敏感内容、绝对路径或范围越界。
 
 ## 阶段 6：绑定并展示计划
 
-1. 执行 `scripts/bind_init_plan.py`，传入目标根目录、`scan.json`、两份扫描角色 JSON、`project-profile.json`、规则候选目录、最终审查 JSON 和系统临时目录中的新计划路径。
+1. 执行 `scripts/bind_init_plan.py`，传入目标根目录、已确认的 `scope.json` 及其 `scope_digest`、`scan.json`、两份扫描角色 JSON、`project-profile.json`、规则候选目录、最终审查 JSON 和系统临时目录中的新计划路径。
 2. 脚本同时校验画像、两份角色结果和每份规则中的全部证据引用属于本轮扫描文件清单；运行时环境变量必须确实出现在所列项目证据中。已确认 pytest runner 只允许脚本白名单中的锁定命令，并必须同时具备对应锁文件和独立 pytest 配置证据；失败时修复输入并重新审查，不得手工编造摘要。
 3. 原样展示绑定脚本输出的 `confirmation_summary` 与 `plan_digest`，并用扫描证据解释：
    - 项目类型与关键证据；
@@ -75,7 +75,7 @@
 
 ## 阶段 7：执行并核验初始化
 
-1. 执行 `scripts/apply_init_plan.py`，传入目标根目录、临时计划文件和用户确认的 `plan_digest`。
+1. 执行 `scripts/apply_init_plan.py`，传入目标根目录、已确认的 `scope.json` 及其 `scope_digest`、临时计划文件和用户确认的 `plan_digest`。
 2. 脚本只接受摘要完全匹配的计划；`.tide/` 已存在或目标根目录身份变化时必须失败。
 3. 成功后重新读取 `.tide/project-profile.json` 与 `.tide/rules/`，核对文件清单和 SHA-256 摘要。
 4. 无论成功、取消或失败，都在 `finally` 路径执行 `python3 <Skill根目录>/scripts/cleanup_temp.py <本次 init-tide 临时目录>`。脚本只允许删除系统临时根目录下名称以 `init-tide-` 开头的单层专用目录；不得用通用递归删除命令。不得运行测试、修改依赖或继续处理 HAR。

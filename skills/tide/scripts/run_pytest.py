@@ -41,9 +41,11 @@ FORBIDDEN_ENV_NAMES = {
     "TIDE_EXECUTION_ENV",
     "TMPDIR",
     "VIRTUAL_ENV",
+    "TIDE_VENV_IDENTITY_SHA256",
 }
 RUNNER_PROFILE_ENV = "TIDE_RUNNER_PROFILE_SHA256"
 RUNNER_PREFIX_ENV = "TIDE_RUNNER_PREFIX_SHA256"
+VENV_IDENTITY_ENV = "TIDE_VENV_IDENTITY_SHA256"
 SAFE_RUNNER_PREFIXES = {
     ("uv", "run", "--locked", "--no-sync", "python"),
     ("poetry", "run", "python"),
@@ -79,6 +81,35 @@ def _check_root(root):
     return root.resolve()
 
 
+def _validate_project_python(root):
+    environment_dir = root / ".venv"
+    try:
+        info = os.lstat(str(environment_dir))
+        expected_prefix = environment_dir.resolve(strict=True)
+        actual_prefix = Path(sys.prefix).resolve(strict=True)
+    except OSError as exc:
+        raise ExecutionError("无法验证项目 .venv：%s" % exc)
+    if (
+        stat.S_ISLNK(info.st_mode)
+        or not stat.S_ISDIR(info.st_mode)
+        or actual_prefix != expected_prefix
+    ):
+        raise ExecutionError("当前执行器不是由目标项目 .venv Python 启动。")
+    payload = {
+        "resolved_path": str(expected_prefix),
+        "device": info.st_dev,
+        "inode": info.st_ino,
+    }
+    identity = hashlib.sha256(
+        json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    ).hexdigest()
+    if os.environ.get(VENV_IDENTITY_ENV) != identity:
+        raise ExecutionError("当前项目 .venv 身份未由启动器绑定。")
+    return identity
+
+
 def _directory_flags():
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
         raise ExecutionError("当前系统不支持安全目录文件描述符操作。")
@@ -111,7 +142,7 @@ def _read_regular_at(root_fd, relative, label, max_bytes):
             relative.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent_fd
         )
         info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode):
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise ExecutionError("%s必须是普通文件，不能是软链接。" % label)
         if info.st_size > max_bytes:
             raise ExecutionError("%s超过大小限制。" % label)
@@ -350,12 +381,11 @@ def _safe_environment(target_env_var, target_url, environment_name, runtime_env_
         "LC_CTYPE",
         "TZ",
         "TMPDIR",
-        "VIRTUAL_ENV",
-        "PYTHONPATH",
         "SYSTEMROOT",
     )
     environment = {key: os.environ[key] for key in allowed if key in os.environ}
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PYTHONNOUSERSITE"] = "1"
     environment[target_env_var] = target_url
     environment["TIDE_EXECUTION_ENV"] = environment_name
     for name in runtime_env_vars:
@@ -439,6 +469,7 @@ def execute(
     preview=False,
 ):
     root = _check_root(project_root)
+    _validate_project_python(root)
     expected_root_stat = os.stat(str(root), follow_symlinks=False)
     if not RUN_ID_PATTERN.fullmatch(run_id or ""):
         raise ExecutionError("run_id 格式无效。")
@@ -679,6 +710,15 @@ def execute(
 
 
 def self_test():
+    with tempfile.TemporaryDirectory(prefix="tide-python-binding-test-") as directory:
+        root = Path(directory)
+        (root / ".venv").mkdir()
+        try:
+            _validate_project_python(root)
+        except ExecutionError:
+            pass
+        else:
+            raise ExecutionError("自检未阻断宿主 Python 直接调用执行器。")
     original_find_spec = importlib.util.find_spec
     try:
         importlib.util.find_spec = lambda name: object()
@@ -751,6 +791,11 @@ def self_test():
             raise ExecutionError("自检未能透传已绑定的必需变量。")
         if unbound_name in safe:
             raise ExecutionError("自检错误透传了未绑定变量。")
+        for forbidden in ("HOME", "PYTHONPATH", "VIRTUAL_ENV"):
+            if forbidden in safe:
+                raise ExecutionError(
+                    "自检发现 pytest 环境透传了禁止变量：%s" % forbidden
+                )
         os.environ[variable_name] = ""
         try:
             _runtime_env_vars({"runtime_env_vars": [variable_name]}, "API_BASE_URL")

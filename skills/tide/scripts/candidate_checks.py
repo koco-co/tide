@@ -413,9 +413,7 @@ def _cleanup_guard_names(finalbody):
         or not isinstance(finalbody[0], ast.If)
         or finalbody[0].orelse
     ):
-        raise CandidateCheckError(
-            "finally 清理必须是唯一且没有 else 的正向 if 守卫。"
-        )
+        raise CandidateCheckError("finally 清理必须是唯一且没有 else 的正向 if 守卫。")
     supported = _positive_guard_names(finalbody[0].test)
     if supported is None:
         raise CandidateCheckError(
@@ -452,8 +450,7 @@ def _target_names(target):
     names = {
         node.id
         for node in ast.walk(target)
-        if isinstance(node, ast.Name)
-        and isinstance(node.ctx, (ast.Store, ast.Del))
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del))
     }
     root = _root_identifier(target)
     if root is not None:
@@ -562,9 +559,7 @@ def _validate_cleanup_marker_lifecycle(tree, relative):
             mutations = _guard_mutations(statement, guard_names)
             if not mutations:
                 continue
-            direct_assignment = isinstance(
-                statement, (ast.Assign, ast.AnnAssign)
-            )
+            direct_assignment = isinstance(statement, (ast.Assign, ast.AnnAssign))
             assigned_names = {
                 name
                 for mutation in mutations
@@ -578,9 +573,7 @@ def _validate_cleanup_marker_lifecycle(tree, relative):
             }
             is_later_assignment = bool(assigned_names.intersection(seen_assignments))
             is_definite_disable = any(
-                _definitely_disables_positive_guard(
-                    mutation, guard_names, falsey_names
-                )
+                _definitely_disables_positive_guard(mutation, guard_names, falsey_names)
                 for mutation in mutations
             )
             if (is_later_assignment or is_definite_disable) and (
@@ -648,6 +641,8 @@ def _http_parameter_literals(tree):
 
 
 def _read_evidence_python(root, relative_value):
+    if re.match(r"^[a-z][a-z0-9-]{0,31}:", relative_value):
+        return None
     relative = _relative_path(relative_value, "项目画像证据路径")
     if relative.suffix != ".py":
         return None
@@ -660,12 +655,21 @@ def _read_evidence_python(root, relative_value):
             raise CandidateCheckError("项目画像证据不可用：%s" % exc)
         if stat.S_ISLNK(info.st_mode):
             raise CandidateCheckError("项目画像证据不能经过符号链接：%s" % relative)
-    if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_FILE_BYTES:
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_nlink != 1
+        or info.st_size > MAX_FILE_BYTES
+    ):
         raise CandidateCheckError(
             "项目画像 Python 证据必须是大小受限的普通文件：%s" % relative
         )
     descriptor = os.open(str(current), os.O_RDONLY | os.O_NOFOLLOW)
     try:
+        opened_info = os.fstat(descriptor)
+        if not stat.S_ISREG(opened_info.st_mode) or opened_info.st_nlink != 1:
+            raise CandidateCheckError(
+                "项目画像 Python 证据必须是唯一普通文件：%s" % relative
+            )
         chunks = []
         remaining = MAX_FILE_BYTES + 1
         while remaining > 0:
@@ -701,6 +705,7 @@ def _rule_evidence_references(root):
             continue
         if (
             not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
             or info.st_size > MAX_FILE_BYTES
             or path.suffix.lower() != ".md"
         ):
@@ -708,6 +713,9 @@ def _rule_evidence_references(root):
         descriptor = None
         try:
             descriptor = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW)
+            opened_info = os.fstat(descriptor)
+            if not stat.S_ISREG(opened_info.st_mode) or opened_info.st_nlink != 1:
+                raise CandidateCheckError("项目规则必须是唯一普通文件：%s" % path.name)
             with os.fdopen(descriptor, "r", encoding="utf-8", closefd=False) as handle:
                 first_line = handle.readline(65537).rstrip("\r\n")
         except (OSError, UnicodeError):
@@ -1060,6 +1068,10 @@ def self_test():
             '<!-- tide-evidence: ["tests/test_api.py"] -->\n# API 规则\n',
             encoding="utf-8",
         )
+        (root / ".tide" / "rules" / "shared.md").write_text(
+            '<!-- tide-evidence: ["shared:helper.py"] -->\n# 共享规则\n',
+            encoding="utf-8",
+        )
         profile = {
             "python": {
                 "constraint": ">=3.8",
@@ -1068,6 +1080,15 @@ def self_test():
             },
             "pytest_evidence": ["tests/test_api.py"],
         }
+        hardlink = root / "tests" / "hardlink.py"
+        os.link(str(root / "tests" / "test_api.py"), str(hardlink))
+        try:
+            _read_evidence_python(root, "tests/test_api.py")
+        except CandidateCheckError:
+            pass
+        else:
+            raise CandidateCheckError("自检未阻断硬链接项目证据。")
+        hardlink.unlink()
         validate_candidate(
             root,
             profile,
@@ -1251,9 +1272,7 @@ def self_test():
                 "    item_id = None\n"
                 "    try:\n"
                 "        item_id = create()\n"
-                "        delete(item_id)\n"
-                + reset
-                + "        verify_absent()\n"
+                "        delete(item_id)\n" + reset + "        verify_absent()\n"
                 "    finally:\n"
                 "        if item_id is not None:\n"
                 "            cleanup(item_id)\n",
@@ -1270,9 +1289,7 @@ def self_test():
                 "    empty = None\n"
                 "    item_id = create()\n"
                 "    try:\n"
-                "        delete(item_id)\n"
-                + reset
-                + "        verify_absent()\n"
+                "        delete(item_id)\n" + reset + "        verify_absent()\n"
                 "    finally:\n"
                 "        if item_id is not None:\n"
                 "            cleanup(item_id)\n",
@@ -1321,8 +1338,7 @@ def self_test():
                 "        delete(item_id)\n"
                 "        item_id = None\n"
                 "        verify_absent()\n"
-                "    finally:\n"
-                + finalbody,
+                "    finally:\n" + finalbody,
                 "非 if 形式的清理守卫",
             )
         for unsafe_source in (
@@ -1330,9 +1346,7 @@ def self_test():
             "def unsafe(result, fallback):\n"
             "    alias = result if result is not None else fallback\n"
             "    return alias.text\n",
-            "def unsafe(result):\n"
-            "    if alias := result:\n"
-            "        return alias.text\n",
+            "def unsafe(result):\n    if alias := result:\n        return alias.text\n",
             "def unsafe(result):\n"
             "    box = {}\n"
             "    box['response'] = result\n"

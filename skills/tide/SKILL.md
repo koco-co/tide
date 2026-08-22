@@ -1,6 +1,7 @@
 ---
 name: tide
 description: 基于已初始化的 Python 与 pytest 项目，在本地安全解析 HAR，分析接口场景、生成并审查测试，经逐级确认后写入新文件并可选执行。
+disable-model-invocation: true
 compatibility: 需要 macOS 或 Linux、Python 3.8+，且目标项目已配置 pytest。
 ---
 

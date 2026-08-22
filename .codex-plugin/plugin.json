@@ -1,6 +1,6 @@
 {
   "name": "tide",
-  "version": "2.0.17",
+  "version": "2.0.18",
   "description": "从浏览器 HAR 生成符合既有项目规范的 pytest 接口测试。",
   "author": {
     "name": "koco-co",

@@ -26,7 +26,7 @@ Tide 是一个纯 Skills 插件：先初始化已有 Python 与 pytest 接口自
 - Claude Code 与 Codex 共用同一份 Skill 正文、工作流、规则、提示词和脚本。
 - Skill 内容保持平台无关，不写 `/tide:*`、`$tide`、`$init-tide` 等宿主调用语法。
 - Skill frontmatter 不添加只对单一宿主生效的 `model`、`tools` 等字段。
-- 宿主差异只允许出现在各自插件清单和 README 安装说明中。
+- 工作流与行为保持单一规范源；宿主差异只允许作为共用 Skill 的调用权限元数据、`agents/openai.yaml`、各自插件清单和 README 安装说明存在，不复制 Skill 正文或脚本。
 - Skill 正文、description、工作流、规则和诊断信息使用中文；代码标识符和协议字段按既有契约保留英文。
 - 修改插件版本时同步更新 `.claude-plugin/plugin.json`、`.claude-plugin/marketplace.json`、`.codex-plugin/plugin.json` 和 `CHANGELOG.md`。
 

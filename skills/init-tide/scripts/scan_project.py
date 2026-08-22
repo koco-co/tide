@@ -121,14 +121,26 @@ def _walk_files(root: Path) -> List[Path]:
         for name in sorted(files):
             path = current_path / name
             lowered = name.lower()
+            try:
+                info = os.lstat(str(path))
+            except OSError as exc:
+                raise ValueError(
+                    "无法检查扫描文件 {}：{}".format(_relative(path, root), exc)
+                )
             if (
-                path.is_symlink()
-                or not path.is_file()
+                stat.S_ISLNK(info.st_mode)
+                or not stat.S_ISREG(info.st_mode)
                 or lowered == ".env"
                 or lowered.startswith(".env.")
                 or lowered in SENSITIVE_FILE_NAMES
                 or path.suffix.lower() in SENSITIVE_SUFFIXES
             ):
+                continue
+            if info.st_nlink != 1:
+                raise ValueError(
+                    "扫描文件不能是硬链接：{}".format(_relative(path, root))
+                )
+            if info.st_size > MAX_TEXT_BYTES:
                 continue
             result.append(path)
             if len(result) > MAX_FILES:
@@ -145,7 +157,11 @@ def _read_text(path: Path) -> str:
     try:
         descriptor = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW)
         info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_TEXT_BYTES:
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or info.st_size > MAX_TEXT_BYTES
+        ):
             return ""
         chunks = []  # type: List[bytes]
         while True:
@@ -163,6 +179,33 @@ def _read_text(path: Path) -> str:
 
 def _unique(values: Iterable[str]) -> List[str]:
     return sorted(set(values))
+
+
+def _file_snapshot(path: Path, relative: str) -> Dict[str, object]:
+    descriptor = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or info.st_size > MAX_TEXT_BYTES
+        ):
+            raise ValueError("扫描证据文件状态无效：{}".format(relative))
+        digest = hashlib.sha256()
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+        return {
+            "path": relative,
+            "size": info.st_size,
+            "device": info.st_dev,
+            "inode": info.st_ino,
+            "sha256": digest.hexdigest(),
+        }
+    finally:
+        os.close(descriptor)
 
 
 def _detect_pytest_runner(
@@ -193,6 +236,9 @@ def _detect_pytest_runner(
 def _scan_root(root: Path, label: str) -> Dict[str, object]:
     files = _walk_files(root)
     relative_files = [(_relative(path, root), path) for path in files]
+    file_snapshots = [
+        _file_snapshot(path, relative) for relative, path in relative_files
+    ]
     python_files = [rel for rel, _ in relative_files if rel.endswith(".py")]
     python_evidence = list(python_files[:20])
     for marker in ("pyproject.toml", "setup.cfg", "setup.py", "requirements.txt"):
@@ -261,6 +307,7 @@ def _scan_root(root: Path, label: str) -> Dict[str, object]:
     return {
         "label": label,
         "file_paths": [rel for rel, _ in relative_files],
+        "file_snapshots": file_snapshots,
         "python_detected": bool(python_files),
         "pytest_detected": bool(pytest_evidence),
         "python_constraint": python_constraint,
@@ -317,12 +364,20 @@ def build_scope(
 def load_scope(
     path: Path, confirmed_digest: str
 ) -> Tuple[Path, List[Tuple[str, Path]]]:
-    if path.is_symlink() or not path.is_file():
+    try:
+        info = os.lstat(str(path))
+    except OSError:
+        raise ValueError("读取范围计划必须是普通文件")
+    if (
+        stat.S_ISLNK(info.st_mode)
+        or not stat.S_ISREG(info.st_mode)
+        or info.st_nlink != 1
+    ):
         raise ValueError("读取范围计划必须是普通文件")
     if not _is_within(path.resolve(strict=True), Path(tempfile.gettempdir()).resolve()):
         raise ValueError("读取范围计划必须位于系统临时目录")
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(_read_text(path))
     except (OSError, UnicodeError, ValueError) as exc:
         raise ValueError("读取范围计划不是有效 JSON：{}".format(exc))
     expected = {
@@ -449,6 +504,18 @@ def _self_test() -> int:
         }
         assert ".env" not in result["project"]["file_paths"]  # type: ignore[index]
         assert "captured.har" not in result["project"]["file_paths"]  # type: ignore[index]
+        external = root / "external.py"
+        external.write_text("VALUE = 1\n", encoding="utf-8")
+        linked = root / "linked.py"
+        os.link(str(external), str(linked))
+        try:
+            build_result(root.resolve(), [])
+        except ValueError as exc:
+            assert "硬链接" in str(exc)
+        else:
+            raise AssertionError("扫描未阻断项目内硬链接")
+        linked.unlink()
+        external.unlink()
         scope = build_scope(root.resolve(), [])
         scope_path = root / "scope.json"
         _write_json(scope, str(scope_path))

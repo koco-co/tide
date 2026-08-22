@@ -14,6 +14,8 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Dict, List, Optional, Sequence, cast
 
+from scan_project import load_scope
+
 SCHEMA_VERSION = "1.0"
 
 
@@ -23,6 +25,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--project-root", required=False, help="待初始化项目根目录。")
     parser.add_argument("--plan", help="bind_init_plan.py 生成的初始化计划。")
+    parser.add_argument(
+        "--scope-plan", help="scan_project.py 生成且已确认的读取范围计划。"
+    )
+    parser.add_argument("--confirmed-scope-digest", help="用户已确认的读取范围摘要。")
     parser.add_argument(
         "--confirmed-plan-digest", help="用户明确确认的计划 SHA-256 摘要。"
     )
@@ -71,7 +77,7 @@ def _load_plan(path: Path) -> Dict[str, object]:
     descriptor = os.open(str(path), flags)
     try:
         info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode):
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise ValueError("计划必须是普通 JSON 文件")
         with os.fdopen(descriptor, "r", encoding="utf-8", closefd=False) as handle:
             value = json.load(handle, object_pairs_hook=_reject_duplicate_keys)
@@ -126,7 +132,13 @@ def _validate_rule_path(raw_path: object) -> PurePosixPath:
     return path
 
 
-def _validate_plan(root: Path, plan: Dict[str, object], confirmed_digest: str) -> None:
+def _validate_plan(
+    root: Path,
+    plan: Dict[str, object],
+    confirmed_digest: str,
+    source_roots: Dict[str, Path],
+    confirmed_scope_digest: str,
+) -> None:
     if plan.get("schema_version") != SCHEMA_VERSION or plan.get("kind") != "init-tide":
         raise ValueError("计划类型或版本无效")
     stored_digest = plan.get("plan_digest")
@@ -139,6 +151,8 @@ def _validate_plan(root: Path, plan: Dict[str, object], confirmed_digest: str) -
         raise ValueError("确认摘要与当前计划不匹配")
     if plan.get("target_root_identity") != _root_identity(root):
         raise ValueError("目标项目根目录与绑定计划不一致")
+    if plan.get("scope_digest") != confirmed_scope_digest:
+        raise ValueError("读取范围摘要与绑定计划不一致")
     profile = plan.get("profile")
     if not isinstance(profile, dict):
         raise ValueError("计划缺少项目画像")
@@ -179,6 +193,104 @@ def _validate_plan(root: Path, plan: Dict[str, object], confirmed_digest: str) -
         digest = plan.get(field)
         if not isinstance(digest, str) or len(digest) != 64:
             raise ValueError("计划未绑定有效的角色结果：{}".format(field))
+    snapshots = plan.get("evidence_snapshots")
+    if not isinstance(snapshots, list) or not snapshots:
+        raise ValueError("计划缺少证据快照")
+    seen_references = set()
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict) or set(snapshot) != {
+            "path",
+            "size",
+            "device",
+            "inode",
+            "sha256",
+            "source",
+        }:
+            raise ValueError("计划证据快照结构无效")
+        reference = snapshot.get("path")
+        source = snapshot.get("source")
+        if not isinstance(reference, str) or reference in seen_references:
+            raise ValueError("计划证据快照路径无效或重复")
+        seen_references.add(reference)
+        if not isinstance(source, str) or not source:
+            raise ValueError("计划证据快照来源无效")
+        source_root = source_roots.get(source)
+        if source_root is None:
+            raise ValueError("计划证据来源不在已确认读取范围：{}".format(source))
+        _verify_evidence_snapshot(source_root, snapshot)
+
+
+def _verify_evidence_snapshot(root: Path, snapshot: Dict[str, object]) -> None:
+    reference = snapshot["path"]
+    if not isinstance(reference, str):
+        raise ValueError("计划证据快照路径无效")
+    source = snapshot["source"]
+    if not isinstance(source, str):
+        raise ValueError("计划证据快照来源无效")
+    if source == "current-project":
+        relative_value = reference
+    else:
+        prefix = source + ":"
+        if not reference.startswith(prefix):
+            raise ValueError("计划证据快照路径与来源不一致")
+        relative_value = reference[len(prefix) :]
+    relative = PurePosixPath(relative_value)
+    if (
+        relative.is_absolute()
+        or not relative.parts
+        or any(part in ("", ".", "..") for part in relative.parts)
+    ):
+        raise ValueError("计划证据快照路径越界")
+    current_fd = os.open(str(root), _directory_flags())
+    descriptor = None
+    try:
+        for part in relative.parts[:-1]:
+            next_fd = _open_directory_at(current_fd, part)
+            os.close(current_fd)
+            current_fd = next_fd
+        descriptor = os.open(
+            relative.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=current_fd
+        )
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError("项目证据不再是唯一普通文件：{}".format(reference))
+        digest = hashlib.sha256()
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+        actual = {
+            "path": reference,
+            "size": info.st_size,
+            "device": info.st_dev,
+            "inode": info.st_ino,
+            "sha256": digest.hexdigest(),
+            "source": source,
+        }
+        if actual != snapshot:
+            raise ValueError("项目证据在确认后发生变化：{}".format(reference))
+    except FileNotFoundError:
+        raise ValueError("项目证据在确认后缺失：{}".format(reference))
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        os.close(current_fd)
+
+
+def _reverify_evidence_snapshots(
+    source_roots: Dict[str, Path], snapshots: object
+) -> None:
+    if not isinstance(snapshots, list):
+        raise ValueError("计划缺少证据快照")
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict):
+            raise ValueError("计划证据快照结构无效")
+        source = snapshot.get("source")
+        source_root = source_roots.get(source) if isinstance(source, str) else None
+        if source_root is None:
+            raise ValueError("计划证据来源不在已确认读取范围")
+        _verify_evidence_snapshot(source_root, snapshot)
 
 
 def _directory_flags() -> int:
@@ -235,9 +347,14 @@ def _remove_tree_at(parent_fd: int, name: str) -> None:
 
 
 def apply_plan(
-    root: Path, plan: Dict[str, object], confirmed_digest: str
+    root: Path,
+    plan: Dict[str, object],
+    confirmed_digest: str,
+    source_roots: Optional[Dict[str, Path]] = None,
+    confirmed_scope_digest: str = "",
 ) -> Dict[str, object]:
-    _validate_plan(root, plan, confirmed_digest)
+    roots = {"current-project": root} if source_roots is None else source_roots
+    _validate_plan(root, plan, confirmed_digest, roots, confirmed_scope_digest)
     expected_root_identity = _root_identity(root)
     root_fd = os.open(str(root), _directory_flags())
     stage_fd = None  # type: Optional[int]
@@ -282,6 +399,8 @@ def apply_plan(
         _write_new_at(stage_fd, "project-profile.json", profile_bytes)
         os.fsync(stage_fd)
 
+        _reverify_evidence_snapshots(roots, plan["evidence_snapshots"])
+
         current_root_stat = os.fstat(root_fd)
         if (
             current_root_stat.st_dev != root_stat.st_dev
@@ -324,6 +443,7 @@ def _make_plan(root: Path) -> Dict[str, object]:
         "kind": "init-tide",
         "target_root_identity": _root_identity(root),
         "scan_digest": "0" * 64,
+        "scope_digest": "",
         "profile": profile,
         "profile_sha256": hashlib.sha256(_canonical(profile) + b"\n").hexdigest(),
         "rules": [
@@ -336,6 +456,7 @@ def _make_plan(root: Path) -> Dict[str, object]:
         "review_sha256": hashlib.sha256("结论：通过\n".encode("utf-8")).hexdigest(),
         "project_analysis_sha256": "1" * 64,
         "test_analysis_sha256": "2" * 64,
+        "evidence_snapshots": [],
     }  # type: Dict[str, object]
     payload["confirmation_summary"] = {
         "project_kind": "python-pytest",
@@ -356,8 +477,33 @@ def _make_plan(root: Path) -> Dict[str, object]:
 def _self_test() -> int:
     with tempfile.TemporaryDirectory(prefix="init-tide-apply-") as temp_dir:
         root = Path(temp_dir).resolve()
+        evidence = root / "pytest.ini"
+        evidence.write_text("[pytest]\n", encoding="utf-8")
         plan = _make_plan(root)
+        info = os.lstat(str(evidence))
+        plan["evidence_snapshots"] = [
+            {
+                "path": "pytest.ini",
+                "size": info.st_size,
+                "device": info.st_dev,
+                "inode": info.st_ino,
+                "sha256": hashlib.sha256(evidence.read_bytes()).hexdigest(),
+                "source": "current-project",
+            }
+        ]
+        plan["plan_digest"] = _digest(
+            {key: value for key, value in plan.items() if key != "plan_digest"}
+        )
         digest = str(plan["plan_digest"])
+        drifted = dict(plan)
+        evidence.write_text("[pytest]\naddopts = -q\n", encoding="utf-8")
+        try:
+            apply_plan(root, drifted, digest)
+        except ValueError as exc:
+            assert "发生变化" in str(exc)
+        else:
+            raise AssertionError("写入未阻断确认后的证据漂移")
+        evidence.write_text("[pytest]\n", encoding="utf-8")
         result = apply_plan(root, plan, digest)
         assert result["status"] == "initialized"
         assert (root / ".tide" / "project-profile.json").is_file()
@@ -376,13 +522,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parser().parse_args(argv)
     if args.self_test:
         return _self_test()
-    if not args.project_root or not args.plan or not args.confirmed_plan_digest:
+    if (
+        not args.project_root
+        or not args.plan
+        or not args.confirmed_plan_digest
+        or not args.scope_plan
+        or not args.confirmed_scope_digest
+    ):
         print("写入失败：除 --self-test 外，所有参数均为必填", file=sys.stderr)
         return 2
     try:
         root = _validate_root(args.project_root)
+        scoped_root, extra_sources = load_scope(
+            Path(args.scope_plan), args.confirmed_scope_digest
+        )
+        if scoped_root != root:
+            raise ValueError("读取范围计划未绑定当前目标项目")
+        source_roots = {"current-project": root}
+        source_roots.update(dict(extra_sources))
         plan = _load_plan(Path(args.plan))
-        result = apply_plan(root, plan, args.confirmed_plan_digest)
+        result = apply_plan(
+            root,
+            plan,
+            args.confirmed_plan_digest,
+            source_roots,
+            args.confirmed_scope_digest,
+        )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     except (OSError, ValueError, json.JSONDecodeError, UnicodeError) as exc:

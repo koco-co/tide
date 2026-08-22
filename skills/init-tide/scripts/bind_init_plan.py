@@ -14,6 +14,8 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, cast
 
+from scan_project import load_scope
+
 SCHEMA_VERSION = "1.0"
 MAX_RULE_BYTES = 256 * 1024
 MAX_JSON_BYTES = 16 * 1024 * 1024
@@ -46,6 +48,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--project-root", required=False, help="待初始化项目根目录。")
     parser.add_argument("--scan", help="scan_project.py 生成的 JSON。")
+    parser.add_argument(
+        "--scope-plan", help="scan_project.py 生成且已确认的读取范围计划。"
+    )
+    parser.add_argument("--confirmed-scope-digest", help="用户已确认的读取范围摘要。")
     parser.add_argument("--profile", help="已审查的 project-profile.json 候选。")
     parser.add_argument("--rules-dir", help="已审查的动态 Markdown 规则目录。")
     parser.add_argument("--project-analysis", help="项目扫描角色返回的严格 JSON。")
@@ -124,7 +130,11 @@ def _read_regular(path: Path, label: str, max_bytes: int) -> bytes:
     descriptor = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW)
     try:
         info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes:
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or info.st_size > max_bytes
+        ):
             raise ValueError("{}必须是大小受限的普通文件".format(label))
         chunks = []  # type: List[bytes]
         remaining = max_bytes + 1
@@ -347,7 +357,11 @@ def _project_evidence_path(root: Path, relative_value: str, label: str) -> Path:
         current = current / part
         if current.is_symlink():
             raise ValueError("{}包含符号链接".format(label))
-    if not current.is_file():
+    try:
+        info = os.lstat(str(current))
+    except OSError:
+        raise ValueError("{}指向的证据文件不存在".format(label))
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
         raise ValueError("{}指向的证据文件不存在".format(label))
     return current
 
@@ -481,6 +495,132 @@ def _evidence_catalog(scan: Dict[str, object]) -> Dict[str, set]:
             raise ValueError("扫描结果证据文件清单无效")
         catalog[label] = set(files)
     return catalog
+
+
+def _snapshot_catalog(scan: Dict[str, object]) -> Dict[str, Dict[str, object]]:
+    catalog = {}  # type: Dict[str, Dict[str, object]]
+    roots = [scan.get("project")] + list(
+        cast(List[object], scan.get("extra_sources", []))
+    )
+    for item in roots:
+        if not isinstance(item, dict) or not isinstance(item.get("label"), str):
+            raise ValueError("扫描结果缺少证据快照")
+        label = cast(str, item["label"])
+        snapshots = item.get("file_snapshots")
+        if not isinstance(snapshots, list):
+            raise ValueError("扫描结果缺少证据快照：{}".format(label))
+        for snapshot in snapshots:
+            if not isinstance(snapshot, dict) or set(snapshot) != {
+                "path",
+                "size",
+                "device",
+                "inode",
+                "sha256",
+            }:
+                raise ValueError("扫描结果证据快照无效：{}".format(label))
+            path = snapshot.get("path")
+            digest = snapshot.get("sha256")
+            if (
+                not isinstance(path, str)
+                or not isinstance(digest, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                or not all(
+                    isinstance(snapshot.get(field), int)
+                    for field in ("size", "device", "inode")
+                )
+            ):
+                raise ValueError("扫描结果证据快照字段无效：{}".format(label))
+            reference = (
+                path if label == "current-project" else "{}:{}".format(label, path)
+            )
+            if reference in catalog:
+                raise ValueError("扫描结果证据快照重复：{}".format(reference))
+            entry = dict(snapshot, source=label)
+            entry["path"] = reference
+            catalog[reference] = entry
+    return catalog
+
+
+def _evidence_references(value: object) -> List[str]:
+    references = []  # type: List[str]
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key == "evidence" or key.endswith("_evidence"):
+                if isinstance(child, list):
+                    references.extend(item for item in child if isinstance(item, str))
+            else:
+                references.extend(_evidence_references(child))
+    elif isinstance(value, list):
+        for child in value:
+            references.extend(_evidence_references(child))
+    return references
+
+
+def _current_snapshot(
+    source_root: Path, reference: str, relative: Optional[str] = None
+) -> Dict[str, object]:
+    relative_value = reference if relative is None else relative
+    path = _project_evidence_path(
+        source_root, relative_value, "证据 {}".format(reference)
+    )
+    descriptor = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(descriptor)
+        digest = hashlib.sha256()
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+        return {
+            "path": reference,
+            "size": info.st_size,
+            "device": info.st_dev,
+            "inode": info.st_ino,
+            "sha256": digest.hexdigest(),
+            "source": "current-project"
+            if relative is None
+            else reference.split(":", 1)[0],
+        }
+    finally:
+        os.close(descriptor)
+
+
+def _bind_evidence_snapshots(
+    root: Path,
+    scan: Dict[str, object],
+    values: Sequence[object],
+    rules: List[Dict[str, object]],
+    source_roots: Optional[Dict[str, Path]] = None,
+) -> List[Dict[str, object]]:
+    scanned = _snapshot_catalog(scan)
+    roots = {"current-project": root} if source_roots is None else source_roots
+    references = []  # type: List[str]
+    for value in values:
+        references.extend(_evidence_references(value))
+    for rule in rules:
+        references.extend(cast(List[str], rule["evidence"]))
+    bound = []  # type: List[Dict[str, object]]
+    for reference in sorted(set(references)):
+        snapshot = scanned.get(reference)
+        if snapshot is None:
+            raise ValueError("证据引用缺少扫描快照：{}".format(reference))
+        source = cast(str, snapshot["source"])
+        source_root = roots.get(source)
+        if source_root is None:
+            raise ValueError("证据来源缺少已确认读取范围：{}".format(source))
+        relative = (
+            reference if source == "current-project" else reference.split(":", 1)[1]
+        )
+        current = _current_snapshot(
+            source_root,
+            reference,
+            None if source == "current-project" else relative,
+        )
+        if current != snapshot:
+            raise ValueError("项目证据在扫描后发生变化：{}".format(reference))
+        bound.append(snapshot)
+    return bound
 
 
 def _verify_evidence_reference(reference: str, catalog: Dict[str, set]) -> None:
@@ -987,17 +1127,31 @@ def _direct_sensitive_response_use(
     return False
 
 
-def _validate_rule_helper_safety(root: Path, rules: List[Dict[str, object]]) -> None:
+def _validate_rule_helper_safety(
+    root: Path,
+    rules: List[Dict[str, object]],
+    source_roots: Optional[Dict[str, Path]] = None,
+) -> None:
     """拒绝把会泄漏响应内容的既有 helper 或 fixture 固化为生成规则。"""
+    roots = {"current-project": root} if source_roots is None else source_roots
     definitions = []  # type: List[ast.AST]
-    references = []  # type: List[str]
+    references = []  # type: List[Tuple[str, str, str]]
     for rule in rules:
         for reference in cast(List[str], rule["evidence"]):
-            if ":" not in reference and reference.endswith(".py"):
-                references.append(reference)
-    for reference in sorted(set(references)):
+            source = "current-project"
+            relative = reference
+            if ":" in reference:
+                candidate_source, candidate_relative = reference.split(":", 1)
+                if candidate_source in roots:
+                    source, relative = candidate_source, candidate_relative
+            if relative.endswith(".py"):
+                references.append((reference, source, relative))
+    for reference, source_name, relative in sorted(set(references)):
+        source_root = roots.get(source_name)
+        if source_root is None:
+            raise ValueError("规则证据来源不在已确认读取范围：{}".format(reference))
         source = _read_project_evidence(
-            root, reference, "规则证据 {}".format(reference)
+            source_root, relative, "规则证据 {}".format(reference)
         )
         try:
             tree = ast.parse(source, filename=reference)
@@ -1053,6 +1207,8 @@ def build_plan(
     project_analysis: Dict[str, object],
     test_analysis: Dict[str, object],
     review: Dict[str, object],
+    source_roots: Optional[Dict[str, Path]] = None,
+    scope_digest: str = "",
 ) -> Dict[str, object]:
     if (
         scan.get("schema_version") != SCHEMA_VERSION
@@ -1085,7 +1241,7 @@ def build_plan(
     for rule in rules:
         for reference in cast(List[str], rule["evidence"]):
             _verify_evidence_reference(reference, catalog)
-    _validate_rule_helper_safety(root, rules)
+    _validate_rule_helper_safety(root, rules, source_roots)
     expected_runtime_variables = []
     test_runtime_variables = cast(
         List[Dict[str, object]], test_analysis["runtime_environment_variables"]
@@ -1100,7 +1256,7 @@ def build_plan(
         raise ValueError("项目画像 pytest_runner 未绑定当前测试资产扫描结果")
     if profile["http_transport"] != test_analysis["http_transport"]:
         raise ValueError("项目画像 http_transport 未绑定当前测试资产扫描结果")
-    candidate_summary = candidate_digests(profile, rules)
+    candidate_summary = candidate_digests(profile, rules, root, source_roots)
     profile_sha256 = cast(str, candidate_summary["profile_sha256"])
     rules_sha256 = cast(str, candidate_summary["rules_sha256"])
     rule_entries = cast(List[Dict[str, object]], candidate_summary["rule_files"])
@@ -1111,6 +1267,13 @@ def build_plan(
     project_analysis_sha256 = hashlib.sha256(_canonical(project_analysis)).hexdigest()
     test_analysis_sha256 = hashlib.sha256(_canonical(test_analysis)).hexdigest()
     review_sha256 = hashlib.sha256(_canonical(review)).hexdigest()
+    evidence_snapshots = _bind_evidence_snapshots(
+        root,
+        scan,
+        (profile, project_analysis, test_analysis),
+        rules,
+        source_roots,
+    )
     confirmation_summary = {
         "project_kind": "python-pytest",
         "profile_sha256": profile_sha256,
@@ -1125,12 +1288,14 @@ def build_plan(
         "kind": "init-tide",
         "target_root_identity": _root_identity(root),
         "scan_digest": scan_digest,
+        "scope_digest": scope_digest,
         "profile": profile,
         "profile_sha256": profile_sha256,
         "rules": rules,
         "project_analysis_sha256": project_analysis_sha256,
         "test_analysis_sha256": test_analysis_sha256,
         "review_sha256": review_sha256,
+        "evidence_snapshots": evidence_snapshots,
         "confirmation_summary": confirmation_summary,
     }  # type: Dict[str, object]
     payload["plan_digest"] = _digest(payload)
@@ -1141,10 +1306,11 @@ def candidate_digests(
     profile: Dict[str, object],
     rules: List[Dict[str, object]],
     root: Optional[Path] = None,
+    source_roots: Optional[Dict[str, Path]] = None,
 ) -> Dict[str, object]:
     _validate_profile(profile)
     if root is not None:
-        _validate_rule_helper_safety(root, rules)
+        _validate_rule_helper_safety(root, rules, source_roots)
     rule_entries = [{"path": item["path"], "sha256": item["sha256"]} for item in rules]
     return {
         "profile_sha256": hashlib.sha256(_canonical(profile) + b"\n").hexdigest(),
@@ -1158,6 +1324,7 @@ def bind_review_candidate(
     rules: List[Dict[str, object]],
     candidate: Dict[str, object],
     root: Optional[Path] = None,
+    source_roots: Optional[Dict[str, Path]] = None,
 ) -> Dict[str, object]:
     expected = {
         "schema_version",
@@ -1172,7 +1339,7 @@ def bind_review_candidate(
         raise ValueError("规则审查候选尚未通过或仍有阻塞问题")
     _string_list(candidate["non_blocking_findings"], "non_blocking_findings")
     _validate_safe_json(candidate, "规则审查候选")
-    digests = candidate_digests(profile, rules, root)
+    digests = candidate_digests(profile, rules, root, source_roots)
     return {
         "schema_version": SCHEMA_VERSION,
         "verdict": "PASS",
@@ -1224,6 +1391,19 @@ def _write_json(path: Path, value: Dict[str, object]) -> None:
             except FileNotFoundError:
                 pass
         os.close(parent_fd)
+
+
+def _confirmed_source_roots(
+    root: Path, scope_plan: Optional[str], confirmed_scope_digest: Optional[str]
+) -> Dict[str, Path]:
+    if not scope_plan or not confirmed_scope_digest:
+        raise ValueError("必须提供已确认的读取范围计划及其摘要")
+    scoped_root, extra_sources = load_scope(Path(scope_plan), confirmed_scope_digest)
+    if scoped_root != root:
+        raise ValueError("读取范围计划未绑定当前目标项目")
+    source_roots = {"current-project": root}
+    source_roots.update(dict(extra_sources))
+    return source_roots
 
 
 def _self_test() -> int:
@@ -1280,9 +1460,7 @@ def _self_test() -> int:
             "def unsafe(result, fallback):\n"
             "    alias = result if result is not None else fallback\n"
             "    return alias.text\n",
-            "def unsafe(result):\n"
-            "    if alias := result:\n"
-            "        return alias.text\n",
+            "def unsafe(result):\n    if alias := result:\n        return alias.text\n",
             "def unsafe(result):\n"
             "    box = {}\n"
             "    box['response'] = result\n"
@@ -1312,6 +1490,45 @@ def _self_test() -> int:
             unsafe_definition = ast.parse(unsafe_source).body[0]
             if not _direct_sensitive_response_use(unsafe_definition):
                 raise AssertionError("复杂响应别名未被识别为敏感数据流")
+        extra_root = root / "shared-source"
+        extra_root.mkdir()
+        (extra_root / "helper.py").write_text(
+            "def shared_helper(result):\n    raise AssertionError(result.text)\n",
+            encoding="utf-8",
+        )
+        extra_rule_content = (
+            '<!-- tide-evidence: ["shared:helper.py"] -->\n'
+            "# 共享规则\n- 使用 shared_helper。\n"
+        )
+        extra_rules = [
+            {
+                "path": "shared.md",
+                "sha256": hashlib.sha256(
+                    extra_rule_content.encode("utf-8")
+                ).hexdigest(),
+                "content": extra_rule_content,
+                "evidence": ["shared:helper.py"],
+            }
+        ]
+        try:
+            _validate_rule_helper_safety(
+                root,
+                extra_rules,
+                {"current-project": root, "shared": extra_root},
+            )
+        except ValueError as exc:
+            assert "会泄漏响应内容" in str(exc)
+        else:
+            raise AssertionError("额外源码中的不安全 helper 未被拒绝")
+        (extra_root / "helper.py").write_text(
+            "def shared_helper(result):\n    return result.status_code\n",
+            encoding="utf-8",
+        )
+        _validate_rule_helper_safety(
+            root,
+            extra_rules,
+            {"current-project": root, "shared": extra_root},
+        )
         (rules_dir / "unsafe-helper.md").unlink()
         scan_base = {
             "schema_version": SCHEMA_VERSION,
@@ -1320,6 +1537,14 @@ def _self_test() -> int:
             "project": {
                 "label": "current-project",
                 "file_paths": ["README.md", "tests/test_api.py"],
+                "file_snapshots": [
+                    {
+                        key: value
+                        for key, value in _current_snapshot(root, reference).items()
+                        if key != "source"
+                    }
+                    for reference in ("README.md", "tests/test_api.py")
+                ],
                 "python_detected": True,
                 "pytest_detected": True,
                 "pytest_runner": {
@@ -1552,18 +1777,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print("分析归一化失败：{}".format(exc), file=sys.stderr)
             return 2
     if args.inspect_candidates:
-        if not args.project_root or not args.profile or not args.rules_dir:
+        if (
+            not args.project_root
+            or not args.profile
+            or not args.rules_dir
+            or not args.scope_plan
+            or not args.confirmed_scope_digest
+        ):
             print(
-                "候选检查失败：必须提供 --project-root、--profile 与 --rules-dir",
+                "候选检查失败：必须提供项目、画像、规则和已确认读取范围",
                 file=sys.stderr,
             )
             return 2
         try:
             root = _validate_root(args.project_root)
+            source_roots = _confirmed_source_roots(
+                root, args.scope_plan, args.confirmed_scope_digest
+            )
             value = candidate_digests(
                 _load_json(Path(args.profile), "项目画像"),
                 _collect_rules(Path(args.rules_dir)),
                 root,
+                source_roots,
             )
             print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
@@ -1577,19 +1812,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             or not args.rules_dir
             or not args.review_candidate
             or not args.output
+            or not args.scope_plan
+            or not args.confirmed_scope_digest
         ):
             print(
-                "审查绑定失败：必须提供 --project-root、--profile、--rules-dir、--review-candidate 与 --output",
+                "审查绑定失败：必须提供项目、画像、规则、审查候选、输出和已确认读取范围",
                 file=sys.stderr,
             )
             return 2
         try:
             root = _validate_root(args.project_root)
+            source_roots = _confirmed_source_roots(
+                root, args.scope_plan, args.confirmed_scope_digest
+            )
             review = bind_review_candidate(
                 _load_json(Path(args.profile), "项目画像"),
                 _collect_rules(Path(args.rules_dir)),
                 _load_json(Path(args.review_candidate), "规则审查候选"),
                 root,
+                source_roots,
             )
             _write_json(Path(args.output), review)
             print(json.dumps(review, ensure_ascii=False, indent=2, sort_keys=True))
@@ -1600,6 +1841,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     required = [
         args.project_root,
         args.scan,
+        args.scope_plan,
+        args.confirmed_scope_digest,
         args.profile,
         args.rules_dir,
         args.project_analysis,
@@ -1612,6 +1855,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
     try:
         root = _validate_root(args.project_root)
+        source_roots = _confirmed_source_roots(
+            root, args.scope_plan, args.confirmed_scope_digest
+        )
         scan = _load_json(Path(args.scan), "扫描结果")
         profile = _load_json(Path(args.profile), "项目画像")
         rules = _collect_rules(Path(args.rules_dir))
@@ -1619,7 +1865,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         test_analysis = _load_json(Path(args.test_analysis), "测试资产扫描结果")
         review = _load_json(Path(args.review), "规则审查结果")
         plan = build_plan(
-            root, scan, profile, rules, project_analysis, test_analysis, review
+            root,
+            scan,
+            profile,
+            rules,
+            project_analysis,
+            test_analysis,
+            review,
+            source_roots,
+            args.confirmed_scope_digest,
         )
         _write_json(Path(args.output), plan)
         print(

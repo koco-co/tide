@@ -11,7 +11,7 @@
       "name": "tide",
       "source": "./",
       "description": "安全分析 HAR，并在逐步确认后生成和执行 pytest 接口测试。",
-      "version": "2.0.17",
+      "version": "2.0.18",
       "author": {
         "name": "koco-co",
         "url": "https://github.com/koco-co"
